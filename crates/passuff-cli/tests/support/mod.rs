@@ -792,6 +792,8 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             "esc" => crossterm::event::KeyCode::Esc,
             "j" => crossterm::event::KeyCode::Char('j'),
             "k" => crossterm::event::KeyCode::Char('k'),
+            "down" => crossterm::event::KeyCode::Down,
+            "up" => crossterm::event::KeyCode::Up,
             "r" => crossterm::event::KeyCode::Char('r'),
             "a" => crossterm::event::KeyCode::Char('a'),
             other => panic!("unknown key {other}"),
@@ -809,6 +811,14 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
     }
 
     pub fn run_tui_binary(&mut self) {
+        self.run_tui_binary_with(&["--snapshot"]);
+    }
+
+    pub fn run_tui_binary_without_snapshot(&mut self) {
+        self.run_tui_binary_with(&[]);
+    }
+
+    fn run_tui_binary_with(&mut self, args: &[&str]) {
         let dir = self
             .state_dir
             .as_ref()
@@ -822,7 +832,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             .unwrap_or_else(|| self.config_text_from_accounts());
         std::fs::write(&config_path, text).expect("config write");
         let output = std::process::Command::new(env!("CARGO_BIN_EXE_passuff-tui"))
-            .arg("--snapshot")
+            .args(args)
             .arg("--config")
             .arg(&config_path)
             .arg("--state")

@@ -25,6 +25,7 @@ Feature: Activity inbox terminal UI
     Given a configured account "personal" with login "octo-personal"
     And no state file
     When the developer opens the inbox TUI
+    And the developer presses "r"
     Then the TUI shows "no activity yet"
     And the TUI shows "0 unread of 0"
 
@@ -37,7 +38,11 @@ Feature: Activity inbox terminal UI
     And the CI result on "acme/api#42" becomes "failing"
     And passuff runs one check
     And the developer opens the inbox TUI
-    And the developer presses "j"
+    And the developer presses "down"
+    Then the selected activity is "New comment from @alice"
+    When the developer presses "up"
+    Then the selected activity is "CI failing: build"
+    When the developer presses "j"
     Then the selected activity is "New comment from @alice"
     When the developer presses "j"
     Then the selected activity is "New comment from @alice"
@@ -96,6 +101,14 @@ Feature: Activity inbox terminal UI
     And the state path is a directory
     When the developer starts the inbox TUI binary
     Then the TUI reports "state error"
+    And the exit status is 3
+
+  @givn.added
+  Scenario: The terminal UI requires a terminal
+    Given a configured account "personal" with login "octo-personal"
+    And no state file
+    When the developer starts the inbox TUI without a snapshot
+    Then the TUI reports "requires a terminal"
     And the exit status is 3
 
   @givn.added @e2e

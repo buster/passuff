@@ -12,6 +12,11 @@ async fn starts_binary(world: &mut World) {
     world.run_tui_binary();
 }
 
+#[when(regex = r#"^the developer starts the inbox TUI without a snapshot$"#)]
+async fn starts_binary_without_snapshot(world: &mut World) {
+    world.run_tui_binary_without_snapshot();
+}
+
 #[given(regex = r#"^the state path is a directory$"#)]
 async fn state_path_is_directory(world: &mut World) {
     std::fs::create_dir_all(world.state_path()).expect("state path directory");

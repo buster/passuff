@@ -111,15 +111,16 @@ passuff-tui [--config PATH] [--state PATH] [--snapshot]
 - Step file: `crates/passuff-cli/tests/steps/activity_inbox_tui.rs`, one
   capability file; regular and e2e branches in the same steps.
 - Regular: build the `Inbox` view from the temp state, render a snapshot in
-  process, and drive `TuiApp::handle_key` for navigation/read/quit.
+  process, and drive `TuiApp::handle_key` for navigation (`j`/`k` and the arrow
+  keys), read, and quit.
 - E2E: spawn `CARGO_BIN_EXE_passuff-tui --snapshot --config --state`; assert the
   frame and exit 0; transcript evidence under the active change.
 - Unit tests: empty snapshot, selected-row marker, configured watch scope,
   selection clamp after a shorter reload, failed reload after `r`, unbound key
   leaves state unchanged, `load_view` maps config/state errors to exits 2/3.
 - `load_view` maps a configuration error to exit 2 and a state error to exit 3;
-  the two regular error scenarios spawn the binary and assert its stderr and
-  exit code.
+  the regular binary scenarios assert those messages and codes, and the
+  non-terminal guard also exits 3 without `--snapshot`.
 - Coverage: the e2e delta includes the TUI snapshot; the regular scenarios cover
   the renderer and key paths.
 
