@@ -39,6 +39,9 @@ ci_recovery = true
 state_changes = true
 bot_comments = false
 
+[watch]
+repositories = []          # empty = every authored pull request
+
 [accounts.personal]
 auth = "gh_oauth"
 github_user = "octo-personal"
@@ -93,6 +96,11 @@ cargo run --release -p passuff-cli -- --help
 ```
 passuff                     watch until interrupted
 passuff check               run one observation pass
+passuff status              show accounts, watch scope, watched PRs, unread count
+passuff inbox               list unread activity
+passuff inbox --all         list unread and read activity
+passuff read <id>           mark one activity record read
+passuff read --all          mark every activity record read
 passuff --config PATH       use a specific configuration file
 passuff --state PATH        use a specific state file
 passuff --verbose           enable diagnostic logs on stderr
