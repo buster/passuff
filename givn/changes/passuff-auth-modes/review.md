@@ -5,9 +5,10 @@ PERSONAS: multi-account-developer
 Author: passuff maintainer (operator)
 Reviewer context: independent review analyst (fresh context)
 
-This pass re-checked the two prior blockers (N1, N2) and re-ran the full review
-on the current tree (`b82512e`). N1 and N2 are resolved. One new blocker (N3)
-remains in the coverage classification.
+This pass re-checked all three prior blockers (N1, N2, N3) and re-ran the full
+review on the current tree. N1 and N2 were resolved in the earlier pass; N3 (the
+unused `impl Default for SystemGhLogin`) is resolved by `0dd4214`, a single-file
+deletion of six lines. No blocker remains.
 
 ## Implementation evidence check
 
@@ -53,8 +54,9 @@ Preflight evidence verified from artifacts and re-run in this context:
   `command: ./scripts/verify.sh`, content digest `6563fcc`);
 - permanent regular 52/52 and e2e 4/4: `tasks.md:50`; the e2e artifact
   `target/givn-verify-result.json` is `{"failed":0,"passed":4,"skipped":0,"total":4}`;
-- unit 32: `cargo test --workspace --lib` executed three consecutive times in
-  this review context, each run `4 + 15 + 13 = 32 passed; 0 failed`, exit 0;
+- unit 32: `cargo test --workspace --lib` executed five times across the two
+  review contexts (three in the first, two after `0dd4214`), each run
+  `4 + 15 + 13 = 32 passed; 0 failed`, exit 0;
 - strict-mode probe: `tasks.md:13-21` records `FAILED: Strict mode probe :: Undefined step must fail`, `undefined Given`, `total 1, passed 0, failed 1`, cargo exit 1.
 
 ### Test-determinism finding (prior blocker N2) — resolved
@@ -64,11 +66,11 @@ tests no longer touch `PATH`:
 
 - `SystemGhLogin { program: PathBuf }` (`gh_login.rs:8-10`), `new()` returns
   the production `"gh"` (`:13-17`), `with_program()` injects any path (`:19-23`);
-  the login command spawns `&self.program` (`:37`), not a `PATH` lookup.
-- `login_runs_the_web_flow_for_the_host` (`:84-93`) and
-  `login_reports_a_gh_failure` (`:104-111`) build the fake script through
+  the login command spawns `&self.program` (`:31`), not a `PATH` lookup.
+- `login_runs_the_web_flow_for_the_host` (`:79-87`) and
+  `login_reports_a_gh_failure` (`:99-105`) build the fake script through
   `tempfile::tempdir()` and pass `dir.path().join("gh")` — an absolute path.
-  `login_reports_a_missing_gh` (`:95-102`) injects
+  `login_reports_a_missing_gh` (`:89-96`) injects
   `dir.path().join("missing")`. No test prepends a directory to `PATH` and no
   restore step can race.
 - `grep -rn 'set_var|remove_var|"PATH"' crates/passuff-cli/src/` finds no match:
@@ -92,6 +94,22 @@ tests no longer touch `PATH`:
   three times; no third-party resolution can interleave with it today. The
   `HOME` swap in `crates/passuff-config/src/lib.rs:640-648` is likewise the only
   `~` consumer in its crate.
+
+### Dead-code removal (prior blocker N3) — resolved
+
+`git show 0dd4214` is a one-file, six-line deletion: it removes
+`impl Default for SystemGhLogin` from `crates/passuff-cli/src/gh_login.rs` and
+touches nothing else (`1 file changed, 6 deletions(-)`; no test, doc, spec, or
+config change in the commit).
+
+- `grep -rn 'impl Default for SystemGhLogin'` over the tree has no match outside
+  this review file.
+- No unused constructor remains: `new()` is called at `cli/src/lib.rs:24` and
+  `with_program()` at `gh_login.rs:81,92,101`; `cargo build --workspace
+  --all-targets` emits no dead-code warning and `cargo clippy --workspace
+  --all-targets` reports no issues.
+- `cargo test --workspace --lib` passed twice in this context after the deletion
+  (`32 passed`, 3 suites, exit 0 in both runs).
 
 ### Components and contracts
 
@@ -242,13 +260,17 @@ The README badge matches the merged report (`README.md:3-6`: 85.3% / 35.9%).
 The managed `## Coverage` block at `README.md:140-152` still carries the
 archive-owned 89% text; the archive gate rewrites the badge and block.
 
+The three reports were written at 21:40, before `0dd4214` (21:46). The deleted
+lines were 0-hit dead code, so a regenerated merged report drops them from the
+denominator and the ratio can only rise; the badge is not re-cut in this review.
+
 ### Residual gaps and classification
 
 Bucket 1 — dead code (delete):
 
 | Region | Evidence | Status |
 |---|---|---|
-| `crates/passuff-cli/src/gh_login.rs:26-30` — `impl Default for SystemGhLogin` | added in `e6293c5`; the merged report records lines 27-29 with 0 hits in both scopes; no call site exists (`SystemGhLogin::new()` at `cli/src/lib.rs:24` is the only construction); `cargo clippy --workspace --all-targets` already emits `new_without_default` for `GitHubApiAdapter` and `SystemSoundPlayer`, so the lint is not gated and does not justify the impl | **open — blocker N3** |
+| `crates/passuff-cli/src/gh_login.rs` — former `impl Default for SystemGhLogin` (was `:26-30`) | added in `e6293c5`; the merged report recorded lines 27-29 at 0 hits in both scopes; no call site existed (`SystemGhLogin::new()` at `cli/src/lib.rs:24` is the only construction); deleted in `0dd4214`, verified above | **resolved — deleted; bucket 1 is now empty** |
 
 Bucket 2 — missing tests (all change-introduced gaps resolved; the remaining
 rows are unchanged pre-existing residuals):
@@ -259,7 +281,7 @@ rows are unchanged pre-existing residuals):
 | `config:319-321` | R35 HOME unset | resolved: `rejects_a_tilde_token_file_without_home` (`config:640-648`) |
 | `credential:170-171` | R33 gh missing binary | resolved: `credential:292-325` |
 | `credential:175-183` | R33 non-zero, empty, non-UTF8 gh output | resolved: `credential:292-325` |
-| `gh_login:23-29` (pre-fix lines) | R34 gh missing binary | resolved: `login_reports_a_missing_gh` (`gh_login.rs:95-102`) |
+| `gh_login:23-29` (pre-fix lines) | R34 gh missing binary | resolved: `login_reports_a_missing_gh` (`gh_login.rs:89-96`) |
 | `feature:104` | R35 missing token file message | resolved: the Then asserts `token file is missing: ` (`feature:104`); `credential:26` renders the path |
 | `cli/src/lib.rs:148,153,178-181,196,209,219-221,273-298` | R31 | pre-existing uncovered lines in unchanged CLI rendering/delivery code (`git blame`: `aff41de`, pre-change), carried from the archived review |
 | `main.rs:20,27-39,71-72` | R19 | pre-existing default-path and recording-delivery lines (`aff41de`/`aab11e8`), unchanged |
@@ -273,19 +295,21 @@ Bucket 3 — legitimately hard to test:
 
 | Region | Technical justification |
 |---|---|
-| `credential:77-85,160-167`, `gh_login:35-45` | The 10-second command and gh-token timeouts and the 300-second login timeout fire only after a real wall-clock wait. The workspace enables no tokio paused clock for these crates; a deterministic test would either burn 10/300 seconds in the preflight or leave a live child after the timeout. |
-| `credential:173`, `gh_login:46-51` | Non-`NotFound` spawn faults (EACCES/E2BIG/OS resource errors) are OS exec failures; the fake-gh harness models exit codes and output, not exec faults. The product contract names missing binary, non-zero exit, empty output, and timeout, not arbitrary exec faults. |
+| `credential:77-85,160-167`, `gh_login:29-39` | The 10-second command and gh-token timeouts and the 300-second login timeout fire only after a real wall-clock wait. The workspace enables no tokio paused clock for these crates; a deterministic test would either burn 10/300 seconds in the preflight or leave a live child after the timeout. |
+| `credential:173`, `gh_login:40-46` | Non-`NotFound` spawn faults (EACCES/E2BIG/OS resource errors) are OS exec failures; the fake-gh harness models exit codes and output, not exec faults. The product contract names missing binary, non-zero exit, empty output, and timeout, not arbitrary exec faults. |
 | `config:337-341`, `credential:111,123` | The "cannot be inspected"/`FileUnreadable` branches require a filesystem change between the load check and the read (TOCTOU) or a non-`NotFound` metadata fault; not drivable without privilege or fault injection. |
 | `SystemGhLogin` real browser-consent success | A real `gh auth login --web` needs a browser, network, and interactive authorization; the port is faked and the process-status branches are tested. |
 
 Region-attribution artifacts, not gaps: `config:326` (closing brace of the
 `~`-expansion `if`; the push at `:325` is covered), `credential:73,99`
 (async-trait wrapper line and closing brace; body `74-98` is covered),
-`gh_login:29-30` (closing braces), and `config:646` (closing brace of a
+`gh_login:52-53` (closing braces of `login` and of the `GhLogin` impl), and
+`config:646` (closing brace of a
 test-only conditional restore).
 
-N3 must be resolved (delete the impl, matching the B8 disposition for
-`impl Default for SystemCredentialSource`) before this classification is clean.
+Bucket 1 is empty: the only entry was the `Default` impl, deleted in `0dd4214`
+matching the B8 disposition for `impl Default for SystemCredentialSource`. No
+uncovered, uncalled code remains in the change's regions.
 
 ## E2e coverage
 
@@ -380,9 +404,9 @@ managed `## Coverage` block is owned by the archive gate.
 
 ## Blockers
 
-| ID | Blocker | Evidence | Required fix |
-|---|---|---|---|
-| N3 | Uncovered, uncalled `impl Default for SystemGhLogin` | `crates/passuff-cli/src/gh_login.rs:26-30`, added by `e6293c5`; the merged report records lines 27-29 at 0 hits in both scopes; no call site (`grep -rn 'SystemGhLogin::default'` is empty; `new()` is used at `cli/src/lib.rs:24`); the project tolerates `new_without_default` on `GitHubApiAdapter` and `SystemSoundPlayer`, so no lint requires it. Bucket 1 (dead code) or bucket 2 (missing test); no third bucket applies. | Delete the `Default` impl, matching the B8 disposition for `impl Default for SystemCredentialSource`; re-run the delta verification and refresh the receipt. |
+No open blockers. N3 was the last one; it is resolved by `0dd4214` and the
+classification in `### Residual gaps and classification` above now has an empty
+bucket 1.
 
 Prior blockers verified resolved:
 
@@ -411,11 +435,11 @@ Earlier blockers re-verified:
   `token file is missing: `; `tasks.md:114` calls HOME unset a configuration
   error.
 - B7: `credential:292-325` covers missing binary, non-zero, empty, and non-UTF8;
-  `gh_login.rs:95-111` covers missing gh and failure; the timeout branches are
+  `gh_login.rs:89-105` covers missing gh and failure; the timeout branches are
   bucket 3.
-- B8: `AccountConfig::auth_mode()` and `impl Default for SystemCredentialSource`
-  are gone; no `CredentialResolver` remains. (The new `Default for SystemGhLogin`
-  is the N3 regression.)
+- B8: `AccountConfig::auth_mode()`, `impl Default for SystemCredentialSource`,
+  and `impl Default for SystemGhLogin` (`0dd4214`) are gone; no
+  `CredentialResolver` remains.
 - B9: `design.md:31`, `docs/arc42/05:135`, `08:18`, `06:161`, and ADR-0004 use
   the per-gh-login wording; `design-review.md:102-113` records the remediation
   re-check and `DESIGN-REVIEW: PASS`.
@@ -430,9 +454,9 @@ Earlier blockers re-verified:
 - Every promised component exists: yes (four adapters, `GhLogin`, `WatchControl`).
 - Every consumer uses only its declared contract: yes (composition root + tests excepted).
 - Strict-mode proof present and passing: yes (`tasks.md:13-21`).
-- Scenario execution evidence per scope: delta 27/27 receipt, permanent 52/52, e2e 4/4, unit 32 passed in three consecutive runs.
-- Coverage classified from the merged report: no — N3 leaves one uncovered, uncalled impl unclassified/unresolved.
-- Dead code deleted: no — N3.
+- Scenario execution evidence per scope: delta 27/27 receipt, permanent 52/52, e2e 4/4, unit 32 passed in every run (two after `0dd4214`).
+- Coverage classified from the merged report: yes — bucket 1 empty, change-introduced bucket 2 rows resolved, bucket 3 justified.
+- Dead code deleted: yes — `impl Default for SystemGhLogin` removed in `0dd4214`.
 - No `@wip`; no implementation detail in the spec: yes.
 - Canonical E2E policy: every inventory action has one `@e2e`; variants are regular: yes.
 - Real-interface assertions and reviewed driver: yes (spawned CLI binary).
@@ -444,4 +468,4 @@ Earlier blockers re-verified:
 - Ubiquitous language and structural model: consistent; one non-blocking scenario-title naming follow-up.
 - No finding excused outside the three buckets: yes.
 
-REVIEW: FAIL
+REVIEW: PASS
