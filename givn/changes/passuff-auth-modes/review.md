@@ -5,6 +5,10 @@ PERSONAS: multi-account-developer
 Author: passuff maintainer (operator)
 Reviewer context: independent review analyst (fresh context)
 
+This pass re-checked the two prior blockers (N1, N2) and re-ran the full review
+on the current tree (`b82512e`). N1 and N2 are resolved. One new blocker (N3)
+remains in the coverage classification.
+
 ## Implementation evidence check
 
 ### @e2e tag integrity
@@ -14,18 +18,18 @@ Reviewer context: independent review analyst (fresh context)
 | `givn/changes/passuff-auth-modes/specs/watch-pull-requests/pr-activity-notification.feature` | 0 | 0 | no delta scenario carries the tag; the browser-login flow is a regular variant of "start continuous watching" |
 | `givn/specs/watch-pull-requests/pr-activity-notification.feature` | 4 | 4 | unchanged; the four permanent `@e2e` titles remain |
 
-No `@e2e` tag was removed. `givn lint --change passuff-auth-modes` exits 0
-and ends with `givn lint: 1 file(s) checked — clean`; the only output is
-advisory SHAPE/SUBST findings. `tasks.md:3` now says "Regular scenarios first,
-then end-to-end" and contains no `@e2e` token. B3 is resolved.
+No `@e2e` tag was removed. `givn lint --change passuff-auth-modes` reports
+`1 file(s) checked — clean`; the only output is advisory SUBST findings.
+`tasks.md:3` says "Regular scenarios first, then end-to-end" and contains no
+`@e2e` token. B3 stays resolved.
 
 ### Empty step bodies
 
-**0 empty/trivial step bodies found across 2 files**: 75 functions in
-`crates/passuff-cli/tests/steps/pr_activity_notification.rs` and 6 in
-`crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs`. No
-`unimplemented!()` or `todo!()` exists under `crates/`. Every step body drives
-the `World`, the runtime, or an assertion.
+**0 empty/trivial step bodies found across 2 files**: 70 step attributes with 71
+functions in `crates/passuff-cli/tests/steps/pr_activity_notification.rs` and 6
+in `crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs` (76 step
+definitions total). No `unimplemented!()` or `todo!()` exists under `crates/`.
+Every step body drives the `World`, the runtime, or an assertion.
 
 ### Scenario commit evidence
 
@@ -37,41 +41,79 @@ the `World`, the runtime, or an assertion.
 `git show --stat 7fa8bed` touches production code
 (`crates/passuff-config/src/lib.rs`, `crates/passuff-core/src/{credential,cycle,domain}.rs`,
 `crates/passuff-cli/src/{lib,main,gh_login}.rs`), the shared harness, both step
-files, the feature, and the docs. The commit message names all four batches:
+files, and the docs. The commit message names all four batches:
 `Batches: auth-config, credential-resolution, gh-session, identity-and-watch`.
-The change is not marked `CHARACTERIZATION`.
+The change is not marked `CHARACTERIZATION`. The N2 remediation commit
+`e6293c5` also touches production code (`gh_login.rs`, `cli/src/lib.rs`).
 
-Preflight evidence verified from artifacts:
+Preflight evidence verified from artifacts and re-run in this context:
 
-- delta regular 27/27: `verification/tasks-result.json` and
-  `verification/tasks-verification.json` (`runner_exit: 0`, head `f6433cb`);
+- delta regular 27/27: `verification/tasks-result.json` (`{"total":27,"passed":27,"failed":0,"skipped":0}`)
+  and `verification/tasks-verification.json` (`runner_exit: 0`, head `b9d74ba`,
+  `command: ./scripts/verify.sh`, content digest `6563fcc`);
 - permanent regular 52/52 and e2e 4/4: `tasks.md:50`; the e2e artifact
   `target/givn-verify-result.json` is `{"failed":0,"passed":4,"skipped":0,"total":4}`;
-- unit 32: confirmed with `cargo test --workspace --lib` (`32 passed, 3 suites`);
+- unit 32: `cargo test --workspace --lib` executed three consecutive times in
+  this review context, each run `4 + 15 + 13 = 32 passed; 0 failed`, exit 0;
 - strict-mode probe: `tasks.md:13-21` records `FAILED: Strict mode probe :: Undefined step must fail`, `undefined Given`, `total 1, passed 0, failed 1`, cargo exit 1.
+
+### Test-determinism finding (prior blocker N2) — resolved
+
+`crates/passuff-cli/src/gh_login.rs` now stores an injected program and the
+tests no longer touch `PATH`:
+
+- `SystemGhLogin { program: PathBuf }` (`gh_login.rs:8-10`), `new()` returns
+  the production `"gh"` (`:13-17`), `with_program()` injects any path (`:19-23`);
+  the login command spawns `&self.program` (`:37`), not a `PATH` lookup.
+- `login_runs_the_web_flow_for_the_host` (`:84-93`) and
+  `login_reports_a_gh_failure` (`:104-111`) build the fake script through
+  `tempfile::tempdir()` and pass `dir.path().join("gh")` — an absolute path.
+  `login_reports_a_missing_gh` (`:95-102`) injects
+  `dir.path().join("missing")`. No test prepends a directory to `PATH` and no
+  restore step can race.
+- `grep -rn 'set_var|remove_var|"PATH"' crates/passuff-cli/src/` finds no match:
+  the CLI lib tests never mutate the process environment. The only `PATH`
+  mutation left in the workspace is inside integration-test support
+  (`crates/passuff-cli/tests/support/mod.rs:464-467`), which runs under the
+  runner's `max_concurrent_scenarios(Some(1))` (`features_runner.rs:53`), so
+  scenarios are serialized and the fake `gh` directory is an absolute
+  `TempDir` path.
+- `SystemGhLogin::new()` is constructed only in `system_credentials`
+  (`crates/passuff-cli/src/lib.rs:21-29`); no unit test resolves a gha spec
+  through it. `system_credentials_resolves_in_both_modes`
+  (`lib.rs:311-333`) resolves a file token only, so no real `gh` can be
+  invoked by the lib suite.
+- Three consecutive `cargo test --workspace --lib` runs passed in ~0.1s with no
+  hang, no device-code output, and no `gh` invocation.
+- Residual note (not a demonstrated defect): the `gh_source` test
+  (`crates/passuff-core/src/credential.rs:292-325`) still swaps `PATH` for the
+  duration of one test. It is the only `PATH` consumer in that test binary
+  (`CommandCredential` spawns `/bin/sh` by absolute path), and the suite passed
+  three times; no third-party resolution can interleave with it today. The
+  `HOME` swap in `crates/passuff-config/src/lib.rs:640-648` is likewise the only
+  `~` consumer in its crate.
 
 ### Components and contracts
 
 | Contract (design `Contracts and Components`) | Promised component | Present |
 |---|---|---|
-| `CredentialSource` | credential resolver over four source adapters | yes: `SystemCredentialSource` (`credential.rs:219`), `EnvironmentCredential` (`:51`), `CommandCredential` (`:68`), `FileCredential` (`:102`), `GhOAuthCredential` (`:144`) |
-| `GhLogin` | CLI composition-root adapter plus a recording fake | yes: `SystemGhLogin` (`crates/passuff-cli/src/gh_login.rs:9`) and `RecordingGhLogin` (tests) |
-| `WatchControl` | `passuff-cli` runtime control | yes: `Interrupt` and `StopAfter` (`cli/src/lib.rs:49-104`); `wait` is a superset of the design trait |
+| `CredentialSource` | credential resolver over four source adapters | yes: `SystemCredentialSource` (`credential.rs:219`), `EnvironmentCredential` (`:52`), `CommandCredential` (`:69`), `FileCredential` (`:103`), `GhOAuthCredential` (`:144`) |
+| `GhLogin` | CLI composition-root adapter plus a recording fake | yes: `SystemGhLogin` (`crates/passuff-cli/src/gh_login.rs:8`) and `RecordingGhLogin` (`tests/support/mod.rs:758`) |
+| `WatchControl` | `passuff-cli` runtime control | yes: `Interrupt` (`cli/src/lib.rs:54`) and `StopAfter` (`:87`); `wait` is a superset of the design trait |
 
 Consumers use the declared surfaces: `CliPorts` holds `Arc<dyn CredentialSource>`,
 `Arc<dyn GitHubGateway>`, `Arc<dyn SnapshotStore>`, `Arc<dyn NotificationDelivery>`
 (`cli/src/lib.rs:32-37`); the composition root is `system_credentials`
 (`cli/src/lib.rs:21-29`), which constructs `SystemCredentialSource` and
-`SystemGhLogin`; `main.rs` calls the helper rather than the implementation. No
-consumer imports a core implementation type outside the composition root and
+`SystemGhLogin`; `main.rs:43` calls the helper rather than the implementation.
+No consumer imports a core implementation type outside the composition root and
 tests.
 
 ### Strict-mode proof
 
 `tasks.md:13-21` records the undefined-step probe and non-zero exit. The runner
-enforces it with `.fail_on_skipped()`
-(`crates/passuff-cli/tests/features_runner.rs:50`) and a non-zero exit for
-`total == 0` (`:90-96`).
+enforces it with `.fail_on_skipped()` (`crates/passuff-cli/tests/features_runner.rs:51`)
+and a non-zero exit for `total == 0` (`:93-97`).
 
 ### E2E Then assertions
 
@@ -84,7 +126,9 @@ enforces it with `.fail_on_skipped()`
 
 None asserts only repository/database state. All four read the stdout of a real
 subprocess (`Command::new(env!("CARGO_BIN_EXE_passuff"))`,
-`crates/passuff-cli/tests/support/e2e.rs:365,380,396`).
+`crates/passuff-cli/tests/support/e2e.rs:365,380,396`), asserted by
+`pr_activity_notification_e2e.rs:21-43` (`Commands:`/`check` in usage,
+`^passuff \d+\.\d+\.\d+$` for version) and the notification wait.
 
 ### `verify.e2e_command` binding and parallel implementations
 
@@ -101,18 +145,18 @@ subprocess (`Command::new(env!("CARGO_BIN_EXE_passuff"))`,
 
 | `design.md` statement | As built | Disposition |
 |---|---|---|
-| Four named source adapters (`design:63`) | all four types exist (`credential.rs:51,68,102,144`) | match |
+| Four named source adapters (`design:63`) | all four types exist (`credential.rs:52,69,103,144`) | match |
 | `verify.e2e_command` with `--e2e` and explicit scope (`design:286-288`) | scope and corpus are explicit; the configured command runs 4/4 | match |
-| "the core's credential sources start token processes" (`design:57`) | `passuff-core` spawns `gh auth token` and `/bin/sh -c`; the login adapter is CLI-side | match |
-| gh-plus-PAT message (`design:274-275`) | code emits `must not set a personal access token source when auth is gh_oauth` (`config:249`) | match |
-| Step-definition file layout (`design:298-301`) | two files as named | match |
-| Single-scenario `GIVN_SCENARIO` filter (`design:292-294`) | implemented (`features_runner.rs:29`) | match |
-| Login retry "once per gh login per process" (`design:31`) | `design:31` now says exactly that; attempt set keyed by login (`credential.rs:147,203`) | match |
-| Arc42 runtime wording `docs/arc42/06-runtime-view.md:161` | now "records that a login was attempted for the gh login" | match |
+| "the core's credential sources start token processes" (`design:57`) | `passuff-core` spawns `gh auth token` (`credential.rs:159-187`) and `/bin/sh -c` (`:77-82`); the login adapter is CLI-side | match |
+| gh-plus-PAT message (`design:274-275`) | code emits `must not set a personal access token source when auth is gh_oauth` (`config:249`) and the feature asserts it (`:193`) | match |
+| Two step-definition files (`design:298-301`) | `steps/pr_activity_notification.rs` + `steps/pr_activity_notification_e2e.rs` | match |
+| Single-scenario `GIVN_SCENARIO` filter (`design:292-294`) | implemented (`features_runner.rs:29,67-69`) | match |
+| Login retry "once per gh login per process" (`design:31`) | attempt set keyed by login (`credential.rs:150-156,203-215`); `docs/arc42/05:135`, `08:18`, ADR-0004 agree | match |
+| Arc42 runtime wording (`docs/arc42/06-runtime-view.md:161`) | "records that a login was attempted for the gh login" | match |
 
 ### Interaction cross-reference
 
-| Inventory entry (`usecase.md:118-121`) | Design matrix row (`design:357-362`) | `@e2e` scenario | Step definitions | Promised driving mechanism |
+| Inventory entry (`usecase.md:118-121`) | Design matrix row (`design:355-362`) | `@e2e` scenario | Step definitions | Promised driving mechanism |
 |---|---|---|---|---|
 | start continuous watching | yes | `Developer starts watching and is notified of a new comment` | `e2e_steps::starts_watching` -> `World::e2e_start_watching` | real CLI subprocess, stdout transcript + desktop sink |
 | run one observation pass | yes | `Developer runs a single check and sees the current activity` | `e2e_steps::runs_one_check` -> `World::e2e_run_check` | real CLI subprocess, stdout transcript |
@@ -125,41 +169,27 @@ no unmapped inventory entry and no extra `@e2e` scenario. The gh browser login
 is a recovery precondition of "start continuous watching", not a new consumer
 action, so the regular variant is correct.
 
-### Test-determinism finding (blocker N2)
-
-The three new `SystemGhLogin` unit tests at
-`crates/passuff-cli/src/gh_login.rs:61-90` mutate the process-global `PATH`
-without serialization. `login_runs_the_web_flow_for_the_host` and
-`login_reports_a_gh_failure` prepend a temporary fake `gh`, while
-`login_reports_a_missing_gh` sets `PATH=/nonexistent` and later restores the
-original value. When they interleave, the fake `gh` is not found and the real
-`gh` is run. Repeated `cargo test -p passuff-cli --lib` reproduced a hang: the
-`login_reports_a_gh_failure` test invoked real `gh auth login --web` and printed
-a GitHub one-time device code (`https://github.com/login/device`). The 300-second
-login timeout then blocks the unit preflight. `--test-threads=1` passes
-consistently, which confirms the environment race rather than a production
-defect. The recorded "32 passed" run is not a deterministic result.
-
 ## Arc42 implementation conformance
 
 | Arc42 chapter or fact | Durable-doc source | `arc42.md` claim | `design.md` | `tasks.md` | Implementation evidence | Match? |
 |---|---|---|---|---|---|---|
-| Credential privacy constraint | `01`, `02` (`:16`) | affected | scope/constraints | R35 batch | `config:200-366`, `credential:106-131` | yes |
-| gh CLI external system and credential interface | `03` (`:33-46`) | affected | tech decision | gh-session batch | `credential:159-215`, `gh_login.rs` | yes |
-| Delegate OAuth to gh, PAT for headless | `04` (`:19-22`), ADR-0004 | affected | OAuth ownership | gh-session | `credential:190-216` | yes |
-| `PassuffCore::with_ports` and `refresh` | `05` (`:54`) | affected | runtime flow | setup | `cli/src/lib.rs:126-142` | yes |
-| Credential acquisition building block | `05` (`:122-136`) | affected | Component view | credential batches | `credential.rs` | yes |
-| `CredentialSource` / `CredentialResolver` | `05` (`:19,58`) | affected | `CredentialSource` only | — | no `CredentialResolver` symbol exists | yes |
-| "once per gh login per process" | `05` (`:135`), `08` (`:15-18`), ADR-0004:60-61 | affected | `design:31` | R38 batch | attempt set keyed by **login** (`credential.rs:147,203`) | yes |
-| Interactive recovery sequence | `06` (`:132-165`) | affected | runtime flow | gh-session | `credential:196-215`, `main:43-49`; `06:161` says "for the gh login" | yes |
+| Credential privacy constraint | `01`, `02` (`02:16`) | affected | scope/constraints | R35 batch | `config:315-345`, `credential:106-131` | yes |
+| gh CLI external system and credential interface | `03` (`03:33,45-46`) | affected | tech decision | gh-session batch | `credential:159-215`, `gh_login.rs` | yes |
+| Delegate OAuth to gh, PAT for headless | `04` (`04:19-22`), ADR-0004 | affected | OAuth ownership | gh-session | `credential:191-216` | yes |
+| `PassuffCore::with_ports` and `refresh` | `05` (`05:54`) | affected | runtime flow | setup | `cli/src/lib.rs:126-142` | yes |
+| Credential acquisition building block | `05` (`05:122-136`) | affected | Component view | credential batches | `credential.rs` | yes |
+| `CredentialSource` only (no `CredentialResolver`) | `05` (`05:19,58`) | affected | `CredentialSource` | — | no `CredentialResolver` symbol exists | yes |
+| "once per gh login per process" | `05` (`05:135`), `08` (`08:15-18`), ADR-0004:60-61 | affected | `design:31` | R38 batch | attempt set keyed by login (`credential.rs:150-156,203`) | yes |
+| Interactive recovery sequence | `06` (`06:132-165`) | affected | runtime flow | gh-session | `credential:196-215`, `main:43-49`; `06:161` says "attempted for the gh login" | yes |
 | Deployment topology unchanged | `07` | not affected | — | — | no deployment change | yes |
-| Configuration and credential rules | `08` (`:3-18`) | affected | data model | auth-config | `config:195-380` | yes |
-| No token in transcript/state/evidence | `08` (`:79-89`), `10` QS-014 | affected | visual contract | token-absence batch | `feature:155-160`, step `:738-747` | yes |
-| ADR-0004 in the register | `09` (`:11`) | affected | ADR impact | docs | ADR file + index | yes |
-| QS-013, QS-014, QS-015 | `10` (`:45-47`) | affected | use-case traceability | gh-session, auth-config, identity | scenarios `feature:16,100,130,155` | yes |
-| R-012..R-015 | `11` (`:18-21`) | affected | risks | all | code matches R-015 re-check (`credential:106-131`) | yes |
+| Configuration and credential rules | `08` (`08:3-18,83-89`) | affected | data model | auth-config | `config:195-380` | yes |
+| No token in transcript/state/evidence | `08` (`08:79-89`), `10` QS-014 | affected | visual contract | token-absence batch | `feature:155-160`, step `:738-747` | yes |
+| ADR-0004 in the register | `09` (`09:14`) | affected | ADR impact | docs | `docs/arc42/adr/ADR-0004-gh-delegated-authentication.md` + register row | yes |
+| QS-013, QS-014, QS-015 | `10` (`10:45-47`) | affected | use-case traceability | gh-session, auth-config, identity | scenarios `feature:16,100,130,155` | yes |
+| R-012..R-015 | `11` (`11:18-21`) | affected | risks | all | code matches R-015 re-check (`credential:106-131`) | yes |
+| Glossary delegation | `12` (links `docs/glossary.md`) | affected | dictionary table | docs | glossary carries credential mode, expected login, gh session, personal access token, token file | yes |
 | ADR-0004 confirmation: validation matrix | ADR-0004 Confirmation | — | validation matrix | auth-config | `config:585-613` parses valid `gh_oauth`, host derivation, missing login | yes |
-| Configured login set excludes a mismatched login | glossary `Configured login set`, `usecase.md` R1 | chapter 12 row | identity validation | identity batch | `cycle:79-113` excludes the login | yes |
+| Configured login set excludes a mismatched login | glossary `Configured login set`, `usecase.md` R1 | chapter 12 row | identity validation | identity batch | `cycle:79-113` excludes the login; `LoginSet` at `cycle:113` | yes |
 | Identity-mismatch observation wording | `usecase.md` extension 1c | — | `design:206-221` | identity batch | `cycle:65-96` reports and skips | yes |
 
 Sign-off checks:
@@ -168,7 +198,7 @@ Sign-off checks:
 - [x] Every change-level `arc42.md` claim matches the durable chapter, `design.md`, `tasks.md`, and the implementation.
 - [x] The ADR-0004 qualification and register row are present and current.
 - [x] Glossary and domain model reflect the change without inventing structure.
-- [x] No stale contradiction remains; the prior B9 per-account wording is gone from `design.md:31` and `docs/arc42/06:161`, and the R38 rule is consistent across chapter 05, chapter 08, ADR-0004, and the code.
+- [x] No stale contradiction remains; the prior B9 per-account wording is gone from `design.md:31` and `docs/arc42/06:161`.
 
 ARC42 CONFORMANCE: CLEAN
 
@@ -182,68 +212,80 @@ ARC42 CONFORMANCE: CLEAN
 | Personal access token | `docs/glossary.md:17` | "personal access token" in R32/R35/R37 and the feature steps | `CredentialSpec::{Env,Command,File}` | consistent |
 | Token file | `docs/glossary.md:18` | "token file" in R35 and the feature steps | `CredentialSpec::File` | consistent |
 | Configured login set | `docs/glossary.md:27`, usecase R1:48 | R36 excludes a mismatched login from the set | `LoginSet` built from accepted observations + persisted logins (`cycle:96-113`) | consistent |
-| Login retry | `usecase.md:85` R38, `design:31` | "once per gh login per process" | `GhOAuthCredential.attempted: HashSet<String>` keyed by login | consistent in the governing rule |
+| Login retry | `usecase.md:85` R38, `design:31` | "once per gh login per process" | `GhOAuthCredential.attempted: Mutex<HashSet<String>>` keyed by login (`credential:150-156,203`) | consistent in the governing rule |
 
-One naming follow-up remains, not a rule contradiction: the delta scenario
-title at `feature:44` still says "A failed browser login is attempted once per
-account", while R38 and the code are per gh login. The scenario uses two
-distinct logins, so its assertions are correct; the title should be aligned in a
-follow-up naming batch. It does not change the governing rule or the behavior.
+One naming follow-up remains, unchanged from the prior review and not a rule
+contradiction: the delta scenario title at `feature:44` says "A failed browser
+login is attempted once per account", while R34/R38 say "once per gh login".
+The scenario configures one distinct gh login per account, so its assertions
+hold under either reading; only the noun needs aligning in a follow-up naming
+batch. The governing rule is single-sourced in `usecase.md`, `design.md`,
+ADR-0004, the arc42 chapters, and the code.
 
 Structural model: `docs/domain-model.md` records credential mode and expected
 login as configuration/validation attributes of the Account, not new entities.
-The gh CLI is an infrastructure external system recorded in arc42 chapter 03, not
-a domain relationship; no aggregate, entity, or boundary changed, so no diagram
-or relationship-table change is required. No structural finding.
+The gh CLI is an infrastructure external system recorded in arc42 chapter 03.
+No aggregate, entity, or boundary changed, so no diagram or relationship-table
+change is required. No structural finding.
 
 ## Coverage
 
-Measured artifacts (merged report `coverage/cobertura-coverage.xml`):
+Measured artifacts (root attributes of the three reports):
 
 | Scope | Lines | Branches |
 |---|---|---|
-| non-e2e `coverage/non-e2e-cobertura.xml` | 1142/1428 (79.97%) | 191/614 (31.11%) |
-| e2e `coverage/e2e-cobertura.xml` | 547/1428 (38.31%) | 86/614 (14.01%) |
-| merged `coverage/cobertura-coverage.xml` | 1221/1428 (85.50%) | 166/462 (35.93%) |
+| non-e2e `coverage/non-e2e-cobertura.xml` | 1143/1432 (79.82%) | 191/614 (31.11%) |
+| e2e `coverage/e2e-cobertura.xml` | 547/1432 (38.20%) | 86/614 (14.01%) |
+| merged `coverage/cobertura-coverage.xml` | 1222/1432 (85.34%) | 166/462 (35.93%) |
 
-The README badge matches the merged report (`README.md:3-6`). The managed
-`## Coverage` block at `README.md:137-151` still contains the archive-owned 89%
-text; the archive gate owns that block, as stated in the archive instructions.
+The README badge matches the merged report (`README.md:3-6`: 85.3% / 35.9%).
+The managed `## Coverage` block at `README.md:140-152` still carries the
+archive-owned 89% text; the archive gate rewrites the badge and block.
 
 ### Residual gaps and classification
 
-Bucket 1 — dead code (delete): **none**. `AccountConfig::auth_mode()` and the
-`Default for SystemCredentialSource` impl are gone; no unused `CredentialResolver`
-remains.
+Bucket 1 — dead code (delete):
 
-Bucket 2 — missing tests:
+| Region | Evidence | Status |
+|---|---|---|
+| `crates/passuff-cli/src/gh_login.rs:26-30` — `impl Default for SystemGhLogin` | added in `e6293c5`; the merged report records lines 27-29 with 0 hits in both scopes; no call site exists (`SystemGhLogin::new()` at `cli/src/lib.rs:24` is the only construction); `cargo clippy --workspace --all-targets` already emits `new_without_default` for `GitHubApiAdapter` and `SystemSoundPlayer`, so the lint is not gated and does not justify the impl | **open — blocker N3** |
+
+Bucket 2 — missing tests (all change-introduced gaps resolved; the remaining
+rows are unchanged pre-existing residuals):
 
 | Region | Rule | Status |
 |---|---|---|
 | `config:213` | R32 `github_user` whitespace rejection | resolved: `rejects_a_github_user_with_whitespace` (`config:652-662`) |
 | `config:319-321` | R35 HOME unset | resolved: `rejects_a_tilde_token_file_without_home` (`config:640-648`) |
-| `credential:170-171` | R33 gh missing binary | resolved: `credential:291-325` |
-| `credential:175-183` | R33 non-zero, empty, non-UTF8 gh output | resolved: `credential:291-325` |
-| `gh_login:23-29` | R34 gh missing binary | resolved: `login_reports_a_missing_gh` (`gh_login.rs:73-80`) |
-| `feature:104` | R35 missing token file message | resolved: the Then asserts `token file is missing: ` (`feature:104`); `tasks.md:114` now calls HOME unset a configuration error |
-| `cli/src/lib.rs:148,153,178-181,196,209,219-221,273-298` | R31 | pre-existing uncovered lines in unchanged CLI rendering/delivery code, carried from the archived review |
-| `main.rs:20,27-39,71-72` | R19 | pre-existing default-path and recording-delivery lines, unchanged |
-| `cycle:71-72,118-119,150` | R17/R36 | pre-existing gateway-error, login-change reset, and baseline branches, unchanged |
-| `config:162-164,177,365-375` | R19 | pre-existing configuration read, empty-accounts, and graphql-URL validation branches, unchanged |
-| `classifier.rs`, `github.rs`, `state.rs`, `sound.rs`, `transcript.rs`, `delivery.rs` | various | pre-existing permanent-suite residuals in unchanged files |
+| `credential:170-171` | R33 gh missing binary | resolved: `credential:292-325` |
+| `credential:175-183` | R33 non-zero, empty, non-UTF8 gh output | resolved: `credential:292-325` |
+| `gh_login:23-29` (pre-fix lines) | R34 gh missing binary | resolved: `login_reports_a_missing_gh` (`gh_login.rs:95-102`) |
+| `feature:104` | R35 missing token file message | resolved: the Then asserts `token file is missing: ` (`feature:104`); `credential:26` renders the path |
+| `cli/src/lib.rs:148,153,178-181,196,209,219-221,273-298` | R31 | pre-existing uncovered lines in unchanged CLI rendering/delivery code (`git blame`: `aff41de`, pre-change), carried from the archived review |
+| `main.rs:20,27-39,71-72` | R19 | pre-existing default-path and recording-delivery lines (`aff41de`/`aab11e8`), unchanged |
+| `cycle:71-72,118-119,150` | R17/R36 | pre-existing gateway-error, login-change reset, and baseline branches (`aff41de`), unchanged |
+| `config:162-164,177,365-375` | R19 | pre-existing configuration read, empty-accounts, and graphql-URL validation branches (`aff41de`/`aab11e8`), unchanged |
+| `config:390-392,420-422` | — | pre-existing serde `Visitor::expecting` diagnostics (`aff41de`), unchanged |
+| `domain.rs:44-46,72-73,77,166-168` | — | pre-existing helper impls (`PrState::is_terminal`, `CiResult::default`, `WatchedPullRequest::key`) from `aff41de`, unchanged |
+| `classifier.rs`, `github.rs`, `state.rs`, `sound.rs`, `transcript.rs`, `delivery.rs` | various | pre-existing permanent-suite residuals in files untouched by this change |
 
 Bucket 3 — legitimately hard to test:
 
 | Region | Technical justification |
 |---|---|
-| `credential:78`, `credential:167`, `gh_login:13` | The 10-second command and gh-token timeouts and the 300-second login timeout fire only after a real wall-clock wait. The workspace does not enable tokio's paused-clock test facility for these crates; a deterministic test would either wait 10/300 seconds in the preflight or leave a live child process after the timeout. Concrete justification: wall-clock wait, no injectable clock in the current harness. |
-| `credential:173`, `gh_login:27` | Non-`NotFound` spawn faults (EACCES/E2BIG/OS resource errors) are OS-level exec failures; the fake-gh harness models exit codes and token output, not exec faults. The product contract names missing binary, non-zero exit, empty output, and timeout, not arbitrary exec faults. |
-| `config:337-341`, `credential:111,123` | The "cannot be inspected"/`FileUnreadable` branches require a filesystem change between the load check and the read (TOCTOU) or a non-`NotFound` metadata fault; not deterministically drivable without privilege or fault injection. |
-| `config:390-392,420-422` | Serde `Visitor::expecting` diagnostics are reached only on a type-mismatch deserialization error; required trait methods, not a product rule (pre-existing). |
+| `credential:77-85,160-167`, `gh_login:35-45` | The 10-second command and gh-token timeouts and the 300-second login timeout fire only after a real wall-clock wait. The workspace enables no tokio paused clock for these crates; a deterministic test would either burn 10/300 seconds in the preflight or leave a live child after the timeout. |
+| `credential:173`, `gh_login:46-51` | Non-`NotFound` spawn faults (EACCES/E2BIG/OS resource errors) are OS exec failures; the fake-gh harness models exit codes and output, not exec faults. The product contract names missing binary, non-zero exit, empty output, and timeout, not arbitrary exec faults. |
+| `config:337-341`, `credential:111,123` | The "cannot be inspected"/`FileUnreadable` branches require a filesystem change between the load check and the read (TOCTOU) or a non-`NotFound` metadata fault; not drivable without privilege or fault injection. |
 | `SystemGhLogin` real browser-consent success | A real `gh auth login --web` needs a browser, network, and interactive authorization; the port is faked and the process-status branches are tested. |
 
-No classification outside the three buckets is used. The coverage percentage is
-recorded, not used as a gate threshold.
+Region-attribution artifacts, not gaps: `config:326` (closing brace of the
+`~`-expansion `if`; the push at `:325` is covered), `credential:73,99`
+(async-trait wrapper line and closing brace; body `74-98` is covered),
+`gh_login:29-30` (closing braces), and `config:646` (closing brace of a
+test-only conditional restore).
+
+N3 must be resolved (delete the impl, matching the B8 disposition for
+`impl Default for SystemCredentialSource`) before this classification is clean.
 
 ## E2e coverage
 
@@ -276,9 +318,9 @@ transcript is owed. The new auth terminal lines are assessed from the renderer
 
 | Declared state / text rule | Evidence | Verdict |
 |---|---|---|
-| watch start and notification | `developer-starts-watching...`: `passuff: Fresh baseline recorded for acme/api#42`, `passuff: watching`, `passuff: acme/api#42`, `New comment from @alice` | baseline holds: labelled, no internal identifiers, no duplicate content, no token |
-| one-shot check | `developer-runs-a-single-check...`: `passuff: acme/api#42` / `New comment from @alice`, exit 0 | baseline holds |
-| usage and version | real title line, command list, `passuff 0.1.0`, exit 0 | baseline holds; no internal state names |
+| watch start and notification | `passuff: Fresh baseline recorded for acme/api#42`, `passuff: watching`, `passuff: acme/api#42`, `New comment from @alice`, exit 0 | baseline holds: labelled, no internal identifiers, no duplicate content, no token |
+| one-shot check | `passuff: acme/api#42` / `New comment from @alice`, exit 0 | baseline holds |
+| usage and version | real title line, `Commands:` list, `passuff 0.1.0`, exit 0 | baseline holds; no internal state names |
 | identity mismatch names both logins | `feature:140` asserts `credential belongs to @octo-other, expected @octo-work`; rendered as `passuff: account work failed: ...` (`transcript.rs:37-44`) | text rule holds |
 | missing token file names the path | code renders `token file is missing: <path>` (`credential.rs:26`); the scenario asserts the `token file is missing: ` prefix (`feature:104`) | text rule holds; exact path value is not separately asserted |
 | configuration errors name the account/path | code wraps `passuff: configuration error: <message>` with `account '<label>'`; `feature:86-97,181-194` asserts the message class | text rule holds |
@@ -293,10 +335,10 @@ VISUAL-REVIEW: PASS
 
 ## Overlap dispositions
 
-The 18 current shape findings are dispositioned below. The 117 subset findings
-are advisory pairings of a permanent notification rule with a delta auth rule;
-they are distinct rules and are not shape duplicates. Each shape pair is a
-variant asserting a different credential mode or validation rule, or a boundary
+The current shape findings are dispositioned below. The subset findings are
+advisory pairings of a permanent notification rule with a delta auth rule; they
+are distinct rules and are not shape duplicates. Each shape pair is a variant
+asserting a different credential mode or validation rule, or a boundary
 isolating a distinct auth rule that the other scenario does not assert.
 
 | Scenario A | Scenario B | Finding | Decision | Reason |
@@ -323,36 +365,62 @@ isolating a distinct auth rule that the other scenario does not assert.
 ## Split-or-keep
 
 No scenario exceeds the gate's split threshold; no `[LONG]` finding was
-reported. No split-or-keep rows are required.
+reported by `givn lint` or `givn check review`. No split-or-keep rows are
+required.
 
 ## README impact decision
 
 README-IMPACT: updated - Quick start, Prerequisites
 
-`README.md:15-66` replaces the environment-only account example with
+`README.md:40-67` replaces the environment-only account example with
 `gh_oauth`/`github_pat`, token-file permissions, the interactive-login rule, and
-the identity rule. `README.md:81-89` adds the `gh` 2.40+ prerequisite. The
-coverage badge is refreshed to the merged 85.5%/35.9% (`README.md:3-6`); the
+the identity rule. `README.md:80-89` adds the `gh` 2.40+ prerequisite. The
+coverage badge is refreshed to the merged 85.3%/35.9% (`README.md:3-6`); the
 managed `## Coverage` block is owned by the archive gate.
 
 ## Blockers
 
 | ID | Blocker | Evidence | Required fix |
 |---|---|---|---|
-| N1 | Capability routing does not name the built delta capability | `givn check review --change passuff-auth-modes` reports: `delta capability 'pr-activity-notification' is not declared in the Capability Routing table`. `proposal.md:38` has `Proposed capability = "Account authentication and credential sources"` while the Decision cell is `EXTEND pr-activity-notification`; the gate matches the row by the Proposed capability column. | Change the row's Proposed capability to `pr-activity-notification` (or add a row for it) in `proposal.md`, then re-run the gate. The review cannot edit the proposal. |
-| N2 | The new `SystemGhLogin` unit tests race on the process-global `PATH` and can invoke real `gh` | `crates/passuff-cli/src/gh_login.rs:61-90`: three tests mutate `PATH` concurrently. Repeated `cargo test -p passuff-cli --lib` hung at `login_reports_a_gh_failure` after real `gh auth login --web` printed a GitHub device code; `--test-threads=1` passes. The 300-second login timeout can block the unit preflight and the recorded 32-passed result is not deterministic. | Serialize the three tests with a shared test mutex or run them on a single test thread; ensure the fake `gh` is the only `gh` resolved. Re-run the unit preflight. |
+| N3 | Uncovered, uncalled `impl Default for SystemGhLogin` | `crates/passuff-cli/src/gh_login.rs:26-30`, added by `e6293c5`; the merged report records lines 27-29 at 0 hits in both scopes; no call site (`grep -rn 'SystemGhLogin::default'` is empty; `new()` is used at `cli/src/lib.rs:24`); the project tolerates `new_without_default` on `GitHubApiAdapter` and `SystemSoundPlayer`, so no lint requires it. Bucket 1 (dead code) or bucket 2 (missing test); no third bucket applies. | Delete the `Default` impl, matching the B8 disposition for `impl Default for SystemCredentialSource`; re-run the delta verification and refresh the receipt. |
 
-The five prior blockers are verified resolved:
+Prior blockers verified resolved:
 
-- B3: `givn lint --change passuff-auth-modes` exits 0 and is clean; `tasks.md`
-  has no `@e2e` token.
+- N1 — `proposal.md:38` Capability Routing first column is
+  `pr-activity-notification`, matching the delta capability at
+  `specs/watch-pull-requests/pr-activity-notification.feature`; the row's
+  Decision cell is `EXTEND pr-activity-notification`.
+- N2 — see the determinism section: injected program, absolute fake-script
+  paths, no `PATH` mutation in the CLI lib tests, three consecutive green
+  `cargo test --workspace --lib` runs (32 passed each).
+
+Earlier blockers re-verified:
+
+- B1: `givn/commands.yaml` binds `./scripts/verify.sh --e2e`; `verify.sh:19-42`
+  selects the permanent corpus for the e2e scope; `target/givn-verify-result.json`
+  is 4/4, exit 0.
+- B2: `givn check review` reports the receipt reused across the
+  documentation-only revision `b82512e` (tested at `b9d74ba`, 27 scenarios).
+- B3: `givn lint --change passuff-auth-modes` is clean (exit 0) and `tasks.md`
+  contains no `@e2e` token.
+- B4: the four adapters exist (`credential.rs:52,69,103,144`) and the
+  composition root wires them (`credential.rs:219-250`).
+- B5: valid `gh_oauth` parsing is tested (`config:589,604,621,656`) and the host
+  derivation is exercised (`config:585-613`).
 - B6: `config:640-648` tests HOME unset; `feature:104` asserts
-  `token file is missing: `; `tasks.md:114` says configuration error.
-- B7: `credential:291-325` covers missing binary, non-zero, empty, and non-UTF8;
-  `gh_login.rs:73-80` covers missing gh; the timeout branches are bucket 3.
-- B9: `design.md:31` and `docs/arc42/06:161` use the per-gh-login wording;
-  `design-review.md:106-113` records the remediation re-check and
-  `DESIGN-REVIEW: PASS`.
+  `token file is missing: `; `tasks.md:114` calls HOME unset a configuration
+  error.
+- B7: `credential:292-325` covers missing binary, non-zero, empty, and non-UTF8;
+  `gh_login.rs:95-111` covers missing gh and failure; the timeout branches are
+  bucket 3.
+- B8: `AccountConfig::auth_mode()` and `impl Default for SystemCredentialSource`
+  are gone; no `CredentialResolver` remains. (The new `Default for SystemGhLogin`
+  is the N3 regression.)
+- B9: `design.md:31`, `docs/arc42/05:135`, `08:18`, `06:161`, and ADR-0004 use
+  the per-gh-login wording; `design-review.md:102-113` records the remediation
+  re-check and `DESIGN-REVIEW: PASS`.
+- B10: `feature:155-160` asserts the credential value appears in neither the
+  transcript nor the state file.
 - C1: `config:652-662` covers the `github_user` whitespace rejection.
 
 ## Sign-off checklist
@@ -362,9 +430,9 @@ The five prior blockers are verified resolved:
 - Every promised component exists: yes (four adapters, `GhLogin`, `WatchControl`).
 - Every consumer uses only its declared contract: yes (composition root + tests excepted).
 - Strict-mode proof present and passing: yes (`tasks.md:13-21`).
-- Scenario execution evidence per scope: delta 27/27 receipt, permanent 52/52, e2e 4/4, unit 32 passed once; the unit suite is nondeterministic (N2).
-- Coverage classified from the merged report: yes; gaps introduced by this change are resolved; unchanged pre-existing bucket 2 residuals are recorded above.
-- Dead code deleted: yes.
+- Scenario execution evidence per scope: delta 27/27 receipt, permanent 52/52, e2e 4/4, unit 32 passed in three consecutive runs.
+- Coverage classified from the merged report: no — N3 leaves one uncovered, uncalled impl unclassified/unresolved.
+- Dead code deleted: no — N3.
 - No `@wip`; no implementation detail in the spec: yes.
 - Canonical E2E policy: every inventory action has one `@e2e`; variants are regular: yes.
 - Real-interface assertions and reviewed driver: yes (spawned CLI binary).
