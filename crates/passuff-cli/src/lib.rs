@@ -3,6 +3,7 @@ pub mod gh_login;
 pub mod inbox_cli;
 pub mod sound;
 pub mod transcript;
+pub mod tui;
 
 use std::io::IsTerminal;
 use std::process::ExitCode;

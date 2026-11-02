@@ -49,7 +49,7 @@ terminal dependency. `passuff-core` is UI-agnostic. It exposes `PassuffCore::wit
 baselines recorded. It has no `clap`, `notify-rust`, `ratatui`, `crossterm`,
 terminal formatting, or delivery dependency. `passuff-cli` is the first adapter;
 it owns the transcript, desktop delivery, sound, signals, and exit codes. A
-future `passuff-tui` consumes `passuff-config` and the same core contract. The
+`passuff-tui` consumes `passuff-config` and the same core contract. The
 regular Gherkin scenarios call `CliRuntime::run_check` with injected ports; the
 E2E scenarios spawn the CLI binary.
 
@@ -80,6 +80,14 @@ indented event lines. Errors go to stderr with the account label and a
 remediation. `--verbose` adds diagnostic logs without changing the notification
 content. No internal identifiers, enum names, or state names appear in visible
 text.
+
+## Terminal UI
+
+The TUI is a second adapter over `InboxService`. It renders the same view as the
+read commands and marks records through the same service. `--snapshot` uses
+ratatui's `TestBackend` and prints the frame for scripts and E2E; interactive mode
+uses crossterm raw mode and the alternate screen. No token, body, command text,
+or enum name is rendered.
 
 ## Security
 

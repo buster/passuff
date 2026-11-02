@@ -39,6 +39,7 @@ Behavioural rules are owned by `watch-pull-requests` (`pr-activity-notification`
 | Activity history | The bounded set of retained activity records with their read state. | `WatcherState.activity` | log, feed — the history is reviewed, not delivered. |
 | Inbox | The read model of configured accounts, the watch scope, watched pull requests, and activity records. | `Inbox` | list, feed, tracked — the inbox includes the watch summary and reviewed history. |
 | Read state | Whether an activity record has been acknowledged by the developer. | `ActivityRecord.read` | seen — a record can be seen but unread, or read after review. |
+| Terminal UI | The full-screen inbox adapter over `InboxService`; a second consumer of the read model. | `TuiApp` | dashboard, GUI — the terminal UI is a text interface. |
 | Watch scope | The optional repository allowlist that limits which authored pull requests are observed. | `WatchConfig` | filter, subscription — the scope is configuration, not a separate account. |
 | Watched pull request | An authored pull request with a persisted observation record and a known baseline. | `WatchedPullRequest` | subscription, monitored repo |
 | Watcher | The passuff process that performs check cycles: observation and classification live in the core; scheduling and delivery live in the UI adapter. | `passuff` process | poller, monitor — a watcher is the product's observation role. |

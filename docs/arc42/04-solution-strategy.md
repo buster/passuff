@@ -17,7 +17,7 @@
   third-party account is involved. See
   [ADR-0002](adr/ADR-0002-local-desktop-notifications.md).
 - Persist a bounded activity history in the watch state and expose a read model
-  (`InboxService`) to the CLI and the future TUI. Status, inbox, and read never
+  (`InboxService`) to the CLI and the TUI. Status, inbox, and read never
   contact GitHub. See [ADR-0005](adr/ADR-0005-state-version-2-migration.md).
 - Delegate GitHub OAuth to the gh CLI and keep personal access tokens for
   headless use. passuff reads an existing session with
@@ -25,7 +25,7 @@
   interactive watch. See [ADR-0004](adr/ADR-0004-gh-delegated-authentication.md).
 - Keep the core UI-agnostic: `passuff-config` owns the shared configuration
   schema; `passuff-core` owns observation, classification, and state;
-  `passuff-cli` is the first adapter and `passuff-tui` is a future adapter over
+  `passuff-cli` is the adapter package; its `passuff-tui` binary is the terminal adapter over
   the same contracts. See [ADR-0003](adr/ADR-0003-library-first-core.md).
 - Use ports for GitHub and state in the core, and for notification and sound in
   the CLI. The test suite replaces the external surfaces with local digital
@@ -38,7 +38,7 @@
 | Concern | Choice | Rationale (see ADR) |
 |---|---|---|
 | Language and runtime | Rust stable + Tokio | Single distributable CLI, predictable resource use, strong typing at the GitHub boundary. |
-| Workspace boundary | `passuff-config` library, `passuff-core` library, `passuff-cli` binary | Shared config schema; UI and delivery dependencies stay out of the core; a future TUI reuses config and core. |
+| Workspace boundary | `passuff-config` library, `passuff-core` library, `passuff-cli` binary | Shared config schema; UI and delivery dependencies stay out of the core; the TUI binary reuses config and core. |
 | GitHub access | GraphQL via `reqwest` with rustls | One query returns authored pull requests, comments, reviews, and CI state. |
 | Configuration | TOML via `serde` | Readable, typed, with unknown-key rejection. |
 | Authentication | gh CLI session, environment, helper command, or token file | Reuses existing OAuth sessions, keeps tokens out of config, and leaves a headless path. |
@@ -47,7 +47,7 @@
 | Sound | Bundled WAV + system player | Avoids ALSA/CoreAudio build dependencies. |
 | CLI | `clap` derive | Stable help, version, and error handling. |
 | Tests | `cucumber` + `wiremock` + `FakeGateway` + Linux D-Bus fake + recording delivery | Real CLI in E2E; real `notify-rust` path on Linux; core tested without a process. |
-| Future TUI | `ratatui` + `crossterm` | Matches the watn terminal design language; not a dependency of this change. |
+| Terminal UI | `ratatui` 0.30 + `crossterm` 0.29 | Matches the watn terminal design language; a second binary in `passuff-cli`. |
 | Coverage | `cargo-llvm-cov` with separate scopes | Produces the required non-E2E and E2E Cobertura reports. |
 
 ## Approach to quality goals
@@ -60,4 +60,4 @@
 | Timeliness | Default 60-second cycle; configurable interval; the first cycle starts immediately. |
 | Security | Tokens resolved at runtime, never persisted or logged; HTTPS except loopback test addresses; read-only GitHub scope. |
 | Portability | Ports and platform adapters for notification, sound, and paths; Linux E2E plus a recorded macOS smoke test. |
-| Reusability | A UI-agnostic `passuff-core` contract; the CLI and future TUI are adapters; `cargo tree -p passuff-core` excludes UI crates. |
+| Reusability | A UI-agnostic `passuff-core` contract; the CLI and TUI are adapters; `cargo tree -p passuff-core` excludes UI crates. |

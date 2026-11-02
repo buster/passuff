@@ -8,6 +8,8 @@ use async_trait::async_trait;
 use passuff_cli::delivery::{FailingDelivery, NotificationDelivery, RecordingDelivery};
 use passuff_cli::inbox_cli::InboxCli;
 use passuff_cli::sound::{RecordingSoundPlayer, SoundPlayer, UnavailableSoundPlayer};
+use passuff_cli::transcript::activity_summary;
+use passuff_cli::tui::{load_view, TuiAction, TuiApp};
 use passuff_cli::{CliPorts, CliRuntime, StopAfter};
 use passuff_config::{
     AccountConfig, AppConfig, ConfigError, ConfigLoader, CoreConfig, CredentialSpec, EventToggles,
@@ -161,6 +163,8 @@ pub struct World {
     pub config_text: Option<String>,
     pub watch_scope: Vec<String>,
     pub fail_state_write: bool,
+    pub tui_app: Option<TuiApp>,
+    pub tui_closed: bool,
 }
 
 impl Default for World {
@@ -209,6 +213,8 @@ impl Default for World {
             config_text: None,
             watch_scope: Vec::new(),
             fail_state_write: false,
+            tui_app: None,
+            tui_closed: false,
         }
     }
 }
@@ -747,6 +753,79 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         self.last_report = outcome.report;
         self.last_transcript = outcome.transcript;
         self.last_status = outcome.status;
+    }
+
+    pub async fn run_tui_snapshot(&mut self) {
+        if self.e2e {
+            self.e2e_run_tui_snapshot().await;
+            return;
+        }
+        let inbox = Inbox::new(self.state_store());
+        let config = match self.config_text.clone() {
+            Some(text) => ConfigLoader::parse(&text),
+            None => Ok(self.build_config()),
+        };
+        let loaded = self
+            .with_state_write_guard(load_view(&config, &inbox))
+            .await;
+        match loaded {
+            Ok(view) => {
+                let app = TuiApp::new(view);
+                self.last_transcript = app.snapshot();
+                self.last_status = 0;
+                self.tui_app = Some(app);
+            }
+            Err(error) => {
+                self.last_transcript = error.message;
+                self.last_status = error.exit;
+                self.tui_app = None;
+            }
+        }
+    }
+
+    pub async fn run_tui_press(&mut self, key: &str) {
+        let inbox = Inbox::new(self.state_store());
+        let config = self.build_config();
+        let mut app = self.tui_app.take().expect("tui opened");
+        let code = match key {
+            "q" => crossterm::event::KeyCode::Char('q'),
+            "esc" => crossterm::event::KeyCode::Esc,
+            "j" => crossterm::event::KeyCode::Char('j'),
+            "k" => crossterm::event::KeyCode::Char('k'),
+            "r" => crossterm::event::KeyCode::Char('r'),
+            "a" => crossterm::event::KeyCode::Char('a'),
+            other => panic!("unknown key {other}"),
+        };
+        let event = crossterm::event::KeyEvent::new(code, crossterm::event::KeyModifiers::NONE);
+        match app.handle_key(event, &inbox, &config.core).await {
+            Ok(TuiAction::Quit) => self.tui_closed = true,
+            Ok(TuiAction::Continue) => self.last_transcript = app.snapshot(),
+            Err(error) => {
+                self.last_status = 3;
+                self.last_transcript = format!("passuff: state error: {error}");
+            }
+        }
+        self.tui_app = Some(app);
+    }
+
+    pub fn assert_selected_activity(&self, summary: &str) {
+        let app = self.tui_app.as_ref().expect("tui opened");
+        assert_eq!(
+            app.selected_summary().as_deref(),
+            Some(summary),
+            "selected index {}",
+            app.selected()
+        );
+    }
+
+    pub async fn assert_activity_read(&self, summary: &str, expected: bool) {
+        let state = self.state_store().load().await.expect("state");
+        let record = state
+            .activity
+            .iter()
+            .find(|record| activity_summary(&record.event) == summary)
+            .unwrap_or_else(|| panic!("no activity {summary}"));
+        assert_eq!(record.read, expected, "activity {summary}");
     }
 
     pub async fn newest_activity_id(&self) -> String {

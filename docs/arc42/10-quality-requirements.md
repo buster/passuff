@@ -49,3 +49,4 @@ flowchart LR
 | QS-017 | Reviewability | Two events are recorded, then the newest is marked read. | Inbox lists unread newest first; `read <id>` leaves 1 unread of 2; read state survives a restart. |
 | QS-018 | Bounded state | The 501st activity record is recorded. | Exactly 500 records remain and the oldest is gone. |
 | QS-019 | Scope | A watched PR falls outside a newly configured repository allowlist. | It is not notified, is pruned from the state, and status does not list it. |
+| QS-020 | Usability | The developer opens the inbox TUI with two events. | The snapshot shows counts, accounts, scope, the PR, and both events; `r` marks the selected one, `a` all, `q` quits. |

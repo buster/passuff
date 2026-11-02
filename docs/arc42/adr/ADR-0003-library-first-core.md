@@ -97,3 +97,11 @@ the contracts when they are designed.
 - [Use case: watch-pull-requests](../../../givn/specs/watch-pull-requests/usecase.md)
 - [Building block view](../05-building-block-view.md)
 - [ADR register](../09-architecture-decisions.md)
+
+## Refinement (2026-11-02)
+
+The TUI ships as a second binary (`passuff-tui`) in the `passuff-cli` package
+rather than a sibling workspace member. The decision outcome is unchanged: the
+core stays UI-agnostic and the TUI consumes `passuff-config`, `passuff-core`,
+and `InboxService`. The package choice shares the Gherkin runner and the
+`CARGO_BIN_EXE_passuff-tui` test seam; a future split is a packaging change.

@@ -2,6 +2,8 @@ mod support;
 
 #[path = "steps/activity_inbox.rs"]
 mod activity_inbox_steps;
+#[path = "steps/activity_inbox_tui.rs"]
+mod activity_inbox_tui_steps;
 #[path = "steps/pr_activity_notification_e2e.rs"]
 mod e2e_steps;
 #[path = "steps/pr_activity_notification.rs"]

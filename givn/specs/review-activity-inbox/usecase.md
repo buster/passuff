@@ -44,6 +44,13 @@ The developer lists the inbox or marks activity read.
 - R7: A version-1 state loads with an empty history, preserves its watched pull requests, and is rewritten as version 2.
 - R8: A missing state file is an empty inbox and exit 0.
 - R9: Recording history never replays a notification.
+- T1: The terminal UI shows the unread and total activity counts, configured accounts, watch scope, watched pull requests, and the activity list on one screen.
+- T2: `j`/down and `k`/up move the selection and clamp at the list ends; `q`/Escape quits.
+- T3: `r` marks the selected activity record read and refreshes the view; `a` marks every record read and refreshes.
+- T4: An empty inbox shows "no activity yet".
+- T5: A configuration error exits 2 and a state error exits 3 before the interface starts; the message names the failure.
+- T6: `--snapshot` renders one frame to stdout with the same renderer and data and exits 0 without a terminal.
+- T7: The screen contains no token, comment body, helper command text, or enum name.
 
 ## Examples
 
@@ -73,6 +80,7 @@ The developer can review the retained activity and mark it read; the history and
 |---|---|---|
 | activity-inbox | list unread activity | Developer lists unread activity |
 | activity-inbox | mark activity read | Developer marks activity read |
+| activity-inbox | open the inbox in the terminal UI | Developer opens the inbox TUI |
 
 ## Includes
 
@@ -85,7 +93,7 @@ The developer can review the retained activity and mark it read; the history and
 ## Out of scope
 
 - The status summary (inspect-watch-status).
-- The terminal UI (next change).
+- A separate `passuff-tui` workspace crate; the interface ships as a second binary in the CLI package.
 - Editing configuration or deleting history.
 
 ## Diagram

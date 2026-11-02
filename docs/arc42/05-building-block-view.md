@@ -29,7 +29,7 @@ flowchart TB
         Sound["SystemSoundPlayer"]
     end
 
-    subgraph tuiBoundary["passuff-tui (future)"]
+    subgraph tuiBoundary["passuff-tui (binary)"]
         TUI["TUI"]
     end
 
@@ -64,10 +64,11 @@ flowchart TB
 | `passuff-cli` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |
 | `InboxService` / `Inbox` | Build the status and activity read model over the state store and mark activity read. |
 | `InboxCli` | Render `status`, `inbox`, and `read` from `InboxService`; no GitHub calls. |
+| `TuiApp` / `passuff-tui` | Render the inbox with ratatui, handle keys, and mark records read through `InboxService`; `--snapshot` prints one frame. |
 | `TranscriptRenderer` | Render notifications, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real `notify-rust` delivery; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |
-| `passuff-tui` | Future adapter: consume `passuff-config` and `passuff-core`; not present in this change. |
+| `passuff-tui` | Terminal adapter binary: consumes `InboxService` and renders the inbox. |
 
 ## Level 2 — Key building blocks
 

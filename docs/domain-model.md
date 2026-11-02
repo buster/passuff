@@ -126,6 +126,7 @@ flowchart TB
 | GitHub → Authored Pull Request | GitHub is the source of comments, reviews, CI results, and pull request state. | `watch-pull-requests` use case, R3–R8 |
 | Watched Pull Request → Activity Record | Each retained event becomes one activity record with a read flag. | `review-activity-inbox` use case, R5 |
 | Activity Record → Inbox | The read model lists records newest first and counts unread. | `review-activity-inbox` use case, R1–R4 |
+| Inbox → Terminal UI | A UI adapter renders the read model and marks records read. | `review-activity-inbox` use case, T1–T7 |
 | Watched Pull Request → Watch status | Status lists watched pull requests with state and CI. | `inspect-watch-status` use case, S3 |
 
 ## Open modeling questions

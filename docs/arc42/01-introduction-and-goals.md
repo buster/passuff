@@ -6,7 +6,7 @@ passuff is a local watcher for GitHub pull requests, built as a reusable core
 library with a command-line adapter. A developer with one or more GitHub
 accounts configures those accounts and receives a desktop notification with
 sound only when something they care about changes on a pull request they
-authored. A future TUI can consume the same core.
+authored. A terminal UI consumes the same core and read model.
 
 The essential requirements are:
 
@@ -22,6 +22,7 @@ The essential requirements are:
 - Show which accounts, watch scope, and pull requests are watched, and how much
   recorded activity is unread.
 - Retain a bounded activity history and let the developer mark it read.
+- Provide a full-screen terminal UI over the same inbox for browsing and acknowledging activity.
 - Run on macOS and Linux with desktop notifications and configurable sound.
 - Keep credentials out of configuration and persisted state.
 
@@ -42,7 +43,7 @@ with their feature files under `givn/specs/`.
 | 4 | Timeliness | A change should be visible within one configured observation interval plus a small processing margin. |
 | 5 | Security | Tokens come from a gh session, an environment variable, a helper command, or a permission-checked token file, and never appear in config, state, logs, or transcripts. |
 | 6 | Portability | The same binary runs on Linux and macOS, with platform notification and sound adapters. |
-| 7 | Reusability | Observation, classification, configuration, and state live in a UI-agnostic core library so the CLI and a future TUI share one implementation. |
+| 7 | Reusability | Observation, classification, configuration, and state live in a UI-agnostic core library so the CLI and the TUI share one implementation. |
 
 ## Stakeholders
 

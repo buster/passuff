@@ -53,3 +53,7 @@ flowchart TB
   notification attribution. The bare binary remains usable for diagnostics.
 - Upgrades replace the binary; config and state are versioned and preserved.
 - No inbound port, TLS certificate, container, or cloud resource is deployed.
+
+
+The `passuff-tui` binary ships alongside `passuff` in the same package and
+requires no additional service or file.

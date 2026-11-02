@@ -90,7 +90,7 @@ sequenceDiagram
 
 **Notes:** A comment by a configured account, a push, a bot comment with bot
 comments disabled, or activity on a non-authored pull request produces no
-notification. A future TUI calls the same `refresh` and renders the report in
+notification. The TUI calls the same `refresh` and renders the report in
 its own event loop.
 
 ## Scenario: One account fails
@@ -198,3 +198,17 @@ sequenceDiagram
    and exits 2.
 3. `mark_all_read` sets every record read, saves, and returns the changed count.
 4. A save failure is a state error (exit 3).
+
+
+## Scenario: Terminal inbox
+
+**Trigger:** The developer starts `passuff-tui`.
+
+1. The binary loads configuration and the `InboxService` view; a configuration
+   error exits 2, a state error exits 3.
+2. `--snapshot` renders one frame with `TestBackend` and exits 0.
+3. Interactive mode enters the alternate screen, draws the accounts, scope,
+   watched pull requests, and activity list.
+4. `j`/`k` adjust the selection; `r` marks the selected record, `a` everything;
+   the view reloads and the selection clamps.
+5. `q`/Escape restores the terminal and exits 0.

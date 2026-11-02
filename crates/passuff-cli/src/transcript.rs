@@ -155,7 +155,7 @@ impl TranscriptRenderer {
     }
 }
 
-fn state_label(state: &PrState) -> &'static str {
+pub fn state_label(state: &PrState) -> &'static str {
     match state {
         PrState::Open => "open",
         PrState::Merged => "merged",
@@ -163,13 +163,17 @@ fn state_label(state: &PrState) -> &'static str {
     }
 }
 
-fn ci_label(state: &CiState) -> &'static str {
+pub fn ci_label(state: &CiState) -> &'static str {
     match state {
         CiState::Success => "CI passing",
         CiState::Failure | CiState::Error => "CI failing",
         CiState::Pending => "CI pending",
         CiState::None => "CI not started",
     }
+}
+
+pub fn activity_summary(event: &ActivityEvent) -> String {
+    render_event(event)
 }
 
 fn render_event(event: &ActivityEvent) -> String {
