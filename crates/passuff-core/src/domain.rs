@@ -41,14 +41,6 @@ pub enum PrState {
 }
 
 impl PrState {
-    pub fn label(&self) -> &'static str {
-        match self {
-            PrState::Open => "OPEN",
-            PrState::Merged => "MERGED",
-            PrState::Closed => "CLOSED",
-        }
-    }
-
     pub fn is_terminal(&self) -> bool {
         !matches!(self, PrState::Open)
     }

@@ -358,6 +358,99 @@ mod tests {
     }
 
     #[test]
+    fn accepts_a_token_command_credential() {
+        let config = parse(
+            r#"
+            [accounts.personal]
+            token_command = "gh auth token"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(
+            config.core.accounts["personal"].credential,
+            CredentialSpec::Command {
+                command: "gh auth token".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn rejects_empty_credentials_and_labels() {
+        assert!(parse("[accounts.personal]\ntoken_env = \"  \"\n").is_err());
+        assert!(parse("[accounts.\"\"]\ntoken_env = \"A\"\n").is_err());
+        assert!(parse("poll_interval_secs = 0\n[accounts.personal]\ntoken_env = \"A\"\n").is_err());
+    }
+
+    #[test]
+    fn rejects_a_missing_sound_file() {
+        let error = parse(
+            r#"
+            [accounts.personal]
+            token_env = "A"
+
+            [notifications]
+            sound_file = "/does/not/exist.wav"
+            "#,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("sound_file"));
+    }
+
+    #[test]
+    fn parses_sound_paths_and_urgency_levels() {
+        let config = parse(
+            r#"
+            [accounts.personal]
+            token_env = "A"
+
+            [notifications]
+            sound_file = "../passuff-cli/assets/notification.wav"
+            urgency = "critical"
+            "#,
+        )
+        .unwrap();
+        assert!(matches!(
+            config.notifications.sound_file,
+            SoundFile::Path(_)
+        ));
+        assert_eq!(config.notifications.urgency, Urgency::Critical);
+
+        let config = parse(
+            r#"
+            [accounts.personal]
+            token_env = "A"
+
+            [notifications]
+            urgency = "low"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(config.notifications.urgency, Urgency::Low);
+    }
+
+    #[test]
+    fn rejects_unknown_urgency_and_empty_sound_file() {
+        assert!(parse(
+            r#"
+            [accounts.personal]
+            token_env = "A"
+            [notifications]
+            urgency = "urgent"
+            "#,
+        )
+        .is_err());
+        assert!(parse(
+            r#"
+            [accounts.personal]
+            token_env = "A"
+            [notifications]
+            sound_file = ""
+            "#,
+        )
+        .is_err());
+    }
+
+    #[test]
     fn rejects_remote_plain_http() {
         let error = parse(
             r#"

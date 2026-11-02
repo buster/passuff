@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use async_trait::async_trait;
 use chrono::Utc;
@@ -21,10 +21,6 @@ pub struct JsonStateStore {
 impl JsonStateStore {
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self { path: path.into() }
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.path
     }
 
     fn quarantine_path(&self) -> PathBuf {
@@ -172,5 +168,36 @@ mod tests {
             .filter_map(Result::ok)
             .any(|entry| entry.file_name().to_string_lossy().contains(".corrupt."));
         assert!(quarantined);
+    }
+
+    #[tokio::test]
+    async fn unknown_version_is_quarantined_and_replaced() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.json");
+        let store = JsonStateStore::new(&path);
+        fs::write(&path, r#"{"version": 999, "accounts": {}}"#).unwrap();
+        let loaded = store.load().await.unwrap();
+        assert_eq!(loaded.version, 1);
+        assert!(loaded.accounts.is_empty());
+        let quarantined = fs::read_dir(dir.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|entry| entry.file_name().to_string_lossy().contains(".corrupt."));
+        assert!(quarantined);
+    }
+
+    #[tokio::test]
+    async fn save_reports_a_write_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("blocker"), b"x").unwrap();
+        let store = JsonStateStore::new(dir.path().join("blocker/state.json"));
+        let state = WatcherState {
+            version: 1,
+            accounts: Default::default(),
+        };
+        assert!(matches!(
+            store.save(&state).await,
+            Err(StateError::Write { .. })
+        ));
     }
 }

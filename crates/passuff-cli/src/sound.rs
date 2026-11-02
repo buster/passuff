@@ -49,12 +49,6 @@ impl SystemSoundPlayer {
     }
 }
 
-impl Default for SystemSoundPlayer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[async_trait]
 impl SoundPlayer for SystemSoundPlayer {
     async fn play(&self, file: &SoundFile) -> SoundOutcome {
@@ -108,10 +102,6 @@ pub struct RecordingSoundPlayer {
 impl RecordingSoundPlayer {
     pub fn new(log: Arc<Mutex<Vec<String>>>) -> Self {
         Self { log }
-    }
-
-    pub fn calls(&self) -> Vec<String> {
-        self.log.lock().expect("sound log").clone()
     }
 }
 

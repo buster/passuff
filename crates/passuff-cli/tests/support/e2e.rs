@@ -523,6 +523,15 @@ impl World {
 
     fn configure_child(&self, command: &mut Command) {
         command.env("PASSUFF_E2E_TOKEN", "e2e-token");
+        if let Ok(parent) = std::env::var("LLVM_PROFILE_FILE") {
+            let directory = std::path::Path::new(&parent)
+                .parent()
+                .unwrap_or_else(|| std::path::Path::new("."));
+            command.env(
+                "LLVM_PROFILE_FILE",
+                directory.join("e2e-child-%p-%m.profraw"),
+            );
+        }
         if let Some(dir) = self.e2e_sound_dir.as_ref() {
             let path = format!(
                 "{}:{}",

@@ -1,16 +1,15 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use passuff_config::CoreConfig;
 
 use crate::classifier::classify;
-use crate::credential::{CredentialSource, SystemCredentialSource};
+use crate::credential::CredentialSource;
 use crate::domain::{
     AccountFailure, AccountFailureKind, CoreError, LoginSet, Notification, RefreshReport,
     WatchedPullRequest,
 };
-use crate::github::{AccountObservation, GitHubApiAdapter, GitHubGateway};
-use crate::state::{JsonStateStore, SnapshotStore};
+use crate::github::{AccountObservation, GitHubGateway};
+use crate::state::SnapshotStore;
 
 pub struct PassuffCore {
     config: CoreConfig,
@@ -20,30 +19,6 @@ pub struct PassuffCore {
 }
 
 impl PassuffCore {
-    pub async fn open(config: CoreConfig, state_path: PathBuf) -> Result<Self, CoreError> {
-        Self::with_ports(
-            config,
-            Arc::new(GitHubApiAdapter::new()),
-            Arc::new(JsonStateStore::new(state_path)),
-            Arc::new(SystemCredentialSource),
-        )
-        .await
-    }
-
-    pub async fn with_gateway(
-        config: CoreConfig,
-        state_path: PathBuf,
-        gateway: Arc<dyn GitHubGateway>,
-    ) -> Result<Self, CoreError> {
-        Self::with_ports(
-            config,
-            gateway,
-            Arc::new(JsonStateStore::new(state_path)),
-            Arc::new(SystemCredentialSource),
-        )
-        .await
-    }
-
     pub async fn with_ports(
         config: CoreConfig,
         gateway: Arc<dyn GitHubGateway>,

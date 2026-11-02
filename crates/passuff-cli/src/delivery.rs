@@ -103,10 +103,6 @@ impl RecordingDelivery {
             sink: Some(sink),
         }
     }
-
-    pub fn records(&self) -> Vec<serde_json::Value> {
-        self.log.lock().expect("delivery log").clone()
-    }
 }
 
 #[cfg(feature = "test-support")]

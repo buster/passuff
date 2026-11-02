@@ -27,6 +27,11 @@ esac
 run_scope() {
   local scope="$1" output="$2"
   cargo "+$toolchain" llvm-cov clean --profraw-only >/dev/null
+  if [[ "$scope" == "regular" ]]; then
+    cargo "+$toolchain" llvm-cov --no-report --branch \
+      -p passuff-config -p passuff-core -p passuff-cli \
+      --features test-support --lib
+  fi
   GIVN_FEATURES="$features" \
   GIVN_RESULT_SCOPE="$scope" \
   GIVN_RESULT_FILE="$root/target/coverage-$scope-result.json" \

@@ -1,6 +1,4 @@
-use passuff_core::{
-    AccountFailure, ActivityEvent, Notification, PrState, PullRequestKey, RefreshReport,
-};
+use passuff_core::{AccountFailure, ActivityEvent, Notification, PrState, PullRequestKey};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RenderedNotification {
@@ -69,23 +67,6 @@ impl TranscriptRenderer {
 
     pub fn render_state_error(&self, detail: &str) -> String {
         format!("passuff: state error: {detail}")
-    }
-
-    pub fn render_report(&self, report: &RefreshReport, sound: bool) -> String {
-        let mut lines = Vec::new();
-        for key in &report.baselines_recorded {
-            lines.push(self.render_baseline(key));
-        }
-        for notification in &report.notifications {
-            lines.push(self.render_notification(notification, sound).transcript);
-        }
-        for failure in &report.account_failures {
-            lines.push(self.render_account_failure(failure));
-        }
-        if report.notifications.is_empty() && report.baselines_recorded.is_empty() {
-            lines.push(self.render_no_changes());
-        }
-        lines.join("\n")
     }
 }
 

@@ -74,10 +74,6 @@ impl GitHubApiAdapter {
         Self { client }
     }
 
-    pub fn with_client(client: reqwest::Client) -> Self {
-        Self { client }
-    }
-
     async fn post(
         &self,
         token: &str,
@@ -119,12 +115,6 @@ impl GitHubApiAdapter {
             .text()
             .await
             .map_err(|error| GitHubError::Transport(error.to_string()))
-    }
-}
-
-impl Default for GitHubApiAdapter {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -761,6 +751,71 @@ mod tests {
             .await
             .expect_err("malformed response");
         assert!(matches!(error, GitHubError::Malformed(_)));
+    }
+
+    #[tokio::test]
+    async fn observe_maps_terminal_states_and_missing_authors() {
+        let server = MockServer::start().await;
+        let mut merged = node();
+        merged["id"] = serde_json::json!("node-1");
+        merged["number"] = serde_json::json!(1);
+        merged["state"] = serde_json::json!("MERGED");
+        merged["merged"] = serde_json::json!(true);
+        merged["author"] = serde_json::Value::Null;
+        merged["commits"]["nodes"][0]["commit"]["statusCheckRollup"]["state"] =
+            serde_json::json!("ERROR");
+        let mut closed = node();
+        closed["id"] = serde_json::json!("node-2");
+        closed["number"] = serde_json::json!(2);
+        closed["state"] = serde_json::json!("CLOSED");
+        closed["commits"]["nodes"][0]["commit"]["statusCheckRollup"]["state"] =
+            serde_json::json!("PENDING");
+        let mut unknown = node();
+        unknown["id"] = serde_json::json!("node-3");
+        unknown["number"] = serde_json::json!(3);
+        unknown["commits"]["nodes"][0]["commit"]["statusCheckRollup"]["state"] =
+            serde_json::json!("SOMETHING");
+        mount(
+            &server,
+            200,
+            serde_json::json!({
+                "data": { "viewer": { "login": "octo", "pullRequests": {
+                    "pageInfo": { "hasNextPage": false, "endCursor": null },
+                    "nodes": [merged, closed, unknown]
+                } } }
+            }),
+        )
+        .await;
+        let observation = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect("observation");
+        assert_eq!(observation.pull_requests[0].state, PrState::Merged);
+        assert_eq!(observation.pull_requests[0].author, "ghost");
+        assert_eq!(observation.pull_requests[0].ci.state, CiState::Error);
+        assert_eq!(observation.pull_requests[1].state, PrState::Closed);
+        assert_eq!(observation.pull_requests[1].ci.state, CiState::Pending);
+        assert_eq!(observation.pull_requests[2].ci.state, CiState::None);
+    }
+
+    #[tokio::test]
+    async fn observe_reports_transport_failures_and_missing_data() {
+        let unreachable = Url::parse("http://127.0.0.1:1/graphql").expect("url");
+        let error = GitHubApiAdapter::new()
+            .observe("token", &unreachable, &[])
+            .await
+            .expect_err("transport error");
+        assert!(matches!(error, GitHubError::Transport(_)));
+
+        let server = MockServer::start().await;
+        mount(&server, 200, serde_json::json!({ "data": null })).await;
+        let error = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect_err("missing data");
+        assert!(
+            matches!(error, GitHubError::Malformed(message) if message.contains("missing data"))
+        );
     }
 
     #[tokio::test]
