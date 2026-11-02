@@ -1,7 +1,7 @@
 @givn.delta @pr-activity-notification
 Feature: Pull request activity notification
 
-  @givn.added @e2e @wip
+  @givn.added @e2e
   Scenario: Developer starts watching and is notified of a new comment
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -13,7 +13,7 @@ Feature: Pull request activity notification
     When passuff is stopped
     Then the exit status is 0
 
-  @givn.added @e2e @wip
+  @givn.added @e2e
   Scenario: Developer runs a single check and sees the current activity
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -25,19 +25,19 @@ Feature: Pull request activity notification
     And the configured sound is played once
     And the exit status is 0
 
-  @givn.added @e2e @wip
+  @givn.added @e2e
   Scenario: Developer asks for usage
     When the developer runs passuff with "--help"
     Then the transcript shows the available commands
     And the exit status is 0
 
-  @givn.added @e2e @wip
+  @givn.added @e2e
   Scenario: Developer asks for the version
     When the developer runs passuff with "--version"
     Then the transcript shows the version
     And the exit status is 0
 
-  @givn.added @wip
+  @givn.added
   Scenario: A review comment from another person notifies
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -46,7 +46,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports "Review comment from @alice"
 
-  @givn.added @wip
+  @givn.added
   Scenario Outline: A submitted review notifies
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -61,7 +61,7 @@ Feature: Pull request activity notification
       | changes requested |
       | commented         |
 
-  @givn.added @wip
+  @givn.added
   Scenario: A review from a configured account stays silent
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -70,7 +70,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: A commit push stays silent
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -79,7 +79,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: Activity on someone else's pull request stays silent
     Given a configured account "personal" with login "octo-personal"
     And a pull request "acme/other#9" by "someone-else"
@@ -88,7 +88,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario Outline: A failing CI result notifies
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -102,7 +102,7 @@ Feature: Pull request activity notification
       | failing |
       | error   |
 
-  @givn.added @wip
+  @givn.added
   Scenario: A CI recovery notifies
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -111,7 +111,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports "CI recovered"
 
-  @givn.added @wip
+  @givn.added
   Scenario: A CI recovery across pending notifies
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -123,7 +123,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports "CI recovered"
 
-  @givn.added @wip
+  @givn.added
   Scenario Outline: A pull request merged or closed while the watcher was stopped is reported
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -137,7 +137,7 @@ Feature: Pull request activity notification
       | merged | Merged |
       | closed | Closed |
 
-  @givn.added @wip
+  @givn.added
   Scenario Outline: A short-lived pull request merged or closed between checks notifies
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -152,7 +152,7 @@ Feature: Pull request activity notification
       | merged | Merged |
       | closed | Closed |
 
-  @givn.added @wip
+  @givn.added
   Scenario: A merge performed by the configured account still notifies
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -161,7 +161,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports "Merged"
 
-  @givn.added @wip
+  @givn.added
   Scenario: A reopened pull request stays silent
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -173,7 +173,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: A reopened pull request notifies again when closed
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -187,7 +187,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the latest transcript reports "Closed"
 
-  @givn.added @wip
+  @givn.added
   Scenario Outline: A bot comment is handled according to the bot setting
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -202,7 +202,7 @@ Feature: Pull request activity notification
       | disabled     | no notifications                   |
       | enabled      | "New comment from @dependabot[bot]" |
 
-  @givn.added @wip
+  @givn.added
   Scenario: Historical activity is not replayed on first observation
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -211,7 +211,7 @@ Feature: Pull request activity notification
     Then the transcript reports "Fresh baseline recorded"
     And the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: A pull request first seen after the first cycle records a baseline
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -222,7 +222,7 @@ Feature: Pull request activity notification
     And the report records a baseline for "acme/new#2"
     And the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: Multiple events on one pull request produce one notification
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -235,7 +235,7 @@ Feature: Pull request activity notification
     And the notification mentions "New comment", "Review changes requested", and "CI failing"
     And the configured sound is played once
 
-  @givn.added @wip
+  @givn.added
   Scenario Outline: A disabled event family suppresses its notification
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -255,7 +255,7 @@ Feature: Pull request activity notification
       | ci_recovery   | the CI result is "failing"     | the CI result becomes "successful"               |
       | state_changes | the pull request is "open"      | the pull request becomes "merged"                |
 
-  @givn.added @wip
+  @givn.added
   Scenario: A configured sound is used
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -266,7 +266,7 @@ Feature: Pull request activity notification
     Then the transcript reports "New comment from @alice"
     And the configured sound file "crates/passuff-cli/assets/notification.wav" is played once
 
-  @givn.added @wip
+  @givn.added
   Scenario: A disabled sound produces no sound
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -278,7 +278,7 @@ Feature: Pull request activity notification
     And the desktop notification is recorded
     And no sound is played
 
-  @givn.added @wip
+  @givn.added
   Scenario: A disabled desktop notification keeps the transcript
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -291,7 +291,7 @@ Feature: Pull request activity notification
     And the configured sound is played once
     And the exit status is 0
 
-  @givn.added @wip
+  @givn.added
   Scenario: An unavailable desktop surface keeps the transcript
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -303,7 +303,7 @@ Feature: Pull request activity notification
     And the transcript reports "desktop notification failed"
     And the exit status is 0
 
-  @givn.added @wip
+  @givn.added
   Scenario: A missing sound player still delivers the notification
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -316,7 +316,7 @@ Feature: Pull request activity notification
     And the transcript reports "sound unavailable"
     And the exit status is 0
 
-  @givn.added @wip
+  @givn.added
   Scenario: Each configured account is observed
     Given a configured account "personal" with login "octo-personal"
     And a configured account "work" with login "octo-work"
@@ -329,7 +329,7 @@ Feature: Pull request activity notification
     Then the transcript reports a notification for "acme/api#42"
     And the transcript reports a notification for "acme/web#7"
 
-  @givn.added @wip
+  @givn.added
   Scenario: A comment from another configured account stays silent
     Given a configured account "personal" with login "octo-personal"
     And a configured account "work" with login "octo-work"
@@ -339,7 +339,7 @@ Feature: Pull request activity notification
     And passuff runs one check
     Then the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: A failed account does not stop the other account
     Given a configured account "work" with an invalid credential
     And a configured account "personal" with login "octo-personal"
@@ -351,7 +351,7 @@ Feature: Pull request activity notification
     And the transcript reports a notification for "acme/api#42"
     And the exit status is 1
 
-  @givn.added @wip
+  @givn.added
   Scenario: A restart does not replay notified activity
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -362,7 +362,7 @@ Feature: Pull request activity notification
     When passuff restarts and runs one check
     Then the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: A corrupt state file is replaced with a baseline
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -372,14 +372,14 @@ Feature: Pull request activity notification
     Then the transcript reports "Fresh baseline recorded"
     And the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: An invalid configuration is rejected
     Given an invalid configuration
     When passuff runs one check
     Then the transcript reports "configuration error"
     And the exit status is 2
 
-  @givn.added @wip
+  @givn.added
   Scenario: A state write failure is reported with a nonzero status
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -388,7 +388,7 @@ Feature: Pull request activity notification
     Then the transcript reports "state error"
     And the exit status is 3
 
-  @givn.added @wip
+  @givn.added
   Scenario Outline: A non-notified change stays silent
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -405,7 +405,7 @@ Feature: Pull request activity notification
       | milestone   |
       | base branch |
 
-  @givn.added @wip
+  @givn.added
   Scenario: No authored pull requests produce no notifications
     Given a configured account "personal" with login "octo-personal"
     And the account has no authored pull requests
@@ -413,7 +413,7 @@ Feature: Pull request activity notification
     Then the transcript reports no notifications
     And the exit status is 0
 
-  @givn.added @wip
+  @givn.added
   Scenario: A single check with no changes reports no notifications
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
