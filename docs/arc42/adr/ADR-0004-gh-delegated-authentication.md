@@ -58,7 +58,7 @@ access tokens remain the headless alternative.
 
 The credential boundary is covered by integration tests that run a fake `gh`
 executable through `PATH`: token resolution, browser-login gating, one attempt
-per process, and identity mismatch. Configuration validation tests cover the
+per gh login per process, and identity mismatch. Configuration validation tests cover the
 credential matrix. The archive's regular and E2E suites must stay green.
 
 ## Pros and Cons of the Options

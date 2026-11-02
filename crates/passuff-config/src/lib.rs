@@ -36,21 +36,6 @@ pub struct AccountConfig {
     pub expected_login: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AuthMode {
-    GhOAuth,
-    Pat,
-}
-
-impl AccountConfig {
-    pub fn auth_mode(&self) -> AuthMode {
-        match self.credential {
-            CredentialSpec::GhOAuth { .. } => AuthMode::GhOAuth,
-            _ => AuthMode::Pat,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CredentialSpec {
     Env { variable: String },
@@ -134,6 +119,12 @@ impl Default for FileConfig {
             accounts: BTreeMap::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AuthMode {
+    GhOAuth,
+    Pat,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -588,6 +579,89 @@ mod tests {
             "#,
         )
         .is_err());
+    }
+
+    #[test]
+    fn parses_gh_oauth_with_expected_login_and_host() {
+        let config = parse(
+            r#"
+            [accounts.work]
+            auth = "gh_oauth"
+            github_user = "octo-work"
+            "#,
+        )
+        .unwrap();
+        let account = &config.core.accounts["work"];
+        assert_eq!(account.expected_login.as_deref(), Some("octo-work"));
+        assert!(matches!(
+            &account.credential,
+            CredentialSpec::GhOAuth { login, host } if login == "octo-work" && host == "github.com"
+        ));
+
+        let config = parse(
+            r#"
+            [accounts.work]
+            auth = "gh_oauth"
+            github_user = "octo-work"
+            graphql_url = "https://ghe.example.com/api/graphql"
+            "#,
+        )
+        .unwrap();
+        assert!(matches!(
+            &config.core.accounts["work"].credential,
+            CredentialSpec::GhOAuth { host, .. } if host == "ghe.example.com"
+        ));
+    }
+
+    #[test]
+    fn rejects_missing_gh_login_and_literal_tokens() {
+        let error = parse(
+            r#"
+            [accounts.work]
+            auth = "gh_oauth"
+            "#,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("requires github_user"));
+
+        let error = parse(
+            r#"
+            [accounts.work]
+            token = "ghp_secret"
+            "#,
+        )
+        .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("must not contain a literal token"));
+    }
+
+    #[test]
+    fn rejects_relative_and_insecure_token_files() {
+        assert!(parse("[accounts.work]\ntoken_file = \"relative.token\"\n").is_err());
+
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("group.token");
+        fs::write(&file, "token").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(&file).unwrap().permissions();
+            permissions.set_mode(0o640);
+            fs::set_permissions(&file, permissions).unwrap();
+        }
+        let text = format!("[accounts.work]\ntoken_file = \"{}\"\n", file.display());
+        let error = parse(&text).unwrap_err();
+        assert!(error.to_string().contains("token_file is not private"));
+
+        let directory = dir.path().join("token-dir");
+        fs::create_dir(&directory).unwrap();
+        let text = format!(
+            "[accounts.work]\ntoken_file = \"{}\"\n",
+            directory.display()
+        );
+        let error = parse(&text).unwrap_err();
+        assert!(error.to_string().contains("not a regular file"));
     }
 
     #[test]

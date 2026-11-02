@@ -53,6 +53,7 @@ Feature: Pull request activity notification
     And gh started one browser login for "octo-home"
     And the transcript reports "account work failed"
     And the transcript reports "account home failed"
+    And the transcript reports "gh auth login failed"
 
   @givn.added
   Scenario: A failed browser login does not stop the other account
@@ -100,7 +101,21 @@ Feature: Pull request activity notification
     Given a configured account "work" with a personal access token file that does not exist
     When passuff runs one check
     Then the transcript reports "account work failed"
+    And the transcript reports "token file is missing"
     And the exit status is 1
+
+  @givn.added
+  Scenario Outline: An unusable token file is reported
+    Given a configured account "work" with <case>
+    When passuff runs one check
+    Then the transcript reports <message>
+    And the exit status is <status>
+
+    Examples:
+      | case                            | message                              | status |
+      | a relative token file path      | "must be absolute or start with ~"   | 2      |
+      | a token file path that is a directory | "not a regular file"          | 2      |
+      | an empty token file             | "token file is empty"                | 1      |
 
   @givn.added
   Scenario: A token file path starting with ~ is expanded
@@ -135,6 +150,14 @@ Feature: Pull request activity notification
     When "alice" comments "Can you split this migration?" on "acme/api#42"
     And passuff runs one check
     Then the transcript reports a notification for "acme/api#42"
+
+  @givn.added
+  Scenario: A credential value never appears in the transcript or state
+    Given a configured account "work" with login "octo-work"
+    And an authored pull request "acme/api#42" by "octo-work"
+    When passuff runs one check
+    Then the transcript reports "Fresh baseline recorded"
+    And the credential value "token-TOKEN_WORK" appears in neither the transcript nor the state file
 
   @givn.added
   Scenario: A legacy environment credential remains a personal access token account

@@ -11,7 +11,7 @@ restate the rules.
 | Term | Definition | Code symbol | Anti-terms |
 |---|---|---|---|
 | Account | A GitHub identity configured for observation, labelled locally and resolved to a GitHub login. | `Account` | user, profile, credential — a credential authenticates an account; it is not the account. |
-| Credential mode | The declared way an account obtains its token: a gh OAuth session or a personal access token. | `AuthMode`, `CredentialSpec` | auth type, login method — the mode names the source, not the identity. |
+| Credential mode | The declared way an account obtains its token: a gh OAuth session or a personal access token. | `CredentialSpec` | auth type, login method — the mode names the source, not the identity. |
 | Expected login | The GitHub login an account declares; a resolved credential must belong to it. | `AccountConfig.expected_login` | username, owner — the expected login is a validation target. |
 | gh session | The OAuth token the GitHub CLI stores for a login on this machine. | `CredentialSpec::GhOAuth` | gh token, OAuth secret — the session belongs to the operator's gh installation. |
 | Personal access token | A GitHub token read from an environment variable, a helper command, or a token file, independent of the gh session. | `CredentialSpec::{Env,Command,File}` | password, secret — a token authenticates; it is not an account. |
@@ -24,7 +24,7 @@ restate the rules.
 | Check cycle | One observation pass over all configured accounts. | `PassuffCore::refresh` | poll — an implementation mechanism, not the domain pass. |
 | CI result | The aggregate outcome of checks on the latest commit of an authored pull request. | `CiResult` | status, build — a build is one check; the CI result is the aggregate. |
 | Comment | A written remark on a pull request, either a conversation comment or a review comment. | `ActivityEvent::Comment` | message, note — a notification is not a comment. |
-| Configured login set | The union of GitHub logins resolved for all configured accounts. | `LoginSet` | owners, users — the set is identities, not people. |
+| Configured login set | The union of GitHub logins resolved for all configured accounts whose credential matched their expected login. | `LoginSet` | owners, users — the set is identities, not people. |
 | Developer | The person who owns the configured accounts and receives notifications. | none (actor) | user, customer |
 | Event family | A configurable class of activity events: comments, reviews, CI failure, CI recovery, or state changes. | `EventToggles` | event type — a type is a value; a family is the configurable class. |
 | Notification | A grouped report of activity events for one authored pull request. Delivery is performed by a UI adapter; the report itself has no delivery dependency. | `Notification` | alert, message — a message is a comment; an alert implies urgency the notification does not require. |

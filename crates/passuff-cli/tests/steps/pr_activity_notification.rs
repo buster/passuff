@@ -600,6 +600,35 @@ async fn token_file_with_mode(world: &mut World, label: String, mode: String) {
     world.set_config_token_file(&label, &path.display().to_string());
 }
 
+#[given(regex = r#"^a configured account "([^"]+)" with a relative token file path$"#)]
+async fn token_file_relative(world: &mut World, label: String) {
+    world.enable_real_credentials();
+    world.set_config_token_file(&label, "relative.token");
+}
+
+#[given(regex = r#"^a configured account "([^"]+)" with a token file path that is a directory$"#)]
+async fn token_file_directory(world: &mut World, label: String) {
+    world.enable_real_credentials();
+    let path = world.state_path().with_file_name("token-dir");
+    std::fs::create_dir_all(&path).expect("token dir");
+    world.set_config_token_file(&label, &path.display().to_string());
+}
+
+#[given(regex = r#"^a configured account "([^"]+)" with an empty token file$"#)]
+async fn token_file_empty(world: &mut World, label: String) {
+    world.enable_real_credentials();
+    let path = world.state_path().with_file_name("empty.token");
+    std::fs::write(&path, "").expect("empty token file");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(&path).expect("metadata").permissions();
+        permissions.set_mode(0o600);
+        std::fs::set_permissions(&path, permissions).expect("mode");
+    }
+    world.set_config_token_file(&label, &path.display().to_string());
+}
+
 #[given(
     regex = r#"^a configured account "([^"]+)" with a personal access token file that does not exist$"#
 )]
@@ -703,6 +732,18 @@ async fn gh_started_one_login(world: &mut World, login: String) {
     let attempts = world.gh_login_attempts.lock().expect("login attempts");
     let count = attempts.iter().filter(|attempt| *attempt == &login).count();
     assert_eq!(count, 1, "expected one login for {login}, got {attempts:?}");
+}
+
+#[then(
+    regex = r#"^the credential value "([^"]+)" appears in neither the transcript nor the state file$"#
+)]
+async fn token_not_leaked(world: &mut World, token: String) {
+    assert!(
+        !world.last_transcript.contains(&token),
+        "token appeared in the transcript"
+    );
+    let state = std::fs::read_to_string(world.state_path()).unwrap_or_default();
+    assert!(!state.contains(&token), "token appeared in the state file");
 }
 
 #[then(regex = r#"^the transcript reports no notification for "([^"]+)"$"#)]

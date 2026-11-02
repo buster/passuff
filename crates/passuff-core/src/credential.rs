@@ -19,6 +19,10 @@ pub enum CredentialError {
     Timeout,
     #[error("gh is not available")]
     GhNotFound,
+    #[error("gh auth token failed for the requested login")]
+    GhTokenFailed,
+    #[error("gh auth login failed")]
+    GhLoginFailed,
     #[error("token file is missing: {path}")]
     FileMissing { path: PathBuf },
     #[error("token file cannot be read: {path}")]
@@ -39,83 +43,67 @@ pub trait GhLogin: Send + Sync {
     async fn login(&self, login: &str, host: &str) -> Result<(), CredentialError>;
 }
 
-pub struct SystemCredentialSource {
-    interactive: bool,
-    login: Option<Arc<dyn GhLogin>>,
-    attempted: Mutex<HashSet<String>>,
+#[async_trait]
+trait TokenSource: Send + Sync {
+    async fn token(&self, spec: &CredentialSpec) -> Result<String, CredentialError>;
 }
 
-impl SystemCredentialSource {
-    pub fn headless() -> Self {
-        Self::with_login(false, None)
-    }
+#[derive(Debug, Default, Clone, Copy)]
+pub struct EnvironmentCredential;
 
-    pub fn interactive(login: Arc<dyn GhLogin>) -> Self {
-        Self::with_login(true, Some(login))
+#[async_trait]
+impl TokenSource for EnvironmentCredential {
+    async fn token(&self, spec: &CredentialSpec) -> Result<String, CredentialError> {
+        let CredentialSpec::Env { variable } = spec else {
+            return Err(CredentialError::CommandFailed);
+        };
+        std::env::var(variable)
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .map(|value| value.trim().to_string())
+            .ok_or(CredentialError::MissingEnv)
     }
+}
 
-    pub fn with_login(interactive: bool, login: Option<Arc<dyn GhLogin>>) -> Self {
-        Self {
-            interactive,
-            login,
-            attempted: Mutex::new(HashSet::new()),
-        }
-    }
+#[derive(Debug, Default, Clone, Copy)]
+pub struct CommandCredential;
 
-    async fn gh_token(&self, login: &str, host: &str) -> Result<String, CredentialError> {
+#[async_trait]
+impl TokenSource for CommandCredential {
+    async fn token(&self, spec: &CredentialSpec) -> Result<String, CredentialError> {
+        let CredentialSpec::Command { command } = spec else {
+            return Err(CredentialError::CommandFailed);
+        };
         let output = tokio::time::timeout(
             Duration::from_secs(10),
-            tokio::process::Command::new("gh")
-                .args(["auth", "token", "--user", login, "--hostname", host])
+            tokio::process::Command::new("/bin/sh")
+                .arg("-c")
+                .arg(command)
                 .output(),
         )
         .await
-        .map_err(|_| CredentialError::Timeout)?;
-        let output = match output {
-            Ok(output) => output,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                return Err(CredentialError::GhNotFound);
-            }
-            Err(_) => return Err(CredentialError::CommandFailed),
-        };
+        .map_err(|_| CredentialError::Timeout)?
+        .map_err(|_| CredentialError::CommandFailed)?;
         if !output.status.success() {
             return Err(CredentialError::CommandFailed);
         }
-        let token = String::from_utf8(output.stdout)
+        let value = String::from_utf8(output.stdout)
             .map_err(|_| CredentialError::CommandFailed)?
             .trim()
             .to_string();
-        if token.is_empty() {
+        if value.is_empty() {
             Err(CredentialError::CommandEmpty)
         } else {
-            Ok(token)
+            Ok(value)
         }
     }
+}
 
-    async fn resolve_gh_oauth(&self, login: &str, host: &str) -> Result<String, CredentialError> {
-        let first = self.gh_token(login, host).await;
-        if first.is_ok() {
-            return first;
-        }
-        let should_login = self.interactive
-            && self.login.is_some()
-            && self
-                .attempted
-                .lock()
-                .expect("login attempts")
-                .insert(login.to_string());
-        if !should_login {
-            return first;
-        }
-        self.login
-            .as_ref()
-            .expect("interactive login")
-            .login(login, host)
-            .await?;
-        self.gh_token(login, host).await
-    }
+#[derive(Debug, Default, Clone, Copy)]
+pub struct FileCredential;
 
-    fn resolve_file(&self, path: &PathBuf) -> Result<String, CredentialError> {
+impl FileCredential {
+    fn resolve(&self, path: &PathBuf) -> Result<String, CredentialError> {
         let metadata = std::fs::metadata(path).map_err(|error| {
             if error.kind() == std::io::ErrorKind::NotFound {
                 CredentialError::FileMissing { path: path.clone() }
@@ -143,9 +131,114 @@ impl SystemCredentialSource {
     }
 }
 
-impl Default for SystemCredentialSource {
-    fn default() -> Self {
-        Self::headless()
+#[async_trait]
+impl TokenSource for FileCredential {
+    async fn token(&self, spec: &CredentialSpec) -> Result<String, CredentialError> {
+        let CredentialSpec::File { path } = spec else {
+            return Err(CredentialError::CommandFailed);
+        };
+        self.resolve(path)
+    }
+}
+
+pub struct GhOAuthCredential {
+    interactive: bool,
+    login: Option<Arc<dyn GhLogin>>,
+    attempted: Mutex<HashSet<String>>,
+}
+
+impl GhOAuthCredential {
+    fn new(interactive: bool, login: Option<Arc<dyn GhLogin>>) -> Self {
+        Self {
+            interactive,
+            login,
+            attempted: Mutex::new(HashSet::new()),
+        }
+    }
+
+    async fn gh_token(&self, login: &str, host: &str) -> Result<String, CredentialError> {
+        let output = tokio::time::timeout(
+            Duration::from_secs(10),
+            tokio::process::Command::new("gh")
+                .args(["auth", "token", "--user", login, "--hostname", host])
+                .output(),
+        )
+        .await
+        .map_err(|_| CredentialError::Timeout)?;
+        let output = match output {
+            Ok(output) => output,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Err(CredentialError::GhNotFound);
+            }
+            Err(_) => return Err(CredentialError::GhTokenFailed),
+        };
+        if !output.status.success() {
+            return Err(CredentialError::GhTokenFailed);
+        }
+        let token = String::from_utf8(output.stdout)
+            .map_err(|_| CredentialError::GhTokenFailed)?
+            .trim()
+            .to_string();
+        if token.is_empty() {
+            Err(CredentialError::CommandEmpty)
+        } else {
+            Ok(token)
+        }
+    }
+}
+
+#[async_trait]
+impl TokenSource for GhOAuthCredential {
+    async fn token(&self, spec: &CredentialSpec) -> Result<String, CredentialError> {
+        let CredentialSpec::GhOAuth { login, host } = spec else {
+            return Err(CredentialError::GhTokenFailed);
+        };
+        let first = self.gh_token(login, host).await;
+        if first.is_ok() {
+            return first;
+        }
+        let should_login = self.interactive
+            && self.login.is_some()
+            && self
+                .attempted
+                .lock()
+                .expect("login attempts")
+                .insert(login.to_string());
+        if !should_login {
+            return first;
+        }
+        self.login
+            .as_ref()
+            .expect("interactive login")
+            .login(login, host)
+            .await?;
+        self.gh_token(login, host).await
+    }
+}
+
+pub struct SystemCredentialSource {
+    env: EnvironmentCredential,
+    command: CommandCredential,
+    file: FileCredential,
+    gh: GhOAuthCredential,
+}
+
+impl SystemCredentialSource {
+    pub fn headless() -> Self {
+        Self::with_login(false, None)
+    }
+
+    pub fn interactive(login: Arc<dyn GhLogin>) -> Self {
+        Self::with_login(true, Some(login))
+    }
+
+    pub fn with_login(interactive: bool, login: Option<Arc<dyn GhLogin>>) -> Self {
+        Self {
+            env: EnvironmentCredential,
+            command: CommandCredential,
+            file: FileCredential,
+            gh: GhOAuthCredential::new(interactive, login),
+        }
     }
 }
 
@@ -153,37 +246,61 @@ impl Default for SystemCredentialSource {
 impl CredentialSource for SystemCredentialSource {
     async fn resolve(&self, spec: &CredentialSpec) -> Result<String, CredentialError> {
         match spec {
-            CredentialSpec::Env { variable } => std::env::var(variable)
-                .ok()
-                .filter(|value| !value.trim().is_empty())
-                .map(|value| value.trim().to_string())
-                .ok_or(CredentialError::MissingEnv),
-            CredentialSpec::Command { command } => {
-                let output = tokio::time::timeout(
-                    Duration::from_secs(10),
-                    tokio::process::Command::new("/bin/sh")
-                        .arg("-c")
-                        .arg(command)
-                        .output(),
-                )
-                .await
-                .map_err(|_| CredentialError::Timeout)?
-                .map_err(|_| CredentialError::CommandFailed)?;
-                if !output.status.success() {
-                    return Err(CredentialError::CommandFailed);
-                }
-                let value = String::from_utf8(output.stdout)
-                    .map_err(|_| CredentialError::CommandFailed)?
-                    .trim()
-                    .to_string();
-                if value.is_empty() {
-                    Err(CredentialError::CommandEmpty)
-                } else {
-                    Ok(value)
-                }
-            }
-            CredentialSpec::File { path } => self.resolve_file(path),
-            CredentialSpec::GhOAuth { login, host } => self.resolve_gh_oauth(login, host).await,
+            CredentialSpec::Env { .. } => self.env.token(spec).await,
+            CredentialSpec::Command { .. } => self.command.token(spec).await,
+            CredentialSpec::File { .. } => self.file.token(spec).await,
+            CredentialSpec::GhOAuth { .. } => self.gh.token(spec).await,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    fn private_file(dir: &std::path::Path, name: &str, content: &str) -> PathBuf {
+        let path = dir.join(name);
+        std::fs::write(&path, content).expect("token file");
+        let mut permissions = std::fs::metadata(&path).expect("metadata").permissions();
+        permissions.set_mode(0o600);
+        std::fs::set_permissions(&path, permissions).expect("mode");
+        path
+    }
+
+    async fn file_token(path: PathBuf) -> Result<String, CredentialError> {
+        FileCredential.token(&CredentialSpec::File { path }).await
+    }
+
+    #[tokio::test]
+    async fn file_source_reads_a_private_token() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = private_file(dir.path(), "work.token", "token-value\n");
+        assert_eq!(file_token(path).await.unwrap(), "token-value");
+    }
+
+    #[tokio::test]
+    async fn file_source_rejects_missing_empty_and_insecure_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("missing.token");
+        assert!(matches!(
+            file_token(missing).await,
+            Err(CredentialError::FileMissing { .. })
+        ));
+
+        let empty = private_file(dir.path(), "empty.token", "");
+        assert!(matches!(
+            file_token(empty).await,
+            Err(CredentialError::FileEmpty { .. })
+        ));
+
+        let insecure = private_file(dir.path(), "insecure.token", "token");
+        let mut permissions = std::fs::metadata(&insecure).unwrap().permissions();
+        permissions.set_mode(0o644);
+        std::fs::set_permissions(&insecure, permissions).unwrap();
+        assert!(matches!(
+            file_token(insecure).await,
+            Err(CredentialError::FileInsecure { .. })
+        ));
     }
 }

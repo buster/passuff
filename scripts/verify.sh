@@ -24,7 +24,9 @@ export GIVN_RESULT_SCOPE="$scope"
 
 features="${GIVN_FEATURES:-}"
 if [[ -z "$features" ]]; then
-  if compgen -G "$root/givn/changes/*/specs" >/dev/null; then
+  if [[ "$scope" == "e2e" ]]; then
+    features="$root/givn/specs"
+  elif compgen -G "$root/givn/changes/*/specs" >/dev/null; then
     features="$root/givn/changes"
   else
     features="$root/givn/specs"
@@ -34,6 +36,9 @@ case "$features" in
   /*) ;;
   *) features="$root/$features" ;;
 esac
+if [[ "$scope" == "e2e" ]] && ! grep -Rqs '@e2e' "$features"; then
+  features="$root/givn/specs"
+fi
 export GIVN_FEATURES="$features"
 
 result_file="${GIVN_RESULT_FILE:-$root/target/givn-verify-result.json}"

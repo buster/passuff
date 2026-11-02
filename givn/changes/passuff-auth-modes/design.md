@@ -3,7 +3,7 @@
 ## Scope and constraints
 
 This change replaces the implicit credential source with an explicit per-account
-authentication mode and adds an interactive recovery path for gh-managed
+credential mode and adds an interactive recovery path for gh-managed
 sessions. It keeps the UI-agnostic core: credential acquisition stays behind
 `CredentialSource`, and the browser login stays in a CLI-side adapter.
 
@@ -53,8 +53,10 @@ graph LR
 
 No new component boundary is introduced. `CredentialSource` remains the port;
 the gh and file sources are adapters inside the existing `passuff-core`
-credential module. The interactive login adapter is constructed by the CLI
-composition root and injected into the source; the core never starts a process.
+credential module. The core's credential sources start token processes
+(`gh auth token` and helper commands); the interactive browser login stays behind
+the `GhLogin` port, whose process adapter is constructed by the CLI composition
+root.
 
 ### Contracts and Components
 
@@ -271,8 +273,9 @@ Transcript additions:
 - `passuff: account <label> failed: token file is readable by other users` is
   not a runtime line; insecure permissions are a configuration error:
   `passuff: configuration error: token_file is not private: <path>`.
-- `passuff: configuration error: account '<label>' declares both a gh OAuth
-  login and a personal access token source` (and analogous validation text).
+- `passuff: configuration error: account '<label>' must not set a personal
+  access token source when auth is gh_oauth` (and analogous validation text).
+- `passuff: account <label> failed: gh auth login failed`.
 
 The gh login process writes its own prompts to the inherited terminal; passuff
 does not duplicate them in the transcript.

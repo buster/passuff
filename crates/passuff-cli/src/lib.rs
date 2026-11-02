@@ -1,4 +1,5 @@
 pub mod delivery;
+pub mod gh_login;
 pub mod sound;
 pub mod transcript;
 
@@ -10,11 +11,22 @@ use std::time::Duration;
 use passuff_config::{AppConfig, ConfigError};
 use passuff_core::{
     CoreError, CredentialSource, GitHubGateway, PassuffCore, RefreshReport, SnapshotStore,
+    SystemCredentialSource,
 };
 
 use crate::delivery::{DeliveryReport, NotificationDelivery};
 use crate::sound::SoundOutcome;
 use crate::transcript::TranscriptRenderer;
+
+pub fn system_credentials(interactive: bool) -> Arc<dyn CredentialSource> {
+    if interactive {
+        Arc::new(SystemCredentialSource::interactive(Arc::new(
+            gh_login::SystemGhLogin,
+        )))
+    } else {
+        Arc::new(SystemCredentialSource::headless())
+    }
+}
 
 #[derive(Clone)]
 pub struct CliPorts {
@@ -288,4 +300,33 @@ fn render_delivery_errors(renderer: &TranscriptRenderer, delivery: &DeliveryRepo
         _ => {}
     }
     lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use passuff_config::CredentialSpec;
+
+    #[tokio::test]
+    async fn system_credentials_resolves_in_both_modes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("work.token");
+        std::fs::write(&path, "token-value").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&path).unwrap().permissions();
+            permissions.set_mode(0o600);
+            std::fs::set_permissions(&path, permissions).unwrap();
+        }
+        let spec = CredentialSpec::File { path };
+        assert_eq!(
+            system_credentials(false).resolve(&spec).await.unwrap(),
+            "token-value"
+        );
+        assert_eq!(
+            system_credentials(true).resolve(&spec).await.unwrap(),
+            "token-value"
+        );
+    }
 }

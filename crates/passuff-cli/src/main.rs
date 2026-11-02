@@ -1,5 +1,4 @@
 mod cli;
-mod gh_login;
 
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -8,12 +7,11 @@ use std::sync::Arc;
 use clap::Parser;
 use passuff_cli::delivery::DesktopDelivery;
 use passuff_cli::sound::SystemSoundPlayer;
-use passuff_cli::{CliPorts, CliRuntime};
+use passuff_cli::{system_credentials, CliPorts, CliRuntime};
 use passuff_config::ConfigLoader;
-use passuff_core::{CredentialSource, GitHubApiAdapter, JsonStateStore, SystemCredentialSource};
+use passuff_core::{GitHubApiAdapter, JsonStateStore};
 
 use crate::cli::{Cli, Command};
-use crate::gh_login::SystemGhLogin;
 
 #[tokio::main]
 async fn main() {
@@ -42,11 +40,7 @@ async fn main() {
 
     let interactive =
         args.command.is_none() && std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
-    let credentials: Arc<dyn CredentialSource> = if interactive {
-        Arc::new(SystemCredentialSource::interactive(Arc::new(SystemGhLogin)))
-    } else {
-        Arc::new(SystemCredentialSource::headless())
-    };
+    let credentials = system_credentials(interactive);
     let sound = Arc::new(SystemSoundPlayer::new());
     let delivery = build_delivery(sound);
     let ports = CliPorts {

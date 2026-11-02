@@ -36,7 +36,7 @@ The developer starts the watcher, or runs a single check pass.
 
 - 1a. A runtime credential value is missing or invalid, or the account cannot be reached: the watcher reports the account failure and continues with the remaining accounts. `check` exits 1; continuous mode retries. A configuration with no credential source at all is a configuration error (R19).
 - 1b. A gh OAuth session is missing in an interactive continuous watch: the watcher starts gh's browser login once for that account, then retries the account. A failed or abandoned login is an account failure (R38).
-- 1c. A credential belongs to a login other than the expected one: the watcher reports the account failure with both logins and does not observe that account (R36).
+- 1c. A credential belongs to a login other than the expected one: the watcher reports the account failure with both logins and does not process that account's observation (R36).
 - 2a. No authored pull requests exist: the watcher reports no notifications and completes the pass.
 - 4a. The persisted observation is corrupt or has an unknown version: the watcher sets it aside, records a fresh baseline, and continues. A permission or I/O failure that prevents reading, writing, or quarantining exits 3 in `check` mode.
 - 5a. A change is an own action, a commit push, or activity on a pull request outside the configured login set: the watcher discards it.
@@ -45,7 +45,7 @@ The developer starts the watcher, or runs a single check pass.
 
 ## Rules
 
-- R1: The configured login set is the union of the GitHub logins discovered for all configured accounts.
+- R1: The configured login set is the union of the GitHub logins discovered for all configured accounts whose credential matched their expected login.
 - R2: An authored pull request is a pull request whose author login belongs to the configured login set.
 - R3: A conversation comment by a login outside the configured login set produces a notification.
 - R4: A review comment by a login outside the configured login set produces a notification.
@@ -78,11 +78,11 @@ The developer starts the watcher, or runs a single check pass.
 - R31: `check` exits 0 when all accounts were observed, 1 when at least one account failed, 2 for configuration or CLI errors, and 3 for a core state failure.
 - R32: An account selects exactly one credential source: a gh OAuth session with an expected login, or a personal access token from exactly one of an environment variable, a helper command, or a token file. Declaring more than one source, a gh OAuth account without an expected login, or a literal token is a configuration error that exits with status 2.
 - R33: A gh OAuth account names its expected GitHub login and obtains its token from the operator's gh session for that login.
-- R34: A gh OAuth account whose gh session is missing starts gh's browser login once per account when the continuous watcher runs interactively. The one-shot check and every non-interactive run never start a browser login and report the account failure instead.
+- R34: A gh OAuth account whose gh session is missing starts gh's browser login once per gh login when the continuous watcher runs interactively. The one-shot check and every non-interactive run never start a browser login and report the account failure instead.
 - R35: A personal access token file is used only when group and other users cannot read or write it; a leading `~` names the operator's home directory. A missing token file is an account failure; insecure permissions are a configuration error.
 - R36: When an account declares its expected login, a credential belonging to a different login, compared case-insensitively, is an account failure that names both logins, and no pull requests are processed for that account.
 - R37: An account configured with only an environment variable or a helper command, with no declared mode, remains a personal access token account.
-- R38: A failed or abandoned browser login is reported as an account failure; the remaining accounts are still observed.
+- R38: A failed or abandoned browser login is reported as an account failure and is attempted at most once per gh login per process; the remaining accounts are still observed.
 
 ## Examples
 

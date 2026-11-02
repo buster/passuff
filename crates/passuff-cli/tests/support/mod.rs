@@ -366,6 +366,34 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         self.config_text = Some(text);
     }
 
+    fn config_text_from_accounts(&self) -> String {
+        let mut text = String::new();
+        for account in self.accounts.values() {
+            text.push_str(&format!("[accounts.{}]\n", account.label));
+            match &account.auth {
+                AccountAuth::Env { variable } => {
+                    text.push_str(&format!("token_env = \"{variable}\"\n"));
+                }
+                AccountAuth::Command { command } => {
+                    text.push_str(&format!("token_command = \"{command}\"\n"));
+                }
+                AccountAuth::File { path, .. } => {
+                    text.push_str(&format!("token_file = \"{}\"\n", path.display()));
+                }
+                AccountAuth::GhOAuth { login, .. } => {
+                    text.push_str("auth = \"gh_oauth\"\n");
+                    text.push_str(&format!("github_user = \"{login}\"\n"));
+                }
+            }
+            if !matches!(account.auth, AccountAuth::GhOAuth { .. }) {
+                if let Some(expected) = account.expected_login.as_ref() {
+                    text.push_str(&format!("github_user = \"{expected}\"\n"));
+                }
+            }
+        }
+        text
+    }
+
     pub fn enable_real_credentials(&mut self) {
         self.real_credentials = true;
         self.auth_root();
@@ -542,6 +570,8 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             ConfigLoader::parse(&text)
         } else if self.invalid_config {
             Err(ConfigError::Validation("invalid configuration".to_string()))
+        } else if self.real_credentials {
+            ConfigLoader::parse(&self.config_text_from_accounts())
         } else {
             Ok(self.build_config())
         };
@@ -585,6 +615,8 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         self.apply_auth_env();
         let config = if let Some(text) = self.config_text.clone() {
             ConfigLoader::parse(&text)
+        } else if self.real_credentials {
+            ConfigLoader::parse(&self.config_text_from_accounts())
         } else {
             Ok(self.build_config())
         };
@@ -737,7 +769,7 @@ impl GhLogin for RecordingGhLogin {
             .expect("login attempts")
             .push(login.to_string());
         if self.fails {
-            return Err(CredentialError::CommandFailed);
+            return Err(CredentialError::GhLoginFailed);
         }
         std::fs::write(
             self.dir.join(format!("token-{login}")),

@@ -15,7 +15,7 @@ only for loopback test addresses.
 The interactive gh login is available only to an interactive continuous watch;
 `check` and non-interactive runs resolve credentials without starting a
 process that waits for a browser. The credential source attempts a login at most
-once per account per process.
+once per gh login per process.
 
 ## Persistence and deduplication
 

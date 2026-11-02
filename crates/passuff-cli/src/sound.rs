@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+#[cfg(feature = "test-support")]
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 

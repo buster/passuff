@@ -1,8 +1,12 @@
+#[cfg(feature = "test-support")]
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(feature = "test-support")]
+use std::sync::Mutex;
 
 use async_trait::async_trait;
 use passuff_config::{NotificationsConfig, Urgency};
+#[cfg(feature = "test-support")]
 use serde_json::json;
 
 use crate::sound::{SoundOutcome, SoundPlayer};
