@@ -42,6 +42,7 @@ fn main() {
         let _writer = World::cucumber()
             .before(|_, _, scenario, world| {
                 world.e2e = scenario.tags.iter().any(|tag| tag == "e2e");
+                world.e2e_scenario = slugify(&scenario.name);
                 async {}.boxed_local()
             })
             .with_writer(json_writer)
@@ -84,6 +85,21 @@ fn main() {
     if counts.total == 0 || counts.failed > 0 || counts.skipped > 0 {
         std::process::exit(1);
     }
+}
+
+fn slugify(name: &str) -> String {
+    let mut slug = String::new();
+    let mut previous_dash = false;
+    for character in name.chars() {
+        if character.is_ascii_alphanumeric() {
+            slug.push(character.to_ascii_lowercase());
+            previous_dash = false;
+        } else if !previous_dash {
+            slug.push('-');
+            previous_dash = true;
+        }
+    }
+    slug.trim_matches('-').to_string()
 }
 
 fn resolve_features(features: &str) -> String {

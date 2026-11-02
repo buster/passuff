@@ -373,6 +373,7 @@ impl World {
         let output = command.output().expect("run passuff check");
         self.last_status = output.status.code().unwrap_or(3);
         self.last_transcript = String::from_utf8_lossy(&output.stdout).to_string();
+        self.e2e_write_evidence();
     }
 
     pub async fn e2e_run_with(&mut self, flag: &str) {
@@ -381,6 +382,7 @@ impl World {
         let output = command.output().expect("run passuff");
         self.last_status = output.status.code().unwrap_or(3);
         self.last_transcript = String::from_utf8_lossy(&output.stdout).to_string();
+        self.e2e_write_evidence();
     }
 
     pub async fn e2e_start_watching(&mut self) {
@@ -420,6 +422,7 @@ impl World {
         let _ = Command::new("kill").args(["-INT", &pid]).status();
         let status = child.wait().expect("wait for child");
         self.last_status = status.code().unwrap_or(1);
+        self.e2e_write_evidence();
     }
 
     pub async fn e2e_wait_terminal_notification(&self, key: &str) {
@@ -487,6 +490,35 @@ impl World {
             }
         }
         None
+    }
+
+    fn e2e_write_evidence(&self) {
+        if self.e2e_scenario.is_empty() {
+            return;
+        }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let directory = root
+            .join("givn/changes/passuff-pr-watch/evidence/visual")
+            .join(&self.e2e_scenario);
+        if fs::create_dir_all(&directory).is_err() {
+            return;
+        }
+        let stdout = self.e2e_stdout.lock().expect("stdout log").join("\n");
+        let mut transcript = if stdout.trim().is_empty() {
+            self.last_transcript.clone()
+        } else {
+            let mut text = stdout;
+            if !text.ends_with('\n') {
+                text.push('\n');
+            }
+            text.push_str(&self.last_transcript);
+            text
+        };
+        if !transcript.ends_with('\n') {
+            transcript.push('\n');
+        }
+        transcript.push_str(&format!("exit status: {}\n", self.last_status));
+        let _ = fs::write(directory.join("transcript.txt"), transcript);
     }
 
     fn configure_child(&self, command: &mut Command) {

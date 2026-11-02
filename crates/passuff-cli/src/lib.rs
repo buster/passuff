@@ -107,7 +107,6 @@ impl CliRuntime {
         };
 
         let mut last_report = None;
-        let mut last_transcript = String::new();
         let mut first_success = false;
         let mut ctrl_c = Box::pin(tokio::signal::ctrl_c());
         loop {
@@ -124,7 +123,6 @@ impl CliRuntime {
                         println!("{}", self.renderer.render_watching());
                         let _ = std::io::stdout().flush();
                     }
-                    last_transcript = transcript;
                     last_report = Some(report);
                 }
                 Err(error) => {
@@ -142,7 +140,7 @@ impl CliRuntime {
             exit: ExitCode::SUCCESS,
             status: 0,
             report: last_report,
-            transcript: last_transcript,
+            transcript: String::new(),
         }
     }
 

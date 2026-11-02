@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "change": "passuff-pr-watch",
+  "status": "passed",
+  "head": "c174734f12c51b8bfff1967eadbfbe552bf6a7cc",
+  "features_path": "givn/changes/passuff-pr-watch/specs",
+  "features_digest": "d5762bab116cf5540e71133efb39c17a371094fee25cee0af7994696dd255661",
+  "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+  "command": "./scripts/verify.sh",
+  "tested_content_digest": "2a0454a313003ef7ade068716b46696c067025dc6237e47f7bc46f5a3e5345de",
+  "content_scope": "change-proof/v1",
+  "runner_exit": 0,
+  "result": {
+    "scope": null,
+    "total": 52,
+    "passed": 52,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finished_at_unix": 1793643896
+}
