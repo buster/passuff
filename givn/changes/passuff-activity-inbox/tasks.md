@@ -37,11 +37,11 @@ cargo exit status: 1
 
 - [x] Create `crates/passuff-core/src/inbox.rs` (`InboxService`, `Inbox`, `InboxView`, `ReadOutcome`), the state-v2 types, the watch config, and the CLI `InboxCli`; add the two step files and generalize the e2e evidence path to the active change.
 
-      COMMIT 1f9a3c8. Delta 24/24; permanent 80/80; unit 44 passed.
+      COMMIT 1f9a3c8. Delta 32/32; permanent 80/80; unit 45 passed.
 - [x] Seed fixtures: version-1 state, 500-record state, a watched PR for scope pruning, and a failing-save store. Implement `GIVN_SCENARIO` already exists; record the strict proof and the e2e count (3 < full).
 
-      Delta regular 24/24; permanent 80/80; delta e2e 3/3; permanent e2e 4/4.
-      Scenario-count proof: delta e2e 3 < full delta suite 24.
+      Delta regular 32/32; permanent 80/80; delta e2e 3/3; permanent e2e 4/4.
+      Scenario-count proof: delta e2e 3 < full delta suite 32.
 
 ---
 
@@ -201,6 +201,75 @@ cargo exit status: 1
   - [x] Implement and run. Must pass. `<!-- evidence -->`
   - [x] REFACTOR and re-run. `<!-- evidence -->`
   - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
+
+### Batch: `cli-read` (read hardening)
+
+- [x] Scenario: `Status uses human labels for closed and pending`
+  - [x] **Design constraints:** S3. Closed + pending labels, no enum names.
+        Files: `transcript.rs`, `watch_status.feature`, steps.
+  - [x] Implement and run. Must pass.
+        ```
+        ./scripts/verify.sh (delta) -> 32/32; permanent -> 80/80; scenario "Status uses human labels for closed and pending" green. COMMIT 8ffbe0b.
+        ```
+  - [x] REFACTOR and re-run.
+        ```
+        cargo fmt --all; delta 32/32, permanent 80/80. COMMIT 8ffbe0b.
+        ```
+  - [x] COMMIT: `8ffbe0b` -- Batch: `cli-read`
+
+- [x] Scenario: `A read command rejects invalid configuration`
+  - [x] **Design constraints:** S7/R1-R3. status/inbox/read config errors exit 2.
+        Files: `inbox_cli.rs`, support, feature, steps.
+  - [x] Implement and run. Must pass.
+        ```
+        ./scripts/verify.sh (delta) -> 32/32; permanent -> 80/80; scenario "A read command rejects invalid configuration" green. COMMIT 8ffbe0b.
+        ```
+  - [x] REFACTOR and re-run.
+        ```
+        cargo fmt --all; delta 32/32, permanent 80/80. COMMIT 8ffbe0b.
+        ```
+  - [x] COMMIT: `8ffbe0b` -- Batch: `cli-read`
+
+### Batch: `inbox-service` (read hardening)
+
+- [x] Scenario: `Inbox reports a state error`
+  - [x] **Design constraints:** R7/S7. v1 migration save failure exits 3.
+        Files: state, feature, steps.
+  - [x] Implement and run. Must pass.
+        ```
+        ./scripts/verify.sh (delta) -> 32/32; permanent -> 80/80; scenario "Inbox reports a state error" green. COMMIT 8ffbe0b.
+        ```
+  - [x] REFACTOR and re-run.
+        ```
+        cargo fmt --all; delta 32/32, permanent 80/80. COMMIT 8ffbe0b.
+        ```
+  - [x] COMMIT: `8ffbe0b` -- Batch: `inbox-service`
+
+- [x] Scenario: `Read reports a state error`
+  - [x] **Design constraints:** R7. Read save failure exits 3.
+        Files: support, feature, steps.
+  - [x] Implement and run. Must pass.
+        ```
+        ./scripts/verify.sh (delta) -> 32/32; permanent -> 80/80; scenario "Read reports a state error" green. COMMIT 8ffbe0b.
+        ```
+  - [x] REFACTOR and re-run.
+        ```
+        cargo fmt --all; delta 32/32, permanent 80/80. COMMIT 8ffbe0b.
+        ```
+  - [x] COMMIT: `8ffbe0b` -- Batch: `inbox-service`
+
+- [x] Scenario: `Read requires an activity id or all`
+  - [x] **Design constraints:** R3. Neither target exits 2 with a usage line.
+        Files: `inbox_cli.rs`, feature, steps.
+  - [x] Implement and run. Must pass.
+        ```
+        ./scripts/verify.sh (delta) -> 32/32; permanent -> 80/80; scenario "Read requires an activity id or all" green. COMMIT 8ffbe0b.
+        ```
+  - [x] REFACTOR and re-run.
+        ```
+        cargo fmt --all; delta 32/32, permanent 80/80. COMMIT 8ffbe0b.
+        ```
+  - [x] COMMIT: `8ffbe0b` -- Batch: `inbox-service`
 
 ## End-to-end proofs
 
