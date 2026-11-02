@@ -28,7 +28,10 @@ run_scope() {
   local scope="$1" output="$2"
   local scope_features="$features"
   if [[ "$scope" == "e2e" ]]; then
-    scope_features="${GIVN_COVERAGE_E2E_FEATURES:-$root/givn/specs}"
+    scope_features="${GIVN_COVERAGE_E2E_FEATURES:-$features}"
+    if ! grep -Rqs '@e2e' "$scope_features"; then
+      scope_features="$root/givn/specs"
+    fi
   fi
   cargo "+$toolchain" llvm-cov clean --profraw-only >/dev/null
   if [[ "$scope" == "regular" ]]; then
@@ -41,6 +44,13 @@ run_scope() {
   GIVN_RESULT_FILE="$root/target/coverage-$scope-result.json" \
     cargo "+$toolchain" llvm-cov --no-report --branch \
       -p passuff-cli --features test-support --test features_runner
+  if [[ "$scope" == "e2e" && "$scope_features" != "$root/givn/specs" ]]; then
+    GIVN_FEATURES="$root/givn/specs" \
+    GIVN_RESULT_SCOPE=e2e \
+    GIVN_RESULT_FILE="$root/target/coverage-e2e-permanent-result.json" \
+      cargo "+$toolchain" llvm-cov --no-report --branch \
+        -p passuff-cli --features test-support --test features_runner
+  fi
   local json="$root/target/coverage-$scope.json"
   cargo "+$toolchain" llvm-cov report --json --output-path "$json"
   python3 "$root/scripts/json_to_cobertura.py" "$json" "$output"
