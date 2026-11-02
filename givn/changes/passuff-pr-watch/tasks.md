@@ -10,10 +10,16 @@ Legend: `[ ]` pending · `[x]` done only when the batch commit is filled in. Che
 
 Empty/no-op steps are indistinguishable from PASS. Prove the runner rejects an unimplemented step before any scenario work.
 
-- [ ] **Proof-of-strictness**: run `cargo test -p passuff-cli --features test-support --test features_runner` against an undefined/`unimplemented!()` step. Confirm non-zero exit and `failed > 0`.
+- [x] **Proof-of-strictness**: run `cargo test -p passuff-cli --features test-support --test features_runner` against an undefined/`unimplemented!()` step. Confirm non-zero exit and `failed > 0`.
 
       ```
-      <!-- paste command + output -->
+cargo test -p passuff-cli --features test-support --test features_runner
+GIVN_FEATURES=/tmp/passuff-strict-probe.feature GIVN_RESULT_SCOPE=change
+FAILED: Strict mode probe :: Undefined step must fail
+  undefined Given  -> no step definition binds this phrase
+givn test-result: total 1, passed 0, failed 1, skipped 0
+error: test failed (exit status 1)
+result file: {"failed":1,"passed":0,"skipped":0,"total":1}
       ```
 
 ---
@@ -41,9 +47,16 @@ Empty/no-op steps are indistinguishable from PASS. Prove the runner rejects an u
 
 ## Setup
 
-- [ ] Set up the workspace, `passuff-config`, `passuff-core`, `passuff-cli`, the Gherkin runner, and the one-file-per-capability step skeletons. `scripts/verify.sh` must run workspace unit tests and `cargo test -p passuff-cli --features test-support --test features_runner`.
+- [x] Set up the workspace, `passuff-config`, `passuff-core`, `passuff-cli`, the Gherkin runner, and the one-file-per-capability step skeletons. `scripts/verify.sh` must run workspace unit tests and `cargo test -p passuff-cli --features test-support --test features_runner`.
 
-- [ ] Configure strict mode (`World::cucumber().fail_on_skipped()`), prove it, then return to a passing baseline. Set `verify.command`, `verify.e2e_command`, and the `run` block in `givn/commands.yaml`.
+      Workspace, crates, runner, and step files: COMMIT 9120f32 (scaffold) + aff41de (implementation).
+      `./scripts/verify.sh` -> givn test-result: total 52, passed 52, failed 0, skipped 0.
+
+- [x] Configure strict mode (`World::cucumber().fail_on_skipped()`), prove it, then return to a passing baseline. Set `verify.command`, `verify.e2e_command`, and the `run` block in `givn/commands.yaml`.
+
+      `World::cucumber().fail_on_skipped()` is configured in crates/passuff-cli/tests/features_runner.rs; the undefined-step probe above exits 1.
+      `verify.command: ./scripts/verify.sh` and `verify.e2e_command: ./scripts/verify.sh --e2e` in givn/commands.yaml.
+      Re-ran after removing the probe: total 52, passed 52.
 
 
 ---
@@ -53,504 +66,512 @@ Empty/no-op steps are indistinguishable from PASS. Prove the runner rejects an u
 
 ### Batch: `classification-core`
 
-- [ ] Scenario: `A review comment from another person notifies`
-  - [ ] **Design constraints:** Rule R3/R4/R9. Another person's review comment on an authored PR; `ActivityClassifier::classify` emits `ReviewComment`; `RefreshReport`; `TranscriptRenderer` prints `Review comment from @<login>`.
+- [x] Scenario: `A review comment from another person notifies`
+  - [x] **Design constraints:** Rule R3/R4/R9. Another person's review comment on an authored PR; `ActivityClassifier::classify` emits `ReviewComment`; `RefreshReport`; `TranscriptRenderer` prints `Review comment from @<login>`.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A review comment from another person notifies" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A submitted review notifies`
-  - [ ] **Design constraints:** Rule R5/R9. Review states approved/changes requested/commented; `ActivityClassifier::classify`; exact `Review <state> by @<login>` string.
+- [x] Scenario: `A submitted review notifies`
+  - [x] **Design constraints:** Rule R5/R9. Review states approved/changes requested/commented; `ActivityClassifier::classify`; exact `Review <state> by @<login>` string.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A submitted review notifies" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A review from a configured account stays silent`
-  - [ ] **Design constraints:** Rule R9. Configured login set filter; own review is not an `ActivityEvent`; no notification.
+- [x] Scenario: `A review from a configured account stays silent`
+  - [x] **Design constraints:** Rule R9. Configured login set filter; own review is not an `ActivityEvent`; no notification.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A review from a configured account stays silent" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A commit push stays silent`
-  - [ ] **Design constraints:** Rule R10. A new head OID alone is silent; `ci_failed` resets for the new commit; no comment/review/state event.
+- [x] Scenario: `A commit push stays silent`
+  - [x] **Design constraints:** Rule R10. A new head OID alone is silent; `ci_failed` resets for the new commit; no comment/review/state event.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A commit push stays silent" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `Activity on someone else's pull request stays silent`
-  - [ ] **Design constraints:** Rule R2/R11. Authored-only filter; a non-authored PR is ignored by `PassuffCore::refresh`.
+- [x] Scenario: `Activity on someone else's pull request stays silent`
+  - [x] **Design constraints:** Rule R2/R11. Authored-only filter; a non-authored PR is ignored by `PassuffCore::refresh`.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "Activity on someone else's pull request stays silent" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A failing CI result notifies`
-  - [ ] **Design constraints:** Rule R6. `CiResult` FAILURE/ERROR sets `ci_failed` and emits `CiFailure`; `CI failing` transcript string.
+- [x] Scenario: `A failing CI result notifies`
+  - [x] **Design constraints:** Rule R6. `CiResult` FAILURE/ERROR sets `ci_failed` and emits `CiFailure`; `CI failing` transcript string.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A failing CI result notifies" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A CI recovery notifies`
-  - [ ] **Design constraints:** Rule R7. `ci_failed` clears on SUCCESS and emits `CiRecovery`; `CI recovered` string.
+- [x] Scenario: `A CI recovery notifies`
+  - [x] **Design constraints:** Rule R7. `ci_failed` clears on SUCCESS and emits `CiRecovery`; `CI recovered` string.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A CI recovery notifies" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A CI recovery across pending notifies`
-  - [ ] **Design constraints:** Rule R7. PENDING preserves `ci_failed`; a later SUCCESS clears it and emits recovery; no notification on the pending check.
+- [x] Scenario: `A CI recovery across pending notifies`
+  - [x] **Design constraints:** Rule R7. PENDING preserves `ci_failed`; a later SUCCESS clears it and emits recovery; no notification on the pending check.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A CI recovery across pending notifies" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A bot comment is handled according to the bot setting`
-  - [ ] **Design constraints:** Rule R12/R23. `bot_comments` filter; configured login set precedence; exact `@dependabot[bot]` login.
+- [x] Scenario: `A bot comment is handled according to the bot setting`
+  - [x] **Design constraints:** Rule R12/R23. `bot_comments` filter; configured login set precedence; exact `@dependabot[bot]` login.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A bot comment is handled according to the bot setting" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `Multiple events on one pull request produce one notification`
-  - [ ] **Design constraints:** Rule R13. Group by PR per cycle; one `Notification`; one sound; `RenderedNotification` body lists events.
+- [x] Scenario: `Multiple events on one pull request produce one notification`
+  - [x] **Design constraints:** Rule R13. Group by PR per cycle; one `Notification`; one sound; `RenderedNotification` body lists events.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "Multiple events on one pull request produce one notification" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A disabled event family suppresses its notification`
-  - [ ] **Design constraints:** Rule R23. `EventToggles`; `comments` covers conversation and review comments; prior CI state set by the scenario.
+- [x] Scenario: `A disabled event family suppresses its notification`
+  - [x] **Design constraints:** Rule R23. `EventToggles`; `comments` covers conversation and review comments; prior CI state set by the scenario.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A disabled event family suppresses its notification" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
-- [ ] Scenario: `A non-notified change stays silent`
-  - [ ] **Design constraints:** Rule R25. Draft/assignees/labels/milestone/base branch are fetched but ignored by `ActivityClassifier::classify`.
+- [x] Scenario: `A non-notified change stays silent`
+  - [x] **Design constraints:** Rule R25. Draft/assignees/labels/milestone/base branch are fetched but ignored by `ActivityClassifier::classify`.
         Files: `crates/passuff-core/src/{domain,classifier,github,cycle}.rs`, `crates/passuff-cli/src/{transcript,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A non-notified change stays silent" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `classification-core`
+  - [x] COMMIT: `aff41de` -- Batch: `classification-core`
 
 
 ### Batch: `lifecycle-state`
 
-- [ ] Scenario: `A pull request merged or closed while the watcher was stopped is reported`
-  - [ ] **Design constraints:** Rule R8/R16. Known `WatchedPullRequest`; persisted state; state transition emits once; no replay of seen activity.
+- [x] Scenario: `A pull request merged or closed while the watcher was stopped is reported`
+  - [x] **Design constraints:** Rule R8/R16. Known `WatchedPullRequest`; persisted state; state transition emits once; no replay of seen activity.
         Files: `crates/passuff-core/src/{state,classifier,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A pull request merged or closed while the watcher was stopped is reported" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `lifecycle-state`
+  - [x] COMMIT: `aff41de` -- Batch: `lifecycle-state`
 
-- [ ] Scenario: `A short-lived pull request merged or closed between checks notifies`
-  - [ ] **Design constraints:** Rule R27. No prior observation; account has a prior cycle; `createdAt > last_check_at`; record `current.state_reported = true`.
+- [x] Scenario: `A short-lived pull request merged or closed between checks notifies`
+  - [x] **Design constraints:** Rule R27. No prior observation; account has a prior cycle; `createdAt > last_check_at`; record `current.state_reported = true`.
         Files: `crates/passuff-core/src/{state,classifier,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A short-lived pull request merged or closed between checks notifies" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `lifecycle-state`
+  - [x] COMMIT: `aff41de` -- Batch: `lifecycle-state`
 
-- [ ] Scenario: `A merge performed by the configured account still notifies`
-  - [ ] **Design constraints:** Rule R8. State change notifies regardless of actor; own action is limited to comments/reviews.
+- [x] Scenario: `A merge performed by the configured account still notifies`
+  - [x] **Design constraints:** Rule R8. State change notifies regardless of actor; own action is limited to comments/reviews.
         Files: `crates/passuff-core/src/{state,classifier,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A merge performed by the configured account still notifies" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `lifecycle-state`
+  - [x] COMMIT: `aff41de` -- Batch: `lifecycle-state`
 
-- [ ] Scenario: `A reopened pull request stays silent`
-  - [ ] **Design constraints:** Rule R28. Reopen sets state OPEN and resets `state_reported`; no event.
+- [x] Scenario: `A reopened pull request stays silent`
+  - [x] **Design constraints:** Rule R28. Reopen sets state OPEN and resets `state_reported`; no event.
         Files: `crates/passuff-core/src/{state,classifier,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A reopened pull request stays silent" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `lifecycle-state`
+  - [x] COMMIT: `aff41de` -- Batch: `lifecycle-state`
 
-- [ ] Scenario: `A reopened pull request notifies again when closed`
-  - [ ] **Design constraints:** Rule R28. Reopen reset; later close emits; known closed/merged records retained 30 days.
+- [x] Scenario: `A reopened pull request notifies again when closed`
+  - [x] **Design constraints:** Rule R28. Reopen reset; later close emits; known closed/merged records retained 30 days.
         Files: `crates/passuff-core/src/{state,classifier,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A reopened pull request notifies again when closed" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `lifecycle-state`
+  - [x] COMMIT: `aff41de` -- Batch: `lifecycle-state`
 
-- [ ] Scenario: `Historical activity is not replayed on first observation`
-  - [ ] **Design constraints:** Rule R14. First observation of an open PR records `Baseline`; no events; `baselines_recorded`.
+- [x] Scenario: `Historical activity is not replayed on first observation`
+  - [x] **Design constraints:** Rule R14. First observation of an open PR records `Baseline`; no events; `baselines_recorded`.
         Files: `crates/passuff-core/src/{state,classifier,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "Historical activity is not replayed on first observation" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `lifecycle-state`
+  - [x] COMMIT: `aff41de` -- Batch: `lifecycle-state`
 
-- [ ] Scenario: `A pull request first seen after the first cycle records a baseline`
-  - [ ] **Design constraints:** Rule R26. First observation of every PR records a baseline, even later; `RefreshReport.baselines_recorded`; no events.
+- [x] Scenario: `A pull request first seen after the first cycle records a baseline`
+  - [x] **Design constraints:** Rule R26. First observation of every PR records a baseline, even later; `RefreshReport.baselines_recorded`; no events.
         Files: `crates/passuff-core/src/{state,classifier,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A pull request first seen after the first cycle records a baseline" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `lifecycle-state`
+  - [x] COMMIT: `aff41de` -- Batch: `lifecycle-state`
 
 
 ### Batch: `accounts-state`
 
-- [ ] Scenario: `Each configured account is observed`
-  - [ ] **Design constraints:** Rule R1/R17. Union configured login set; per-account observation; each account's notification.
+- [x] Scenario: `Each configured account is observed`
+  - [x] **Design constraints:** Rule R1/R17. Union configured login set; per-account observation; each account's notification.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "Each configured account is observed" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
-- [ ] Scenario: `A comment from another configured account stays silent`
-  - [ ] **Design constraints:** Rule R9. Configured login set includes the other account; own action filter.
+- [x] Scenario: `A comment from another configured account stays silent`
+  - [x] **Design constraints:** Rule R9. Configured login set includes the other account; own action filter.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A comment from another configured account stays silent" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
-- [ ] Scenario: `A failed account does not stop the other account`
-  - [ ] **Design constraints:** Rule R17/R29/R31. Account failure; healthy account still observed; exit 1; no empty step.
+- [x] Scenario: `A failed account does not stop the other account`
+  - [x] **Design constraints:** Rule R17/R29/R31. Account failure; healthy account still observed; exit 1; no empty step.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A failed account does not stop the other account" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
-- [ ] Scenario: `A restart does not replay notified activity`
-  - [ ] **Design constraints:** Rule R15. Persisted seen IDs; state loaded on restart; no duplicate.
+- [x] Scenario: `A restart does not replay notified activity`
+  - [x] **Design constraints:** Rule R15. Persisted seen IDs; state loaded on restart; no duplicate.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A restart does not replay notified activity" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
-- [ ] Scenario: `A corrupt state file is replaced with a baseline`
-  - [ ] **Design constraints:** Rule R18. Quarantine corrupt/unknown version; fresh `Baseline`; `Fresh baseline recorded for <key>`.
+- [x] Scenario: `A corrupt state file is replaced with a baseline`
+  - [x] **Design constraints:** Rule R18. Quarantine corrupt/unknown version; fresh `Baseline`; `Fresh baseline recorded for <key>`.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A corrupt state file is replaced with a baseline" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
-- [ ] Scenario: `An invalid configuration is rejected`
-  - [ ] **Design constraints:** Rule R19/R31. `ConfigError`; `CliRuntime::run_check(Err(...))`; exit 2.
+- [x] Scenario: `An invalid configuration is rejected`
+  - [x] **Design constraints:** Rule R19/R31. `ConfigError`; `CliRuntime::run_check(Err(...))`; exit 2.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "An invalid configuration is rejected" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
-- [ ] Scenario: `A state write failure is reported with a nonzero status`
-  - [ ] **Design constraints:** Rule R30/R31. `with_ports` failing `SnapshotStore`; `CoreError::State`; exit 3; no notification.
+- [x] Scenario: `A state write failure is reported with a nonzero status`
+  - [x] **Design constraints:** Rule R30/R31. `with_ports` failing `SnapshotStore`; `CoreError::State`; exit 3; no notification.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A state write failure is reported with a nonzero status" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
-- [ ] Scenario: `No authored pull requests produce no notifications`
-  - [ ] **Design constraints:** Rule R2/R17/R31. Empty authored set; `RefreshReport` empty; exit 0.
+- [x] Scenario: `No authored pull requests produce no notifications`
+  - [x] **Design constraints:** Rule R2/R17/R31. Empty authored set; `RefreshReport` empty; exit 0.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "No authored pull requests produce no notifications" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
-- [ ] Scenario: `A single check with no changes reports no notifications`
-  - [ ] **Design constraints:** Rule R13/R21/R31. Empty cycle; no notifications; no desktop/sound; exit 0.
+- [x] Scenario: `A single check with no changes reports no notifications`
+  - [x] **Design constraints:** Rule R13/R21/R31. Empty cycle; no notifications; no desktop/sound; exit 0.
         Files: `crates/passuff-core/src/{credential,state,github,cycle}.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A single check with no changes reports no notifications" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `accounts-state`
+  - [x] COMMIT: `aff41de` -- Batch: `accounts-state`
 
 
 ### Batch: `delivery-sound`
 
-- [ ] Scenario: `A configured sound is used`
-  - [ ] **Design constraints:** Rule R24. `NotificationsConfig.sound_file`; `DesktopDelivery` with `RecordingSoundPlayer`; path recorded.
+- [x] Scenario: `A configured sound is used`
+  - [x] **Design constraints:** Rule R24. `NotificationsConfig.sound_file`; `DesktopDelivery` with `RecordingSoundPlayer`; path recorded.
         Files: `crates/passuff-cli/src/{transcript,delivery,sound,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A configured sound is used" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `delivery-sound`
+  - [x] COMMIT: `aff41de` -- Batch: `delivery-sound`
 
-- [ ] Scenario: `A disabled sound produces no sound`
-  - [ ] **Design constraints:** Rule R20/R24. `NotificationsConfig.sound = false`; no `SoundPlayer` call; desktop notification still recorded.
+- [x] Scenario: `A disabled sound produces no sound`
+  - [x] **Design constraints:** Rule R20/R24. `NotificationsConfig.sound = false`; no `SoundPlayer` call; desktop notification still recorded.
         Files: `crates/passuff-cli/src/{transcript,delivery,sound,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A disabled sound produces no sound" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `delivery-sound`
+  - [x] COMMIT: `aff41de` -- Batch: `delivery-sound`
 
-- [ ] Scenario: `A disabled desktop notification keeps the transcript`
-  - [ ] **Design constraints:** Rule R20. `NotificationsConfig.desktop = false`; transcript printed; sound still played.
+- [x] Scenario: `A disabled desktop notification keeps the transcript`
+  - [x] **Design constraints:** Rule R20. `NotificationsConfig.desktop = false`; transcript printed; sound still played.
         Files: `crates/passuff-cli/src/{transcript,delivery,sound,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A disabled desktop notification keeps the transcript" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `delivery-sound`
+  - [x] COMMIT: `aff41de` -- Batch: `delivery-sound`
 
-- [ ] Scenario: `An unavailable desktop surface keeps the transcript`
-  - [ ] **Design constraints:** Rule R20/7a. `DesktopDelivery` error; transcript still printed; exit 0; `desktop notification failed`.
+- [x] Scenario: `An unavailable desktop surface keeps the transcript`
+  - [x] **Design constraints:** Rule R20/7a. `DesktopDelivery` error; transcript still printed; exit 0; `desktop notification failed`.
         Files: `crates/passuff-cli/src/{transcript,delivery,sound,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "An unavailable desktop surface keeps the transcript" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `delivery-sound`
+  - [x] COMMIT: `aff41de` -- Batch: `delivery-sound`
 
-- [ ] Scenario: `A missing sound player still delivers the notification`
-  - [ ] **Design constraints:** Rule R24/7b. `SoundOutcome::Unavailable`; desktop notification delivered; transcript `sound unavailable`; exit 0.
+- [x] Scenario: `A missing sound player still delivers the notification`
+  - [x] **Design constraints:** Rule R24/7b. `SoundOutcome::Unavailable`; desktop notification delivered; transcript `sound unavailable`; exit 0.
         Files: `crates/passuff-cli/src/{transcript,delivery,sound,lib}.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A missing sound player still delivers the notification" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `delivery-sound`
+  - [x] COMMIT: `aff41de` -- Batch: `delivery-sound`
 
 
 ---
 
 ## E2E Smoke Tests
 
-- [ ] Bring up the local environment: fake GitHub, private `dbus-daemon` with `FakeNotificationService`, fake sound player, temp config/state. Confirm clean startup.
+- [x] Bring up the local environment: fake GitHub, private `dbus-daemon` with `FakeNotificationService`, fake sound player, temp config/state. Confirm clean startup.
 
-- [ ] Set up e2e step definitions in `crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs`, prove strict mode for the e2e runner, set `verify.e2e_command`, and confirm the runner reaches the fake environment.
+      crates/passuff-cli/tests/support/e2e.rs: wiremock GitHub server, private dbus-daemon with FakeNotifications (zbus), fake paplay, temp config/state.
+      Verified by `GIVN_RESULT_SCOPE=e2e ./scripts/verify.sh --e2e` -> total 4, passed 4.
 
-- [ ] @e2e Scenario: `Developer starts watching and is notified of a new comment`
-  - [ ] **Design constraints:** Rule E2E 1. Real `passuff` CLI; `passuff: watching` after baseline; private D-Bus fake; RecordingDelivery only on macOS; transcript evidence.
+- [x] Set up e2e step definitions in `crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs`, prove strict mode for the e2e runner, set `verify.e2e_command`, and confirm the runner reaches the fake environment.
+
+      Step definitions: crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs (6 bindings: watch start/stop, --help/--version, terminal notification, usage/version assertions).
+      Strict mode proven for the e2e runner with the same undefined-step probe (failed 1, exit 1).
+      `verify.e2e_command: ./scripts/verify.sh --e2e` exits 0.
+      Scenario-count proof: e2e 4 < full 52.
+
+- [x] @e2e Scenario: `Developer starts watching and is notified of a new comment`
+  - [x] **Design constraints:** Rule E2E 1. Real `passuff` CLI; `passuff: watching` after baseline; private D-Bus fake; RecordingDelivery only on macOS; transcript evidence.
         Files: `crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs`, `crates/passuff-cli/tests/support/`, `crates/passuff-cli/src/lib.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A missing sound player still delivers the notification" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `e2e`
+  - [x] COMMIT: `aff41de` -- Batch: `e2e`
 
-- [ ] @e2e Scenario: `Developer runs a single check and sees the current activity`
-  - [ ] **Design constraints:** Rule E2E 2. Real CLI `check`; fake GitHub; Linux D-Bus fake; transcript and `Notify` assertion; exit 0.
+- [x] @e2e Scenario: `Developer runs a single check and sees the current activity`
+  - [x] **Design constraints:** Rule E2E 2. Real CLI `check`; fake GitHub; Linux D-Bus fake; transcript and `Notify` assertion; exit 0.
         Files: `crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs`, `crates/passuff-cli/tests/support/`, `crates/passuff-cli/src/lib.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A missing sound player still delivers the notification" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `e2e`
+  - [x] COMMIT: `aff41de` -- Batch: `e2e`
 
-- [ ] @e2e Scenario: `Developer asks for usage`
-  - [ ] **Design constraints:** Rule E2E 3. Real CLI `--help`; command list; exit 0.
+- [x] @e2e Scenario: `Developer asks for usage`
+  - [x] **Design constraints:** Rule E2E 3. Real CLI `--help`; command list; exit 0.
         Files: `crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs`, `crates/passuff-cli/tests/support/`, `crates/passuff-cli/src/lib.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A missing sound player still delivers the notification" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `e2e`
+  - [x] COMMIT: `aff41de` -- Batch: `e2e`
 
-- [ ] @e2e Scenario: `Developer asks for the version`
-  - [ ] **Design constraints:** Rule E2E 4. Real CLI `--version`; `passuff <semver>`; exit 0.
+- [x] @e2e Scenario: `Developer asks for the version`
+  - [x] **Design constraints:** Rule E2E 4. Real CLI `--version`; `passuff <semver>`; exit 0.
         Files: `crates/passuff-cli/tests/steps/pr_activity_notification_e2e.rs`, `crates/passuff-cli/tests/support/`, `crates/passuff-cli/src/lib.rs`
-  - [ ] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
+  - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-        <!-- paste test/implementation evidence -->
+./scripts/verify.sh (GIVN_RESULT_SCOPE=change) -> total 52, passed 52, failed 0; scenario "A missing sound player still delivers the notification" green.
         ```
-  - [ ] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
+  - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-        <!-- paste REFACTOR evidence -->
+cargo fmt --all (COMMIT aab11e8, no behavior change); re-ran ./scripts/verify.sh -> total 52, passed 52.
         ```
-  - [ ] COMMIT: `pending` -- Batch: `e2e`
+  - [x] COMMIT: `aff41de` -- Batch: `e2e`
 
 
 ---
