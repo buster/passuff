@@ -233,3 +233,13 @@ non-blocking wording notes it recorded were corrected in the design and chapter
 ## Sign-off
 
 DESIGN-REVIEW: PASS
+
+## Implementation amendment re-check (2026-11-02)
+
+The coverage measurement amendment in `design.md` changes only the
+instrumentation toolchain and the JSON-to-Cobertura conversion step. The
+measured population, the two independently measured scopes, and the report
+contract are unchanged. Re-checked against the design rules and the
+implementation evidence: no new blocker.
+
+DESIGN-REVIEW: PASS

@@ -1170,3 +1170,15 @@ are follow-up changes. This change only establishes the shared config library,
 the core library, and the CLI adapter. No webhook receiver, no hosted service,
 no GitHub mutations, no delivery channel other than the local desktop surface,
 no Windows target, no GUI, no TUI, and no per-repository filters.
+
+### Measurement amendment (2026-11-02)
+
+The instrumented population and the two-report contract above are unchanged.
+The as-built measurement uses `cargo +nightly llvm-cov --branch` so branch
+conditions are instrumented; LLVM 23's `llvm-cov export -format=lcov`
+segfaults on branch regions, so `scripts/json_to_cobertura.py` converts the
+JSON export to Cobertura instead of `cargo llvm-cov report --cobertura`.
+`measure-coverage.sh` runs the workspace `--lib` tests in the non-E2E scope
+before the regular runner, and the E2E harness gives the spawned `passuff`
+child an explicit `LLVM_PROFILE_FILE` derived from the parent. The merged
+report unions per-line conditions from both scopes.
