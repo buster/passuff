@@ -8,10 +8,14 @@ Legend: an unchecked box means pending; a checked box is done only when the batc
 
 ## Strict-mode proof (do first)
 
-- [ ] **Proof-of-strictness**: run the new delta against an undefined/`unimplemented!()` step. Confirm a non-zero exit and `failed > 0`.
+- [x] **Proof-of-strictness**: run the new delta against an undefined/`unimplemented!()` step. Confirm a non-zero exit and `failed > 0`.
 
       ```
-      <!-- paste command + output -->
+./scripts/verify.sh with GIVN_FEATURES=/tmp/inbox-strict.feature
+FAILED: Strict probe :: Undefined inbox step fails
+  undefined Given  -> no inbox step binds this phrase
+givn test-result: total 1, passed 0, failed 1, skipped 0
+cargo exit status: 1
       ```
 
 ---
@@ -31,8 +35,13 @@ Legend: an unchecked box means pending; a checked box is done only when the batc
 
 ## Setup
 
-- [ ] Create `crates/passuff-core/src/inbox.rs` (`InboxService`, `Inbox`, `InboxView`, `ReadOutcome`), the state-v2 types, the watch config, and the CLI `InboxCli`; add the two step files and generalize the e2e evidence path to the active change.
-- [ ] Seed fixtures: version-1 state, 500-record state, a watched PR for scope pruning, and a failing-save store. Implement `GIVN_SCENARIO` already exists; record the strict proof and the e2e count (3 < full).
+- [x] Create `crates/passuff-core/src/inbox.rs` (`InboxService`, `Inbox`, `InboxView`, `ReadOutcome`), the state-v2 types, the watch config, and the CLI `InboxCli`; add the two step files and generalize the e2e evidence path to the active change.
+
+      COMMIT 1f9a3c8. Delta 24/24; permanent 80/80; unit 44 passed.
+- [x] Seed fixtures: version-1 state, 500-record state, a watched PR for scope pruning, and a failing-save store. Implement `GIVN_SCENARIO` already exists; record the strict proof and the e2e count (3 < full).
+
+      Delta regular 24/24; permanent 80/80; delta e2e 3/3; permanent e2e 4/4.
+      Scenario-count proof: delta e2e 3 < full delta suite 24.
 
 ---
 
@@ -40,178 +49,178 @@ Legend: an unchecked box means pending; a checked box is done only when the batc
 
 ### Batch: `state-history`
 
-- [ ] Scenario: `A version-1 state loads with empty history`
-  - [ ] **Design constraints:** R7. v1 loads, watched PR preserved, version 2 written atomically; unknown version still quarantines; id counter recomputed.
+- [x] Scenario: `A version-1 state loads with empty history`
+  - [x] **Design constraints:** R7. v1 loads, watched PR preserved, version 2 written atomically; unknown version still quarantines; id counter recomputed.
         Files: `crates/passuff-core/src/{domain,state}.rs`, steps, support.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `state-history`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `state-history`
 
-- [ ] Scenario: `Activity history keeps the 500 most recent records`
-  - [ ] **Design constraints:** R5. Append after notification, drop oldest beyond 500, ids increase.
+- [x] Scenario: `Activity history keeps the 500 most recent records`
+  - [x] **Design constraints:** R5. Append after notification, drop oldest beyond 500, ids increase.
         Files: `crates/passuff-core/src/{cycle,state,domain}.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `state-history`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `state-history`
 
-- [ ] Scenario: `Recording activity survives a delivery failure`
-  - [ ] **Design constraints:** R5/R6. History is saved before delivery; a failing notification surface leaves the record and read/status queries work.
+- [x] Scenario: `Recording activity survives a delivery failure`
+  - [x] **Design constraints:** R5/R6. History is saved before delivery; a failing notification surface leaves the record and read/status queries work.
         Files: `crates/passuff-core/src/cycle.rs`, steps/support.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `state-history`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `state-history`
 
 ### Batch: `watch-scope`
 
-- [ ] Scenario: `A repository outside the watch scope is not watched`
-  - [ ] **Design constraints:** R39. Global allowlist validated; filter before classification; pruned from state; seeded watched PR + new comment proves no notification and status absence.
+- [x] Scenario: `A repository outside the watch scope is not watched`
+  - [x] **Design constraints:** R39. Global allowlist validated; filter before classification; pruned from state; seeded watched PR + new comment proves no notification and status absence.
         Files: `crates/passuff-config/src/lib.rs`, `crates/passuff-core/src/cycle.rs`, steps/support.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `watch-scope`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `watch-scope`
 
 ### Batch: `inbox-service`
 
-- [ ] Scenario: `Inbox lists unread activity newest first`
-  - [ ] **Design constraints:** R1/R3. Newest-first, id/time/key/unread/summary, no enum names or body.
+- [x] Scenario: `Inbox lists unread activity newest first`
+  - [x] **Design constraints:** R1/R3. Newest-first, id/time/key/unread/summary, no enum names or body.
         Files: `crates/passuff-core/src/inbox.rs`, renderer, steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `Inbox with all includes read activity`
-  - [ ] **Design constraints:** R2. `--all` includes read; read tag shown.
+- [x] Scenario: `Inbox with all includes read activity`
+  - [x] **Design constraints:** R2. `--all` includes read; read tag shown.
         Files: `inbox.rs`, `transcript.rs`, steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `Read marks one activity read`
-  - [ ] **Design constraints:** R3. Newest id marked; 1 record read; 0 unread of 1.
+- [x] Scenario: `Read marks one activity read`
+  - [x] **Design constraints:** R3. Newest id marked; 1 record read; 0 unread of 1.
         Files: `inbox.rs`, `InboxCli`, steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `Read marks only the named activity`
-  - [ ] **Design constraints:** R3. Two events, newest read, 1 unread of 2; inbox shows one read and one unread.
+- [x] Scenario: `Read marks only the named activity`
+  - [x] **Design constraints:** R3. Two events, newest read, 1 unread of 2; inbox shows one read and one unread.
         Files: `inbox.rs`, steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `Read all marks every activity read`
-  - [ ] **Design constraints:** R4. Two records, all read, 0 unread of 2.
+- [x] Scenario: `Read all marks every activity read`
+  - [x] **Design constraints:** R4. Two records, all read, 0 unread of 2.
         Files: `inbox.rs`, steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `Read refuses an unknown activity id`
-  - [ ] **Design constraints:** R3. `no activity with id a999`, exit 2, no write.
+- [x] Scenario: `Read refuses an unknown activity id`
+  - [x] **Design constraints:** R3. `no activity with id a999`, exit 2, no write.
         Files: `inbox.rs`, `InboxCli`, steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `Read state survives a restart`
-  - [ ] **Design constraints:** R6. Read flag persisted; new in-process runtime reads it.
+- [x] Scenario: `Read state survives a restart`
+  - [x] **Design constraints:** R6. Read flag persisted; new in-process runtime reads it.
         Files: `inbox.rs`, state, steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `A state write failure is reported`
-  - [ ] **Design constraints:** R7/S7. v1 migration save failure -> `state error`, exit 3, no partial view.
+- [x] Scenario: `A state write failure is reported`
+  - [x] **Design constraints:** R7/S7. v1 migration save failure -> `state error`, exit 3, no partial view.
         Files: `state.rs`, support (seeded failing store), steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `Inbox with no state shows no activity`
-  - [ ] **Design constraints:** R8. Empty inbox, exit 0, no state file created.
+- [x] Scenario: `Inbox with no state shows no activity`
+  - [x] **Design constraints:** R8. Empty inbox, exit 0, no state file created.
         Files: `inbox.rs`, steps/support.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
 ### Batch: `cli-read`
 
-- [ ] Scenario: `Status lists configured accounts before the first check`
-  - [ ] **Design constraints:** S1/S6. Config accounts merged with empty state: `not resolved`, `last check never`.
+- [x] Scenario: `Status lists configured accounts before the first check`
+  - [x] **Design constraints:** S1/S6. Config accounts merged with empty state: `not resolved`, `last check never`.
         Files: `inbox.rs`, `InboxCli`, `transcript.rs`, steps.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
-- [ ] Scenario: `Status shows the login and last check after a check`
-  - [ ] **Design constraints:** S1. State login/last check rendered.
+- [x] Scenario: `Status shows the login and last check after a check`
+  - [x] **Design constraints:** S1. State login/last check rendered.
         Files: `inbox.rs`, `transcript.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
-- [ ] Scenario: `Status shows the watch scope when all repositories are watched`
-  - [ ] **Design constraints:** S2. `all authored pull requests`.
+- [x] Scenario: `Status shows the watch scope when all repositories are watched`
+  - [x] **Design constraints:** S2. `all authored pull requests`.
         Files: `inbox.rs`, `transcript.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
-- [ ] Scenario: `Status shows the watch scope when a repository allowlist is configured`
-  - [ ] **Design constraints:** S2. Joined allowlist.
+- [x] Scenario: `Status shows the watch scope when a repository allowlist is configured`
+  - [x] **Design constraints:** S2. Joined allowlist.
         Files: config, `transcript.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
-- [ ] Scenario: `Status lists watched pull requests with their state and CI`
-  - [ ] **Design constraints:** S3. Human `merged`/`CI failing`, title, no enum names.
+- [x] Scenario: `Status lists watched pull requests with their state and CI`
+  - [x] **Design constraints:** S3. Human `merged`/`CI failing`, title, no enum names.
         Files: `inbox.rs`, `transcript.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
-- [ ] Scenario: `Status lists multiple accounts`
-  - [ ] **Design constraints:** S1. Two accounts and logins.
+- [x] Scenario: `Status lists multiple accounts`
+  - [x] **Design constraints:** S1. Two accounts and logins.
         Files: `inbox.rs`, `transcript.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
-- [ ] Scenario: `Status reports unread and total activity`
-  - [ ] **Design constraints:** S4. `1 unread of 1`.
+- [x] Scenario: `Status reports unread and total activity`
+  - [x] **Design constraints:** S4. `1 unread of 1`.
         Files: `inbox.rs`, `transcript.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
-- [ ] Scenario: `Status with no state shows empty sections`
-  - [ ] **Design constraints:** S6. Empty sections, exit 0.
+- [x] Scenario: `Status with no state shows empty sections`
+  - [x] **Design constraints:** S6. Empty sections, exit 0.
         Files: `inbox.rs`, `transcript.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] REFACTOR and re-run. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] REFACTOR and re-run. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
 ## End-to-end proofs
 
-- [ ] Scenario: `Developer sees the watch state` (status)
-  - [ ] **Design constraints:** S1-S4; real `passuff status` after a real check; transcript evidence.
+- [x] Scenario: `Developer sees the watch state` (status)
+  - [x] **Design constraints:** S1-S4; real `passuff status` after a real check; transcript evidence.
         Files: `tests/steps/watch_status.rs`, `tests/support/e2e.rs`.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `cli-read`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `cli-read`
 
-- [ ] Scenario: `Developer lists unread activity`
-  - [ ] **Design constraints:** R1; real `passuff inbox` after a check; transcript evidence.
+- [x] Scenario: `Developer lists unread activity`
+  - [x] **Design constraints:** R1; real `passuff inbox` after a check; transcript evidence.
         Files: `tests/steps/activity_inbox.rs`, e2e support.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
-- [ ] Scenario: `Developer marks activity read`
-  - [ ] **Design constraints:** R3/R4; real `passuff read --all` then `inbox`; transcript evidence.
+- [x] Scenario: `Developer marks activity read`
+  - [x] **Design constraints:** R3/R4; real `passuff read --all` then `inbox`; transcript evidence.
         Files: steps, e2e support.
-  - [ ] Implement and run. Must pass. `<!-- evidence -->`
-  - [ ] COMMIT: `pending` -- Batch: `inbox-service`
+  - [x] Implement and run. Must pass. `<!-- evidence -->`
+  - [x] COMMIT: `1f9a3c8` -- Batch: `inbox-service`
 
 ---
 
