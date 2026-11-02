@@ -63,6 +63,30 @@ Feature: Watch status
     Then the transcript reports "1 unread of 1"
 
   @givn.added
+  Scenario: Status uses human labels for closed and pending
+    Given a configured account "personal" with login "octo-personal"
+    And an authored pull request "acme/api#42" by "octo-personal"
+    And the pull request "acme/api#42" is "closed"
+    And the CI result on "acme/api#42" is "pending"
+    When passuff runs one check
+    And the developer asks for status
+    Then the transcript reports "acme/api#42 closed CI pending"
+
+  @givn.added
+  Scenario Outline: A read command rejects invalid configuration
+    Given a configured account "work" with no credential source
+    When the developer <command>
+    Then the transcript reports "configuration error"
+    And the exit status is 2
+
+    Examples:
+      | command                  |
+      | asks for status          |
+      | lists the inbox          |
+      | lists all activity       |
+      | marks all activity read  |
+
+  @givn.added
   Scenario: Status with no state shows empty sections
     Given a configured account "personal" with login "octo-personal"
     And no state file

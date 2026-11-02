@@ -713,7 +713,10 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
     pub async fn run_status(&mut self) {
         let inbox = Inbox::new(self.state_store());
         let cli = InboxCli::new(Arc::new(inbox));
-        let config = Ok(self.build_config());
+        let config = match self.config_text.clone() {
+            Some(text) => ConfigLoader::parse(&text),
+            None => Ok(self.build_config()),
+        };
         let outcome = self.with_state_write_guard(cli.status(config)).await;
         self.last_report = outcome.report;
         self.last_transcript = outcome.transcript;
@@ -723,7 +726,10 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
     pub async fn run_inbox(&mut self, all: bool) {
         let inbox = Inbox::new(self.state_store());
         let cli = InboxCli::new(Arc::new(inbox));
-        let config = Ok(self.build_config());
+        let config = match self.config_text.clone() {
+            Some(text) => ConfigLoader::parse(&text),
+            None => Ok(self.build_config()),
+        };
         let outcome = self.with_state_write_guard(cli.inbox(config, all)).await;
         self.last_report = outcome.report;
         self.last_transcript = outcome.transcript;
@@ -733,7 +739,10 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
     pub async fn run_read(&mut self, id: Option<String>, all: bool) {
         let inbox = Inbox::new(self.state_store());
         let cli = InboxCli::new(Arc::new(inbox));
-        let config = Ok(self.build_config());
+        let config = match self.config_text.clone() {
+            Some(text) => ConfigLoader::parse(&text),
+            None => Ok(self.build_config()),
+        };
         let outcome = self.with_state_write_guard(cli.read(config, id, all)).await;
         self.last_report = outcome.report;
         self.last_transcript = outcome.transcript;

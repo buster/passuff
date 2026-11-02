@@ -1,6 +1,6 @@
 use cucumber::{given, then, when};
 
-use crate::support::World;
+use crate::support::{ci_pending, World};
 
 #[given(regex = r#"^the watch scope is limited to "([^"]+)"$"#)]
 async fn watch_scope(world: &mut World, repository: String) {
@@ -17,6 +17,11 @@ async fn seeded_watched(world: &mut World, key: String) {
     world.seed_watched_pull_request(&key);
 }
 
+#[given(regex = r#"^a state with one activity record$"#)]
+async fn seeded_one_record(world: &mut World) {
+    world.seed_activity_records(1);
+}
+
 #[given(regex = r#"^a state with 500 activity records$"#)]
 async fn seeded_records(world: &mut World) {
     world.seed_activity_records(500);
@@ -25,6 +30,14 @@ async fn seeded_records(world: &mut World) {
 #[given(regex = r#"^a version-1 state file with one watched pull request$"#)]
 async fn seeded_v1(world: &mut World) {
     world.seed_version_one_state();
+}
+
+#[given(regex = r#"^the CI result on "([^"]+)" is "([^"]+)"$"#)]
+async fn ci_result_is(world: &mut World, key: String, state: String) {
+    world.pr_mut(&key).ci = match state.as_str() {
+        "pending" => ci_pending(),
+        other => panic!("unsupported CI state {other}"),
+    };
 }
 
 #[given(regex = r#"^the state directory cannot be written$"#)]

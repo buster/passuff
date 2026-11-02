@@ -222,8 +222,8 @@ neither/both is a usage error (exit 2).
   (`givn/changes/*/specs` parent) and writes `evidence/visual/<slug>/transcript.txt`;
   after archive it falls back to `target/visual`.
 - State fixtures: v1 JSON with one watched PR; 500 records; a seeded watched PR
-  for the scope-prune scenario; a `SeededFailingStore` that loads the v1 state and
-  fails `save`, for the migration write-failure scenario. The no-state inbox
+  for the scope-prune scenario; a read-only state directory that loads the v1 state and
+  fails the migration `save`, for the write-failure scenario. The no-state inbox
   scenario asserts the state path was not created.
 - Unit tests: v1 migration and rewrite, ID collision, cap insertion, missing
   file read semantics, scope validation/case-insensitivity, only accepted
@@ -237,7 +237,10 @@ neither/both is a usage error (exit 2).
 | inspect-watch-status | watch-status | show the watch state | Developer sees the watch state | real `passuff status` |
 | review-activity-inbox | activity-inbox | list unread activity | Developer lists unread activity | real `passuff inbox` |
 | review-activity-inbox | activity-inbox | mark activity read | Developer marks activity read | real `passuff read --all` |
-| watch-pull-requests | pr-activity-notification | start continuous watching (existing) | unchanged | real `passuff` |
+| watch-pull-requests | pr-activity-notification | start continuous watching | unchanged | real `passuff` |
+| watch-pull-requests | pr-activity-notification | run one observation pass | unchanged | real `passuff check` |
+| watch-pull-requests | pr-activity-notification | show usage | unchanged | real `passuff --help` |
+| watch-pull-requests | pr-activity-notification | show version | unchanged | real `passuff --version` |
 
 The watch scope adds no consumer action; it changes which PRs observation sees.
 

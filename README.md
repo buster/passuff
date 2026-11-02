@@ -108,7 +108,7 @@ passuff --help              show usage
 passuff --version           show the version
 ```
 
-Exit codes: `0` success, `1` one or more accounts failed, `2` configuration
+Exit codes: `0` success, `1` one or more accounts failed, `2` configuration or usage
 error, `3` state failure.
 
 The first observation of each pull request records a baseline and does not

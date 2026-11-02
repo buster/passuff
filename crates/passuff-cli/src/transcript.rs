@@ -153,10 +153,6 @@ impl TranscriptRenderer {
     pub fn render_unknown_activity(&self, id: &str) -> String {
         format!("passuff: no activity with id {id}")
     }
-
-    pub fn render_activity_event(&self, event: &ActivityEvent) -> String {
-        render_event(event)
-    }
 }
 
 fn state_label(state: &PrState) -> &'static str {
@@ -193,5 +189,22 @@ fn render_event(event: &ActivityEvent) -> String {
             PrState::Closed => "Closed".to_string(),
             PrState::Open => "Reopened".to_string(),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn human_labels_cover_every_state_and_ci_result() {
+        assert_eq!(state_label(&PrState::Open), "open");
+        assert_eq!(state_label(&PrState::Merged), "merged");
+        assert_eq!(state_label(&PrState::Closed), "closed");
+        assert_eq!(ci_label(&CiState::Success), "CI passing");
+        assert_eq!(ci_label(&CiState::Failure), "CI failing");
+        assert_eq!(ci_label(&CiState::Error), "CI failing");
+        assert_eq!(ci_label(&CiState::Pending), "CI pending");
+        assert_eq!(ci_label(&CiState::None), "CI not started");
     }
 }

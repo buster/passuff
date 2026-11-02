@@ -17,10 +17,12 @@ flowchart TB
         JsonStore["JsonStateStore"]
         CredentialPort["CredentialSource port"]
         Credential["SystemCredentialSource"]
+        Inbox["Inbox / InboxService"]
     end
 
     subgraph cliBoundary["passuff-cli (binary)"]
         CLI["CLI"]
+        InboxCli["InboxCli"]
         Renderer["TranscriptRenderer"]
         Delivery["DesktopDelivery"]
         Record["RecordingDelivery"]
@@ -33,7 +35,10 @@ flowchart TB
 
     CLI -->|load AppConfig| Config
     CLI -->|open, refresh| Core
-    CLI --> Renderer
+    CLI --> InboxCli
+    InboxCli --> Renderer
+    InboxCli --> Inbox
+    Inbox --> StatePort
     CLI --> Delivery
     CLI --> Record
     Delivery --> Sound
@@ -50,14 +55,16 @@ flowchart TB
 | Building block | Responsibility |
 |---|---|
 | `passuff-config` | Shared TOML schema, validation, `AppConfig`, `CoreConfig`, and `NotificationsConfig`. No UI or terminal dependency. |
-| `passuff-core` | UI-agnostic observation, classification, credential resolution, state, and the `RefreshReport` contract. |
+| `passuff-core` | UI-agnostic observation, classification, credential resolution, state, `InboxService`, and the `RefreshReport` contract. |
 | `PassuffCore` | Expose `with_ports` and `refresh`; run one cycle over all accounts; validate expected logins; return notifications, account failures, and baselines. |
 | `ActivityClassifier` | Pure classification of comments, reviews, review comments, CI transitions, state transitions, short-lived PRs, and reopen resets. |
 | `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for one account observation. |
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
 | `CredentialSource` / `SystemCredentialSource` | Port and environment/command/file/gh credential resolution; tokens never persisted. |
 | `passuff-cli` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |
-| `TranscriptRenderer` | Render notifications, account failures, fresh baselines, and empty cycles as terminal text. |
+| `InboxService` / `Inbox` | Build the status and activity read model over the state store and mark activity read. |
+| `InboxCli` | Render `status`, `inbox`, and `read` from `InboxService`; no GitHub calls. |
+| `TranscriptRenderer` | Render notifications, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real `notify-rust` delivery; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |
 | `passuff-tui` | Future adapter: consume `passuff-config` and `passuff-core`; not present in this change. |
@@ -101,10 +108,10 @@ no-replay guarantee.
 
 | Element | Responsibility |
 |---|---|
-| Load | Missing file is empty state; corrupt or wrong-version file is quarantined. |
+| Load | Missing file is empty state; version 1 migrates to version 2; corrupt or unknown-version files are quarantined. |
 | Save | Write a temporary file in the same directory, flush, and rename. |
 | Permissions | Create the state directory and file with private Unix permissions. |
-| Versioning | Reject unknown versions rather than guessing a migration. |
+| Versioning | Migrate version 1 additively; reject unknown versions rather than guessing. |
 
 ### ConfigLoader
 

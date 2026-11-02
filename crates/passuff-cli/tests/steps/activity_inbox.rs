@@ -42,7 +42,22 @@ async fn marks_id(world: &mut World, id: String) {
 }
 
 #[when(regex = r#"^the developer reopens passuff$"#)]
-async fn reopens(_world: &mut World) {}
+async fn reopens(world: &mut World) {
+    let state = world.state_json();
+    assert!(
+        state["activity"]
+            .as_array()
+            .is_some_and(|records| records.iter().any(|record| record["read"] == true)),
+        "read state was not persisted before the restart: {state}"
+    );
+    world.last_report = None;
+    world.last_transcript.clear();
+}
+
+#[when(regex = r#"^the developer runs read with no target$"#)]
+async fn read_without_target(world: &mut World) {
+    world.run_read(None, false).await;
+}
 
 fn record_lines(transcript: &str) -> Vec<&str> {
     let pattern = Regex::new(r"^\s+a\d+\s+\d{4}-\d{2}-\d{2}T").expect("record regex");

@@ -34,7 +34,7 @@ The watcher only reports changes during a cycle. The operator cannot list what i
 
 | Proposed capability | Route's recommendation | Decision | Rationale (if you deviated from route) |
 |---|---|---|---|
-| pr-activity-notification (watch scope) | EXTEND pr-activity-notification (use case `watch-pull-requests`, score 12.00, signal) | `EXTEND pr-activity-notification` | The repository allowlist changes which authored pull requests enter observation; it belongs to the watch capability. |
+| pr-activity-notification | EXTEND pr-activity-notification (use case `watch-pull-requests`, score 12.00, signal) | `EXTEND pr-activity-notification` | The repository allowlist changes which authored pull requests enter observation; it belongs to the watch capability. |
 | watch-status | EXTEND pr-activity-notification (same route signal) | `NEW in inspect-watch-status` | Status advances a distinct read goal — inspecting the watch — rather than notification delivery. |
 | activity-inbox | EXTEND pr-activity-notification (same route signal) | `NEW in review-activity-inbox` | Reviewing and marking recorded activity read is a distinct actor goal, not notification delivery. |
 

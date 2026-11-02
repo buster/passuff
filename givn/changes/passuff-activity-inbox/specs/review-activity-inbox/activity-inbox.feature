@@ -134,6 +134,31 @@ Feature: Activity inbox
     And the exit status is 3
 
   @givn.added
+  Scenario: Inbox reports a state error
+    Given a configured account "personal" with login "octo-personal"
+    And a version-1 state file with one watched pull request
+    And the state directory cannot be written
+    When the developer lists all activity
+    Then the transcript reports "state error"
+    And the exit status is 3
+
+  @givn.added
+  Scenario: Read reports a state error
+    Given a configured account "personal" with login "octo-personal"
+    And a state with one activity record
+    And the state directory cannot be written
+    When the developer marks the newest activity read
+    Then the transcript reports "state error"
+    And the exit status is 3
+
+  @givn.added
+  Scenario: Read requires an activity id or all
+    Given a configured account "personal" with login "octo-personal"
+    When the developer runs read with no target
+    Then the transcript reports "read requires exactly one"
+    And the exit status is 2
+
+  @givn.added
   Scenario: A version-1 state loads with empty history
     Given a configured account "personal" with login "octo-personal"
     And a version-1 state file with one watched pull request

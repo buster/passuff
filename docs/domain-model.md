@@ -10,8 +10,8 @@ Excluded: code review of diffs, GitHub mutations (commenting, approving,
 merging), delivery channels other than the local desktop surface, and
 organization-level policy.
 
-This model covers the implemented `passuff-pr-watch` capability and the
-`passuff-auth-modes` change. The core is UI-agnostic: a notification is a
+This model covers the implemented watch, status, and activity-review
+capabilities through the `passuff-activity-inbox` change. The core is UI-agnostic: a notification is a
 grouped report, and a UI adapter delivers it. Delivery is an external
 relationship, not part of the Notification value. An account's credential mode
 and expected login are configuration and validation attributes, not separate
