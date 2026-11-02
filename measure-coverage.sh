@@ -26,13 +26,17 @@ esac
 
 run_scope() {
   local scope="$1" output="$2"
+  local scope_features="$features"
+  if [[ "$scope" == "e2e" ]]; then
+    scope_features="${GIVN_COVERAGE_E2E_FEATURES:-$root/givn/specs}"
+  fi
   cargo "+$toolchain" llvm-cov clean --profraw-only >/dev/null
   if [[ "$scope" == "regular" ]]; then
     cargo "+$toolchain" llvm-cov --no-report --branch \
       -p passuff-config -p passuff-core -p passuff-cli \
       --features test-support --lib
   fi
-  GIVN_FEATURES="$features" \
+  GIVN_FEATURES="$scope_features" \
   GIVN_RESULT_SCOPE="$scope" \
   GIVN_RESULT_FILE="$root/target/coverage-$scope-result.json" \
     cargo "+$toolchain" llvm-cov --no-report --branch \
