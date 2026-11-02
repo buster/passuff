@@ -81,6 +81,8 @@ cargo run --release -p passuff-cli -- --help
 - Rust stable (see `rust-toolchain.toml`; `cargo`, `rustfmt`, `clippy`).
 - A GitHub token with `read:user` and repository read access for every
   configured account.
+- The `gh` CLI (2.40 or newer) for `gh_oauth` accounts; `gh auth token --user`
+  and `gh auth login --web` must be available.
 - Linux: a session D-Bus and `paplay`, `pw-play`, `aplay`, or
   `canberra-gtk-play` for sound.
 - macOS: Notification Center; sound is played with `afplay`.
