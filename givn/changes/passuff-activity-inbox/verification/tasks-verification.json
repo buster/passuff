@@ -2,20 +2,20 @@
   "schema": 2,
   "change": "passuff-activity-inbox",
   "status": "passed",
-  "head": "27c6887fa0d4f83e36697a796226dc743349cccf",
+  "head": "33ec292a091651323621da6e8ae580fd08112d9a",
   "features_path": "givn/changes/passuff-activity-inbox/specs",
-  "features_digest": "a02af3a5933a64757ac248a50eec9ab4c2f7038b8a68ed230b03c056ecf49830",
+  "features_digest": "3220531cceb3e3cd6dac53022b4832453e65c5dcdb758cfd62654789b091bf45",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
   "command": "./scripts/verify.sh",
-  "tested_content_digest": "773ccf4f89b790dfb89f7eaf449b53b78817b3a16acff0b1a30452fc62ef3c16",
+  "tested_content_digest": "92aef1aa2a83b5428b0d75fcf278f29cdb19d0d014134f3dfea85655e592f57d",
   "content_scope": "change-proof/v1",
   "runner_exit": 0,
   "result": {
     "scope": null,
-    "total": 24,
-    "passed": 24,
+    "total": 32,
+    "passed": 32,
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1793656593
+  "finished_at_unix": 1793657272
 }
