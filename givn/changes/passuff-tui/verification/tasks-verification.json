@@ -2,7 +2,7 @@
   "schema": 2,
   "change": "passuff-tui",
   "status": "passed",
-  "head": "99ba2af54392fd4fac49598d5279b12bb4b56960",
+  "head": "b8a20e397fe85c6588854071dce7698a511cdbeb",
   "features_path": "givn/changes/passuff-tui/specs",
   "features_digest": "02ad6b6c539cafea348e1a4bf3f86d4fc4fe184400ffe5cc1a17513d55f379df",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
@@ -17,5 +17,5 @@
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1793658281
+  "finished_at_unix": 1793658292
 }
