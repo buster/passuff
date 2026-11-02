@@ -1,0 +1,29 @@
+# givn:begin:rules
+.opencode/skills/givn-*/
+.agents/skills/givn-*/
+.claude/skills/givn-*/
+.omp/skills/givn-*/
+.opencode/plugins/givn-attribution.js
+.opencode/plugins/givn-timeline.js
+.claude/hooks/givn-attribution.sh
+.claude/hooks/givn-timeline.sh
+.claude/settings.local.json
+.omp/hooks/pre/givn-attribution.js
+.omp/hooks/pre/givn-timeline.js
+.maki/lua/givn-timeline.lua
+.maki/skills/givn-*/
+.githooks/commit-msg
+# givn:end:rules
+
+# Build artefacts
+/target/
+/coverage/
+*.profraw
+*.profdata
+.DS_Store
+
+# Local givn development record
+/givn/history/
+
+# Editor/agent-local configuration
+/.maki/

@@ -1,0 +1,54 @@
+# 3. Context and Scope
+
+## Business context
+
+passuff sits between the developer's GitHub accounts and the local desktop. It
+reads pull request activity from GitHub and turns eligible changes into
+notifications. It never writes to GitHub.
+
+```mermaid
+flowchart LR
+    developer["Developer"] -->|configures accounts and starts| passuff["passuff"]
+    passuff -->|observes authored pull requests| github["GitHub"]
+    github -->|activity| passuff
+    passuff -->|desktop notification| desktop["Desktop notification surface"]
+    passuff -->|notification sound| audio["Audio player"]
+```
+
+| Partner / User | Input to system | Output from system |
+|---|---|---|
+| Developer | Account configuration, start/check command, interrupt | Grouped notification transcript, desktop notification, sound |
+| GitHub | Authored pull requests, comments, reviews, CI results, pull request state | Read-only GraphQL queries; no mutations |
+| Desktop notification surface | Accepted notification requests | Visible notification or a delivery error |
+| Audio player | Sound file path | Audible sound or a playback error |
+
+## Technical context
+
+```mermaid
+flowchart LR
+    passuff["passuff"] -->|GraphQL over HTTPS| github["GitHub GraphQL API"]
+    passuff -->|D-Bus org.freedesktop.Notifications| desktop["Desktop notification service"]
+    passuff -->|process invocation| player["afplay / paplay / pw-play / aplay"]
+    passuff -->|read and write| files["Config and state files"]
+    passuff -->|read| credentials["Environment variables and credential command"]
+```
+
+| Interface | Technology / Protocol | Direction |
+|---|---|---|
+| GitHub observation | GraphQL over HTTPS | Outbound |
+| Desktop notification on Linux | D-Bus `org.freedesktop.Notifications` | Outbound |
+| Desktop notification on macOS | macOS notification surface through `notify-rust` | Outbound |
+| Sound playback | Child process: `afplay`, `paplay`, `pw-play`, or `aplay` | Outbound |
+| Configuration | TOML file | Read |
+| Persisted observation | Versioned JSON file plus atomic replacement | Read and write |
+| Credentials | Environment variable or `/bin/sh -c` command output | Read |
+| Terminal transcript | Standard output and standard error | Write |
+
+## Scope boundaries
+
+Inside: authored pull request observation, activity classification, grouping,
+desktop delivery, sound, configuration, state, and the CLI.
+
+Outside: GitHub mutations, webhooks, a hosted service, review of code diffs,
+non-authored pull requests, remote push channels, Windows, and a graphical
+interface.
