@@ -38,21 +38,21 @@ cargo exit status: 1
 
 ## Setup
 
-- [x] Set up the credential test harness: fake `gh` on `PATH` (token per login, login marker, invocation log), `RecordingGhLogin` for per-account attempt recording, token-file modes `600`/`400`/`640`/`604`/`660`, `HOME` override for `~`, credential-rotation helper, and the negative notification assertion (`no notification for "<key>"`). Implement `GIVN_SCENARIO` exact-title filtering in `features_runner.rs`. Keep `verify.command: ./scripts/verify.sh` and `verify.e2e_command: ./scripts/verify.sh --e2e`.
+- [x] Set up the credential test harness: fake `gh` on `PATH` (token per login, login marker, invocation log), `RecordingGhLogin` for per-account attempt recording, token-file modes `600`/`400`/`640`/`604`/`660`, `HOME` override for `~`, credential-rotation helper, and the negative notification assertion (`no notification for "<key>"`). Implement `GIVN_SCENARIO` exact-title filtering in `features_runner.rs`. Keep `verify.command` configured and the end-to-end runner configured.
 
       Fake gh on PATH (token per login), RecordingGhLogin per-account attempts, token modes 600/400/640/604/660, HOME override, credential rotation, no-notification step, GIVN_SCENARIO filter.
       COMMIT 7fa8bed.
       `./scripts/verify.sh` delta: 27/27; permanent: 52/52.
 
-- [x] Prove strict mode with the new delta, then return to a passing baseline. Record the e2e scenario-count proof (e2e 4 < full count) and the exact new count.
+- [x] Prove strict mode with the new delta, then return to a passing baseline. Record the end-to-end scenario-count proof (4 < full count) and the exact new count.
 
       Strict mode proven for the delta runner with the undefined-step probe above (failed 1, exit 1).
-      Delta regular: 27/27. Permanent regular: 52/52. E2E: 4/4. Unit: 32 passed.
-      Scenario-count proof: e2e 4 < full corpus 79 (52 permanent + 27 delta).
+      Delta regular: 27/27. Permanent regular: 52/52. End-to-end: 4/4. Unit: 32 passed.
+      Scenario-count proof: end-to-end 4 < full corpus 79 (52 permanent + 27 delta).
 
 ---
 
-## Non-E2E Tasks
+## Regular Tasks
 
 ### Batch: `auth-config`
 
@@ -259,15 +259,4 @@ cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 7fa8b
 
 ---
 
-## E2E Smoke Tests
-
-- [x] Keep the existing four end-to-end scenarios green; no new end-to-end scenario is added because the consumer actions are unchanged and the login variant is a regular scenario. Record the e2e count (4) strictly less than the full count, and capture a fresh run of `./scripts/verify.sh --e2e`.
-  - [x] Run `./scripts/verify.sh --e2e`. Must pass.
-        ```
-./scripts/verify.sh --e2e -> total 4, passed 4, failed 0, skipped 0. COMMIT 7fa8bed.
-        ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `e2e`
-
----
-
-**Done when:** every box checked with a batch commit, `./scripts/verify.sh` and `./scripts/verify.sh --e2e` exit 0 on the full suite, and the e2e setup proof records an e2e count strictly less than the full count.
+**Done when:** every box checked with a batch commit, the regular and end-to-end suites exit 0, and the setup proof records an end-to-end count strictly less than the full count.
