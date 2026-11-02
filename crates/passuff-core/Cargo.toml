@@ -1,0 +1,20 @@
+[package]
+name = "passuff-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+passuff-config = { path = "../passuff-config" }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["process", "time", "sync", "macros", "rt"] }
+tracing = "0.1"
+url = "2.5"
+
+[dev-dependencies]
+tempfile = "3"

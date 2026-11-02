@@ -1,0 +1,312 @@
+use std::collections::{BTreeMap, HashSet};
+use std::fmt;
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Account {
+    pub label: String,
+    pub login: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct PullRequestKey {
+    pub repository: String,
+    pub number: u64,
+}
+
+impl PullRequestKey {
+    pub fn new(repository: impl Into<String>, number: u64) -> Self {
+        Self {
+            repository: repository.into(),
+            number,
+        }
+    }
+}
+
+impl fmt::Display for PullRequestKey {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}#{}", self.repository, self.number)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum PrState {
+    Open,
+    Merged,
+    Closed,
+}
+
+impl PrState {
+    pub fn label(&self) -> &'static str {
+        match self {
+            PrState::Open => "OPEN",
+            PrState::Merged => "MERGED",
+            PrState::Closed => "CLOSED",
+        }
+    }
+
+    pub fn is_terminal(&self) -> bool {
+        !matches!(self, PrState::Open)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum CiState {
+    Success,
+    Failure,
+    Error,
+    Pending,
+    None,
+}
+
+impl CiState {
+    pub fn failed(&self) -> bool {
+        matches!(self, CiState::Failure | CiState::Error)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CiResult {
+    pub state: CiState,
+    pub failed_checks: Vec<String>,
+}
+
+impl Default for CiResult {
+    fn default() -> Self {
+        Self {
+            state: CiState::None,
+            failed_checks: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Comment {
+    pub id: String,
+    pub author: String,
+    pub body: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Review {
+    pub id: String,
+    pub author: String,
+    pub state: String,
+    pub body: String,
+    pub submitted_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReviewComment {
+    pub id: String,
+    pub author: String,
+    pub body: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct AuthoredPullRequest {
+    pub key: PullRequestKey,
+    pub node_id: String,
+    pub author: String,
+    pub title: String,
+    pub url: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub state: PrState,
+    pub merged: bool,
+    pub is_draft: bool,
+    pub assignees: Vec<String>,
+    pub labels: Vec<String>,
+    pub milestone: Option<String>,
+    pub base_ref: String,
+    pub head_oid: String,
+    pub ci: CiResult,
+    pub comments: Vec<Comment>,
+    pub reviews: Vec<Review>,
+    pub review_comments: Vec<ReviewComment>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Baseline {
+    pub recorded_at: String,
+    pub seen_comment_ids: Vec<String>,
+    pub seen_review_ids: Vec<String>,
+    pub seen_review_comment_ids: Vec<String>,
+    pub head_oid: String,
+    pub ci_state: CiState,
+    pub state: PrState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CurrentObservation {
+    pub seen_comment_ids: Vec<String>,
+    pub seen_review_ids: Vec<String>,
+    pub seen_review_comment_ids: Vec<String>,
+    pub head_oid: String,
+    pub ci_state: CiState,
+    pub ci_failed: bool,
+    pub state: PrState,
+    pub state_reported: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WatchedPullRequest {
+    pub repository: String,
+    pub number: u64,
+    pub node_id: String,
+    pub author: String,
+    pub title: String,
+    pub url: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub baseline: Baseline,
+    pub current: CurrentObservation,
+}
+
+impl WatchedPullRequest {
+    pub fn key(&self) -> PullRequestKey {
+        PullRequestKey::new(self.repository.clone(), self.number)
+    }
+
+    pub fn from_baseline(pr: &AuthoredPullRequest, recorded_at: String) -> Self {
+        Self {
+            repository: pr.key.repository.clone(),
+            number: pr.key.number,
+            node_id: pr.node_id.clone(),
+            author: pr.author.clone(),
+            title: pr.title.clone(),
+            url: pr.url.clone(),
+            created_at: pr.created_at.clone(),
+            updated_at: pr.updated_at.clone(),
+            baseline: Baseline {
+                recorded_at,
+                seen_comment_ids: pr.comments.iter().map(|c| c.id.clone()).collect(),
+                seen_review_ids: pr.reviews.iter().map(|r| r.id.clone()).collect(),
+                seen_review_comment_ids: pr
+                    .review_comments
+                    .iter()
+                    .map(|c| c.id.clone())
+                    .collect(),
+                head_oid: pr.head_oid.clone(),
+                ci_state: pr.ci.state.clone(),
+                state: pr.state.clone(),
+            },
+            current: CurrentObservation {
+                seen_comment_ids: pr.comments.iter().map(|c| c.id.clone()).collect(),
+                seen_review_ids: pr.reviews.iter().map(|r| r.id.clone()).collect(),
+                seen_review_comment_ids: pr
+                    .review_comments
+                    .iter()
+                    .map(|c| c.id.clone())
+                    .collect(),
+                head_oid: pr.head_oid.clone(),
+                ci_state: pr.ci.state.clone(),
+                ci_failed: pr.ci.state.failed(),
+                state: pr.state.clone(),
+                state_reported: false,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ActivityEvent {
+    Comment {
+        author: String,
+        body_excerpt: String,
+    },
+    ReviewComment {
+        author: String,
+        body_excerpt: String,
+    },
+    Review {
+        author: String,
+        state: String,
+    },
+    CiFailure {
+        failed_checks: Vec<String>,
+    },
+    CiRecovery,
+    StateChange {
+        state: PrState,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Notification {
+    pub key: PullRequestKey,
+    pub events: Vec<ActivityEvent>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct RefreshReport {
+    pub notifications: Vec<Notification>,
+    pub account_failures: Vec<AccountFailure>,
+    pub baselines_recorded: Vec<PullRequestKey>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AccountFailure {
+    pub label: String,
+    pub kind: AccountFailureKind,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AccountFailureKind {
+    Authentication,
+    RateLimited { reset_at: String },
+    Timeout,
+    Transport,
+    MalformedResponse,
+    Credential,
+}
+
+#[derive(Debug, Clone, Error)]
+pub enum StateError {
+    #[error("cannot read state {path}: {message}")]
+    Read { path: PathBuf, message: String },
+    #[error("cannot write state {path}: {message}")]
+    Write { path: PathBuf, message: String },
+    #[error("cannot quarantine state {path}: {message}")]
+    Quarantine { path: PathBuf, message: String },
+}
+
+#[derive(Debug, Error)]
+pub enum CoreError {
+    #[error("state error: {0}")]
+    State(#[from] StateError),
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct WatcherState {
+    pub version: u32,
+    pub accounts: BTreeMap<String, AccountState>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct AccountState {
+    pub login: String,
+    pub last_check_at: Option<String>,
+    pub pull_requests: BTreeMap<String, WatchedPullRequest>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LoginSet(HashSet<String>);
+
+impl LoginSet {
+    pub fn new(logins: impl IntoIterator<Item = String>) -> Self {
+        Self(logins.into_iter().map(|login| login.to_ascii_lowercase()).collect())
+    }
+
+    pub fn contains(&self, login: &str) -> bool {
+        self.0.contains(&login.to_ascii_lowercase())
+    }
+}
