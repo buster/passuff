@@ -3,6 +3,7 @@ pub mod gh_login;
 pub mod sound;
 pub mod transcript;
 
+use std::io::IsTerminal;
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -18,6 +19,23 @@ use passuff_core::{
 use crate::delivery::{DeliveryReport, NotificationDelivery};
 use crate::sound::SoundOutcome;
 use crate::transcript::TranscriptRenderer;
+
+pub fn init_logging(verbose: bool) {
+    if !verbose {
+        return;
+    }
+    let filter = match std::env::var("RUST_LOG") {
+        Ok(_) => tracing_subscriber::EnvFilter::from_default_env(),
+        Err(_) => tracing_subscriber::EnvFilter::new(
+            "passuff=debug,passuff_cli=debug,passuff_core=debug,passuff_config=debug",
+        ),
+    };
+    let _ = tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .with_ansi(std::io::stderr().is_terminal())
+        .with_env_filter(filter)
+        .try_init();
+}
 
 pub fn system_credentials(interactive: bool) -> Arc<dyn CredentialSource> {
     if interactive {
@@ -220,7 +238,12 @@ impl CliRuntime {
             };
             match refresh {
                 Ok(report) => {
+                    tracing::debug!("watch cycle started");
                     let (transcript, _status) = self.process_report(&config, &report).await;
+                    tracing::debug!(
+                        interval_secs = config.poll_interval_secs,
+                        "watch cycle complete"
+                    );
                     if !transcript.is_empty() {
                         output.push(transcript.clone());
                         println!("{transcript}");
@@ -269,6 +292,12 @@ impl CliRuntime {
                 .delivery
                 .deliver(&rendered, &config.notifications)
                 .await;
+            tracing::debug!(
+                desktop = delivery.desktop_delivered,
+                sound = ?delivery.sound,
+                errors = delivery.errors.len(),
+                "delivery complete"
+            );
             lines.push(rendered.transcript);
             lines.extend(render_delivery_errors(&self.renderer, &delivery));
         }

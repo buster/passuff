@@ -57,6 +57,7 @@ impl TokenSource for EnvironmentCredential {
         let CredentialSpec::Env { variable } = spec else {
             return Err(CredentialError::CommandFailed);
         };
+        tracing::debug!(variable = %variable, "resolving environment credential");
         std::env::var(variable)
             .ok()
             .filter(|value| !value.trim().is_empty())
@@ -74,6 +75,7 @@ impl TokenSource for CommandCredential {
         let CredentialSpec::Command { command } = spec else {
             return Err(CredentialError::CommandFailed);
         };
+        tracing::debug!("running credential command");
         let output = tokio::time::timeout(
             Duration::from_secs(10),
             tokio::process::Command::new("/bin/sh")
@@ -138,6 +140,7 @@ impl TokenSource for FileCredential {
         let CredentialSpec::File { path } = spec else {
             return Err(CredentialError::CommandFailed);
         };
+        tracing::debug!(path = %path.display(), "reading token file");
         self.resolve(path)
     }
 }
@@ -195,6 +198,7 @@ impl TokenSource for GhOAuthCredential {
         let CredentialSpec::GhOAuth { login, host } = spec else {
             return Err(CredentialError::GhTokenFailed);
         };
+        tracing::debug!(login = %login, host = %host, "reading gh oauth token");
         let first = self.gh_token(login, host).await;
         if first.is_ok() {
             return first;
@@ -209,6 +213,7 @@ impl TokenSource for GhOAuthCredential {
         if !should_login {
             return first;
         }
+        tracing::debug!(login = %login, "starting gh browser login");
         self.login
             .as_ref()
             .expect("interactive login")

@@ -18,6 +18,7 @@ pub struct Cli {
     #[arg(long, global = true, value_name = "PATH")]
     pub state: Option<PathBuf>,
 
+    /// Enable diagnostic logs on stderr (debug unless RUST_LOG is set)
     #[arg(long, global = true)]
     pub verbose: bool,
 }
