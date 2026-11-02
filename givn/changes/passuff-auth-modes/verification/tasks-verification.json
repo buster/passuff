@@ -2,7 +2,7 @@
   "schema": 2,
   "change": "passuff-auth-modes",
   "status": "passed",
-  "head": "1c3d3bf882a98af95f50265ca2c6b06c0fc97043",
+  "head": "f6433cb80f3fe57cb5d89df3019d933e9f2bfebb",
   "features_path": "givn/changes/passuff-auth-modes/specs",
   "features_digest": "c8fce96bc22f3c2e1c9159abc688f0dd5093e7029b8c5582ef6c019f246a972e",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
@@ -17,5 +17,5 @@
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1793651124
+  "finished_at_unix": 1793651192
 }
