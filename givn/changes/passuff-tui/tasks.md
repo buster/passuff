@@ -49,24 +49,6 @@ Legend: an unchecked box means pending; a checked box is done only when the comm
         ```
   - [x] COMMIT: `45262ed` -- Batch: `tui-render`
 
-- [x] Scenario: `The terminal UI reports a configuration error`
-  - [x] **Design constraints:** T5. Exit 2 before the terminal.
-        Files: `tui.rs` (`load_view`), step file.
-  - [x] Implement and run; REFACTOR and re-run.
-        ```
-        ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; scenario green. COMMIT 45262ed.
-        ```
-  - [x] COMMIT: `a556688` -- Batch: `tui-render` (error scenarios now spawn the binary)
-
-- [x] Scenario: `The terminal UI reports a state error`
-  - [x] **Design constraints:** T5. State path is a directory; the spawned binary exits 3.
-        Files: `tui_main.rs`, `support/mod.rs`, step file.
-  - [x] Implement and run; REFACTOR and re-run.
-        ```
-        ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; scenario green. COMMIT 45262ed.
-        ```
-  - [x] COMMIT: `a556688` -- Batch: `tui-render` (error scenarios now spawn the binary)
-
 ### Batch: `tui-keys`
 
 - [x] Scenario: `The selection moves and clamps`
@@ -115,6 +97,24 @@ Legend: an unchecked box means pending; a checked box is done only when the comm
   - [x] COMMIT: `45262ed` -- Batch: `tui-keys`
 
 ### Batch: `tui-review-fixes`
+
+- [x] Scenario: `The terminal UI reports a configuration error`
+  - [x] **Design constraints:** T5. The spawned binary exits 2 before the terminal.
+        Files: `tui_main.rs`, `load_view`, step file.
+  - [x] Implement and run; REFACTOR and re-run.
+        ```
+        ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; scenario green. COMMIT a556688.
+        ```
+  - [x] COMMIT: `a556688` -- Batch: `tui-review-fixes`
+
+- [x] Scenario: `The terminal UI reports a state error`
+  - [x] **Design constraints:** T5. State path is a directory; the spawned binary exits 3.
+        Files: `tui_main.rs`, `support/mod.rs`, step file.
+  - [x] Implement and run; REFACTOR and re-run.
+        ```
+        ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; scenario green. COMMIT a556688.
+        ```
+  - [x] COMMIT: `a556688` -- Batch: `tui-review-fixes`
 
 - [x] B1: quote the capability decision so the review gate reads `## Capability Routing`.
       Files: `proposal.md`. COMMIT `a556688`.
