@@ -79,6 +79,7 @@ impl TokenSource for CommandCredential {
             tokio::process::Command::new("/bin/sh")
                 .arg("-c")
                 .arg(command)
+                .kill_on_drop(true)
                 .output(),
         )
         .await
@@ -161,6 +162,7 @@ impl GhOAuthCredential {
             Duration::from_secs(10),
             tokio::process::Command::new("gh")
                 .args(["auth", "token", "--user", login, "--hostname", host])
+                .kill_on_drop(true)
                 .output(),
         )
         .await

@@ -7,6 +7,7 @@ use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Notify;
 
 use passuff_config::{AppConfig, ConfigError};
 use passuff_core::{
@@ -49,21 +50,26 @@ pub struct RunOutcome {
 pub trait WatchControl: Send + Sync {
     fn should_continue(&self) -> bool;
     async fn wait(&self, interval: Duration);
+    async fn interrupted(&self);
 }
 
 pub struct Interrupt {
     cancelled: Arc<AtomicBool>,
+    notify: Arc<Notify>,
 }
 
 impl Interrupt {
     pub fn install() -> Self {
         let cancelled = Arc::new(AtomicBool::new(false));
+        let notify = Arc::new(Notify::new());
         let flag = cancelled.clone();
+        let signal = notify.clone();
         tokio::spawn(async move {
             let _ = tokio::signal::ctrl_c().await;
             flag.store(true, Ordering::SeqCst);
+            signal.notify_one();
         });
-        Self { cancelled }
+        Self { cancelled, notify }
     }
 }
 
@@ -74,13 +80,17 @@ impl WatchControl for Interrupt {
     }
 
     async fn wait(&self, interval: Duration) {
-        let deadline = tokio::time::Instant::now() + interval;
-        while tokio::time::Instant::now() < deadline {
-            if !self.should_continue() {
-                return;
-            }
-            tokio::time::sleep(Duration::from_millis(100)).await;
+        tokio::select! {
+            _ = tokio::time::sleep(interval) => {}
+            _ = self.interrupted() => {}
         }
+    }
+
+    async fn interrupted(&self) {
+        if !self.should_continue() {
+            return;
+        }
+        self.notify.notified().await;
     }
 }
 
@@ -100,13 +110,17 @@ impl StopAfter {
 impl WatchControl for StopAfter {
     fn should_continue(&self) -> bool {
         self.remaining
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
+            .try_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
                 remaining.checked_sub(1)
             })
             .is_ok()
     }
 
     async fn wait(&self, _interval: Duration) {}
+
+    async fn interrupted(&self) {
+        std::future::pending::<()>().await;
+    }
 }
 
 pub struct CliRuntime {
@@ -200,7 +214,11 @@ impl CliRuntime {
         let mut last_report = None;
         let mut first_success = false;
         while control.should_continue() {
-            match core.refresh().await {
+            let refresh = tokio::select! {
+                _ = control.interrupted() => break,
+                refresh = core.refresh() => refresh,
+            };
+            match refresh {
                 Ok(report) => {
                     let (transcript, _status) = self.process_report(&config, &report).await;
                     if !transcript.is_empty() {
@@ -223,9 +241,10 @@ impl CliRuntime {
             }
             use std::io::Write;
             let _ = std::io::stdout().flush();
-            control
-                .wait(Duration::from_secs(config.poll_interval_secs.max(1)))
-                .await;
+            tokio::select! {
+                _ = control.interrupted() => break,
+                _ = control.wait(Duration::from_secs(config.poll_interval_secs.max(1))) => {}
+            }
         }
         RunOutcome {
             exit: ExitCode::SUCCESS,
@@ -328,5 +347,138 @@ mod tests {
             system_credentials(true).resolve(&spec).await.unwrap(),
             "token-value"
         );
+    }
+
+    use crate::delivery::{DeliveryReport, NotificationDelivery};
+    use crate::transcript::RenderedNotification;
+    use passuff_config::{AccountConfig, CoreConfig, EventToggles, NotificationsConfig};
+    use passuff_core::{
+        AccountObservation, CredentialError, GitHubError, StateError, WatcherState,
+    };
+    use std::collections::BTreeMap;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    struct SlowGateway;
+
+    #[async_trait::async_trait]
+    impl GitHubGateway for SlowGateway {
+        async fn observe(
+            &self,
+            _token: &str,
+            _graphql_url: &url::Url,
+            _known_node_ids: &[String],
+        ) -> Result<AccountObservation, GitHubError> {
+            tokio::time::sleep(Duration::from_secs(30)).await;
+            Err(GitHubError::Timeout)
+        }
+    }
+
+    struct FixedCredentials;
+
+    #[async_trait::async_trait]
+    impl CredentialSource for FixedCredentials {
+        async fn resolve(&self, _spec: &CredentialSpec) -> Result<String, CredentialError> {
+            Ok("token".to_string())
+        }
+    }
+
+    struct EmptyStore;
+
+    #[async_trait::async_trait]
+    impl SnapshotStore for EmptyStore {
+        async fn load(&self) -> Result<WatcherState, StateError> {
+            Ok(WatcherState {
+                version: 1,
+                accounts: BTreeMap::new(),
+            })
+        }
+
+        async fn save(&self, _state: &WatcherState) -> Result<(), StateError> {
+            Ok(())
+        }
+    }
+
+    struct NoopDelivery;
+
+    #[async_trait::async_trait]
+    impl NotificationDelivery for NoopDelivery {
+        async fn deliver(
+            &self,
+            _rendered: &RenderedNotification,
+            _config: &NotificationsConfig,
+        ) -> DeliveryReport {
+            DeliveryReport {
+                desktop_delivered: false,
+                sound: None,
+                errors: Vec::new(),
+            }
+        }
+    }
+
+    struct TestInterrupt {
+        cancelled: AtomicBool,
+        notify: Notify,
+    }
+
+    #[async_trait::async_trait]
+    impl WatchControl for TestInterrupt {
+        fn should_continue(&self) -> bool {
+            !self.cancelled.load(Ordering::SeqCst)
+        }
+
+        async fn wait(&self, _interval: Duration) {
+            self.interrupted().await;
+        }
+
+        async fn interrupted(&self) {
+            if !self.should_continue() {
+                return;
+            }
+            self.notify.notified().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn watch_stops_while_a_cycle_is_in_flight() {
+        let config = AppConfig {
+            poll_interval_secs: 1,
+            core: CoreConfig {
+                accounts: BTreeMap::from([(
+                    "work".to_string(),
+                    AccountConfig {
+                        credential: CredentialSpec::Env {
+                            variable: "TOKEN".to_string(),
+                        },
+                        graphql_url: url::Url::parse("http://127.0.0.1/graphql").unwrap(),
+                        expected_login: None,
+                    },
+                )]),
+                events: EventToggles::default(),
+            },
+            notifications: NotificationsConfig::default(),
+        };
+        let runtime = CliRuntime::new(CliPorts {
+            gateway: Arc::new(SlowGateway),
+            store: Arc::new(EmptyStore),
+            credentials: Arc::new(FixedCredentials),
+            delivery: Arc::new(NoopDelivery),
+        });
+        let control = Arc::new(TestInterrupt {
+            cancelled: AtomicBool::new(false),
+            notify: Notify::new(),
+        });
+        let trigger = control.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            trigger.cancelled.store(true, Ordering::SeqCst);
+            trigger.notify.notify_one();
+        });
+        let outcome = tokio::time::timeout(
+            Duration::from_secs(2),
+            runtime.run_watch_with(Ok(config), control.as_ref()),
+        )
+        .await
+        .expect("watch stopped while a cycle was in flight");
+        assert_eq!(outcome.status, 0);
     }
 }
