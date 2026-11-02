@@ -1,8 +1,8 @@
 # passuff
 
 <!-- givn:begin:coverage-badge -->
-[![Line Coverage: 84.3%](https://img.shields.io/badge/line%20coverage-84.3%25-brightgreen)](coverage/cobertura-coverage.xml)
-[![Branch Coverage: 34.3%](https://img.shields.io/badge/branch%20coverage-34.3%25-yellow)](coverage/cobertura-coverage.xml)
+[![Line Coverage: 85.5%](https://img.shields.io/badge/line%20coverage-85.5%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Branch Coverage: 35.9%](https://img.shields.io/badge/branch%20coverage-35.9%25-yellow)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
 
 `passuff` watches the GitHub pull requests you authored across several
