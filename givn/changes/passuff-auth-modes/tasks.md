@@ -47,7 +47,7 @@ cargo exit status: 1
 - [x] Prove strict mode with the new delta, then return to a passing baseline. Record the e2e scenario-count proof (e2e 4 < full count) and the exact new count.
 
       Strict mode proven for the delta runner with the undefined-step probe above (failed 1, exit 1).
-      Delta regular: 27/27. Permanent regular: 52/52. E2E: 4/4. Unit: 28 passed.
+      Delta regular: 27/27. Permanent regular: 52/52. E2E: 4/4. Unit: 32 passed.
       Scenario-count proof: e2e 4 < full corpus 79 (52 permanent + 27 delta).
 
 ---
