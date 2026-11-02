@@ -42,7 +42,7 @@ pub struct TuiApp { view: InboxView, selected: usize }
 pub enum TuiAction { Continue, Quit }
 pub struct TuiLoadError { pub exit: i32, pub message: String }
 pub async fn load_view(
-    config: Result<AppConfig, ConfigError>,
+    config: &Result<AppConfig, ConfigError>,
     inbox: &dyn InboxService,
 ) -> Result<InboxView, TuiLoadError>;
 
@@ -55,21 +55,28 @@ impl TuiApp {
 }
 ```
 
-Layout (100x30):
+Layout (100x30, bordered panels):
 
 ```
-passuff — inbox          1 unread of 1
-accounts: personal @octo-personal
-watch scope: all authored pull requests
-watched pull requests
-  acme/api#42 open CI passing Pull request acme/api#42
-activity
-> a1 2026-... acme/api#42 unread New comment from @alice
-q quit  j/k move  r read  a read all
+┌ passuff — Inbox ───────────────────────────────────────────┐
+│personal @octo-personal   |   watch scope: all authored …  │
+│1 unread of 1   |   Focus: activity                         │
+│┌ Watched pull requests ──────────────────────────────────┐│
+││Pull request  State  CI          Title                   ││
+││acme/api#42   open   CI passing  Pull request acme/api#42││
+│└─────────────────────────────────────────────────────────┘│
+│┌ Activity ───────────────────────────────────────────────┐│
+││  ID  Observed       Pull request  State   Event          ││
+││▶ a1  2026-…         acme/api#42   unread  New comment …  ││
+│└─────────────────────────────────────────────────────────┘│
+│┌ Controls ───────────────────────────────────────────────┐│
+││j/k move   r read   a read all   q quit                  ││
+│└─────────────────────────────────────────────────────────┘│
+└────────────────────────────────────────────────────────────┘
 ```
 
-The selected row is marked with a leading `>` and reversed video; the `>` marker
-is the assertion contract, so plain text remains comprehensible without color. `no activity yet` is shown when the list is empty.
+The selected row is marked with `▶ ` and reversed video; the `▶` marker is
+the assertion contract, so plain text remains comprehensible without color. `no activity yet` is shown when the list is empty.
 
 ## Runtime flow
 
@@ -107,10 +114,12 @@ passuff-tui [--config PATH] [--state PATH] [--snapshot]
   process, and drive `TuiApp::handle_key` for navigation/read/quit.
 - E2E: spawn `CARGO_BIN_EXE_passuff-tui --snapshot --config --state`; assert the
   frame and exit 0; transcript evidence under the active change.
-- Unit tests: navigation clamp, `r` marks only the selected record, `a` marks
-  all, `q` returns Quit, empty snapshot contains `no activity yet`.
+- Unit tests: empty snapshot, selected-row marker, configured watch scope,
+  selection clamp after a shorter reload, failed reload after `r`, unbound key
+  leaves state unchanged, `load_view` maps config/state errors to exits 2/3.
 - `load_view` maps a configuration error to exit 2 and a state error to exit 3;
-  the two regular scenarios assert those messages and codes.
+  the two regular error scenarios spawn the binary and assert its stderr and
+  exit code.
 - Coverage: the e2e delta includes the TUI snapshot; the regular scenarios cover
   the renderer and key paths.
 
@@ -134,7 +143,10 @@ The snapshot is the real renderer and binary; key behavior is regular.
 
 Persona: `multi-account-developer` (confirmed). Screens: inbox with activity,
 empty inbox. Capture: one transcript for the @e2e scenario under
-`givn/changes/passuff-tui/evidence/visual/<slug>/transcript.txt`. Motion: none.
+`givn/changes/passuff-tui/evidence/visual/<slug>/transcript.txt`; a desktop
+screenshot of the same frame captured from Alacritty with
+`alacritty -o window.dimensions.columns=100 -o window.dimensions.lines=30` and
+`import -display :0 -window <id> alacritty.png`. Motion: none.
 
 ## Use-case traceability
 

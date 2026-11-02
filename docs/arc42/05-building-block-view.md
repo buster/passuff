@@ -49,7 +49,7 @@ flowchart TB
     StatePort --> JsonStore
     Core --> CredentialPort
     CredentialPort --> Credential
-    TUI -.->|same ConfigLoader and PassuffCore| Core
+    TUI -.->|InboxService| Core
 ```
 
 | Building block | Responsibility |
@@ -68,7 +68,6 @@ flowchart TB
 | `TranscriptRenderer` | Render notifications, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real `notify-rust` delivery; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |
-| `passuff-tui` | Terminal adapter binary: consumes `InboxService` and renders the inbox. |
 
 ## Level 2 — Key building blocks
 

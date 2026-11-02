@@ -90,8 +90,8 @@ sequenceDiagram
 
 **Notes:** A comment by a configured account, a push, a bot comment with bot
 comments disabled, or activity on a non-authored pull request produces no
-notification. The TUI calls the same `refresh` and renders the report in
-its own event loop.
+notification. The TUI renders the `InboxService` read model in its own event
+loop; it never calls `refresh` and never contacts GitHub.
 
 ## Scenario: One account fails
 

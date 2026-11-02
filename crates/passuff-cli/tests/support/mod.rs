@@ -808,13 +808,37 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         self.tui_app = Some(app);
     }
 
+    pub fn run_tui_binary(&mut self) {
+        let dir = self
+            .state_dir
+            .as_ref()
+            .expect("state dir")
+            .path()
+            .to_path_buf();
+        let config_path = dir.join("config.toml");
+        let text = self
+            .config_text
+            .clone()
+            .unwrap_or_else(|| self.config_text_from_accounts());
+        std::fs::write(&config_path, text).expect("config write");
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_passuff-tui"))
+            .arg("--snapshot")
+            .arg("--config")
+            .arg(&config_path)
+            .arg("--state")
+            .arg(self.state_path())
+            .output()
+            .expect("run passuff-tui");
+        self.last_status = output.status.code().unwrap_or(-1);
+        self.last_transcript = String::from_utf8_lossy(&output.stderr).to_string();
+    }
+
     pub fn assert_selected_activity(&self, summary: &str) {
         let app = self.tui_app.as_ref().expect("tui opened");
         assert_eq!(
             app.selected_summary().as_deref(),
             Some(summary),
-            "selected index {}",
-            app.selected()
+            "selected activity differs"
         );
     }
 

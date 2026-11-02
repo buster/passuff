@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::Parser;
-use crossterm::event::{read, Event, KeyEvent};
+use crossterm::event::{read, Event};
 use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
@@ -57,51 +57,68 @@ async fn main() {
             std::process::exit(error.exit);
         }
     };
-    let app = TuiApp::new(view);
+    let mut app = TuiApp::new(view);
     if args.snapshot {
         println!("{}", app.snapshot());
         return;
     }
     if !std::io::stdout().is_terminal() {
-        eprintln!("passuff: terminal UI requires a terminal (use --snapshot)");
+        eprintln!("passuff-tui: terminal UI requires a terminal (use --snapshot)");
         std::process::exit(3);
     }
     let config = config.expect("validated configuration");
-    enable_raw_mode().expect("raw mode");
+    if let Err(message) = run_terminal(&mut app, &inbox, &config.core).await {
+        eprintln!("{message}");
+        std::process::exit(3);
+    }
+}
+
+async fn run_terminal(
+    app: &mut TuiApp,
+    inbox: &dyn passuff_core::InboxService,
+    config: &passuff_config::CoreConfig,
+) -> Result<(), String> {
+    enable_raw_mode().map_err(|error| format!("passuff-tui: raw mode: {error}"))?;
     let mut stdout = std::io::stdout();
-    execute!(stdout, EnterAlternateScreen).expect("alternate screen");
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend).expect("terminal");
-    let mut app = app;
+    if let Err(error) = execute!(stdout, EnterAlternateScreen) {
+        let _ = disable_raw_mode();
+        return Err(format!("passuff-tui: alternate screen: {error}"));
+    }
+    let mut terminal = match Terminal::new(CrosstermBackend::new(stdout)) {
+        Ok(terminal) => terminal,
+        Err(error) => {
+            let _ = disable_raw_mode();
+            return Err(format!("passuff-tui: terminal: {error}"));
+        }
+    };
+    let outcome = drive(app, inbox, config, &mut terminal).await;
+    restore(&mut terminal);
+    outcome
+}
+
+async fn drive(
+    app: &mut TuiApp,
+    inbox: &dyn passuff_core::InboxService,
+    config: &passuff_config::CoreConfig,
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
+) -> Result<(), String> {
     loop {
-        terminal.draw(|frame| app.render(frame)).expect("draw");
+        terminal
+            .draw(|frame| app.render(frame))
+            .map_err(|error| format!("passuff-tui: draw: {error}"))?;
         let event = tokio::task::spawn_blocking(read)
             .await
-            .expect("event task")
-            .expect("event");
+            .map_err(|error| format!("passuff-tui: event task: {error}"))?
+            .map_err(|error| format!("passuff-tui: event: {error}"))?;
         let Event::Key(key) = event else {
             continue;
         };
-        match handle(&mut app, key, &inbox, &config.core).await {
-            Ok(TuiAction::Quit) => break,
+        match app.handle_key(key, inbox, config).await {
+            Ok(TuiAction::Quit) => return Ok(()),
             Ok(TuiAction::Continue) => {}
-            Err(error) => {
-                restore(&mut terminal);
-                eprintln!("passuff: state error: {error}");
-                std::process::exit(3);
-            }
+            Err(error) => return Err(format!("passuff: state error: {error}")),
         }
     }
-    restore(&mut terminal);
-}
-
-async fn handle(
-    app: &mut TuiApp,
-    key: KeyEvent,
-    inbox: &dyn passuff_core::InboxService,
-    config: &passuff_config::CoreConfig,
-) -> Result<TuiAction, passuff_core::CoreError> {
-    app.handle_key(key, inbox, config).await
 }
 
 fn restore(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) {

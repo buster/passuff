@@ -2,8 +2,10 @@ use crossterm::event::{KeyCode, KeyEvent};
 use passuff_config::{AppConfig, ConfigError, CoreConfig};
 use passuff_core::{CoreError, InboxService, InboxView};
 use ratatui::backend::TestBackend;
+use ratatui::layout::{Constraint, Layout};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Block, Cell, Paragraph, Row, Table, TableState};
 use ratatui::{Frame, Terminal};
 
 use crate::transcript::{activity_summary, ci_label, state_label};
@@ -45,14 +47,6 @@ pub struct TuiApp {
 impl TuiApp {
     pub fn new(view: InboxView) -> Self {
         Self { view, selected: 0 }
-    }
-
-    pub fn view(&self) -> &InboxView {
-        &self.view
-    }
-
-    pub fn selected(&self) -> usize {
-        self.selected
     }
 
     pub fn selected_summary(&self) -> Option<String> {
@@ -108,68 +102,156 @@ impl TuiApp {
         }
     }
 
-    pub fn lines(&self) -> Vec<String> {
-        let mut lines = vec![format!(
-            "passuff — inbox   {} unread of {}",
-            self.view.unread,
-            self.view.activity.len()
-        )];
-        lines.push(String::new());
-        for account in &self.view.accounts {
-            let login = account
-                .login
-                .as_deref()
-                .map(|login| format!("@{login}"))
-                .unwrap_or_else(|| "not resolved".to_string());
-            lines.push(format!("accounts: {} {}", account.label, login));
-        }
+    fn footer_keys(&self) -> &'static str {
+        "j/k move   r read   a read all   q quit"
+    }
+
+    pub fn render(&self, frame: &mut Frame) {
+        let area = frame.area();
+        let outer = Block::bordered()
+            .title(
+                Line::from(" passuff — Inbox ")
+                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            )
+            .border_style(Style::new().fg(Color::Gray));
+        let inner = outer.inner(area);
+        frame.render_widget(outer, area);
+
+        let chunks = Layout::vertical([
+            Constraint::Length(2),
+            Constraint::Length(1),
+            Constraint::Percentage(30),
+            Constraint::Min(5),
+            Constraint::Length(3),
+        ])
+        .split(inner);
+
+        let accounts = self
+            .view
+            .accounts
+            .iter()
+            .map(|account| {
+                let login = account
+                    .login
+                    .as_deref()
+                    .map(|login| format!("@{login}"))
+                    .unwrap_or_else(|| "not resolved".to_string());
+                format!("{} {}", account.label, login)
+            })
+            .collect::<Vec<_>>()
+            .join("   |   ");
         let scope = if self.view.scope.is_empty() {
             "all authored pull requests".to_string()
         } else {
             self.view.scope.join(", ")
         };
-        lines.push(format!("watch scope: {scope}"));
-        lines.push(String::new());
-        if self.view.pull_requests.is_empty() {
-            lines.push("no watched pull requests".to_string());
-        } else {
-            lines.push("watched pull requests".to_string());
-            for pull_request in &self.view.pull_requests {
-                lines.push(format!(
-                    "  {} {} {} {}",
-                    pull_request.key,
-                    state_label(&pull_request.state),
-                    ci_label(&pull_request.ci_state),
-                    pull_request.title
-                ));
-            }
-        }
-        lines.push(String::new());
-        if self.view.activity.is_empty() {
-            lines.push("no activity yet".to_string());
-        } else {
-            lines.push("activity".to_string());
-            for (index, record) in self.view.activity.iter().enumerate() {
-                let marker = if index == self.selected { ">" } else { " " };
-                lines.push(format!(
-                    "{} {} {} {} {} {}",
-                    marker,
-                    record.id,
-                    record.observed_at,
-                    record.key,
-                    if record.read { "read" } else { "unread" },
-                    activity_summary(&record.event)
-                ));
-            }
-        }
-        lines.push(String::new());
-        lines.push("q quit  j/k move  r read  a read all".to_string());
-        lines
-    }
+        frame.render_widget(
+            Paragraph::new(format!("{accounts}   |   watch scope: {scope}")),
+            chunks[0],
+        );
+        frame.render_widget(
+            Paragraph::new(format!(
+                "{} unread of {}   |   Focus: activity",
+                self.view.unread,
+                self.view.activity.len()
+            ))
+            .style(Style::new().fg(Color::Yellow)),
+            chunks[1],
+        );
 
-    pub fn render(&self, frame: &mut Frame) {
-        let lines: Vec<Line> = self.lines().into_iter().map(Line::from).collect();
-        frame.render_widget(Paragraph::new(lines), frame.area());
+        let watched_block = Block::bordered()
+            .title(" Watched pull requests ")
+            .border_style(Style::new().fg(Color::Gray));
+        if self.view.pull_requests.is_empty() {
+            frame.render_widget(
+                Paragraph::new("no watched pull requests").block(watched_block),
+                chunks[2],
+            );
+        } else {
+            let rows: Vec<Row> = self
+                .view
+                .pull_requests
+                .iter()
+                .map(|pull_request| {
+                    Row::new(vec![
+                        Cell::from(pull_request.key.to_string()),
+                        Cell::from(state_label(&pull_request.state)),
+                        Cell::from(ci_label(&pull_request.ci_state)),
+                        Cell::from(pull_request.title.clone()),
+                    ])
+                })
+                .collect();
+            let table = Table::new(
+                rows,
+                [
+                    Constraint::Length(18),
+                    Constraint::Length(8),
+                    Constraint::Length(12),
+                    Constraint::Min(10),
+                ],
+            )
+            .header(
+                Row::new(["Pull request", "State", "CI", "Title"])
+                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            )
+            .block(watched_block);
+            frame.render_widget(table, chunks[2]);
+        }
+
+        let activity_block = Block::bordered()
+            .title(
+                Line::from(" Activity ")
+                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            )
+            .border_style(Style::new().fg(Color::Green));
+        if self.view.activity.is_empty() {
+            frame.render_widget(
+                Paragraph::new("no activity yet").block(activity_block),
+                chunks[3],
+            );
+        } else {
+            let rows: Vec<Row> = self
+                .view
+                .activity
+                .iter()
+                .map(|record| {
+                    Row::new(vec![
+                        Cell::from(record.id.clone()),
+                        Cell::from(record.observed_at.clone()),
+                        Cell::from(record.key.to_string()),
+                        Cell::from(if record.read { "read" } else { "unread" }),
+                        Cell::from(activity_summary(&record.event)),
+                    ])
+                })
+                .collect();
+            let table = Table::new(
+                rows,
+                [
+                    Constraint::Length(5),
+                    Constraint::Length(27),
+                    Constraint::Length(14),
+                    Constraint::Length(7),
+                    Constraint::Min(20),
+                ],
+            )
+            .header(
+                Row::new(["ID", "Observed", "Pull request", "State", "Event"])
+                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            )
+            .block(activity_block)
+            .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD))
+            .highlight_symbol("▶ ");
+            let mut state = TableState::default().with_selected(Some(self.selected));
+            frame.render_stateful_widget(table, chunks[3], &mut state);
+        }
+
+        let controls = Block::bordered()
+            .title(" Controls ")
+            .border_style(Style::new().fg(Color::Gray));
+        frame.render_widget(
+            Paragraph::new(self.footer_keys()).block(controls),
+            chunks[4],
+        );
     }
 
     pub fn snapshot(&self) -> String {
@@ -194,8 +276,89 @@ impl TuiApp {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::VecDeque;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Mutex;
+
+    use crossterm::event::KeyModifiers;
+    use passuff_config::ConfigLoader;
+    use passuff_core::{
+        AccountView, ActivityEvent, ActivityRecord, PullRequestKey, ReadOutcome, StateError,
+    };
+
     use super::*;
-    use passuff_core::{AccountView, ActivityEvent, ActivityRecord, PullRequestKey};
+
+    struct FakeInbox {
+        views: Mutex<VecDeque<InboxView>>,
+        fail_view: bool,
+        reads: AtomicUsize,
+    }
+
+    impl FakeInbox {
+        fn new(views: Vec<InboxView>) -> Self {
+            Self {
+                views: Mutex::new(views.into()),
+                fail_view: false,
+                reads: AtomicUsize::new(0),
+            }
+        }
+
+        fn failing_view() -> Self {
+            Self {
+                views: Mutex::new(VecDeque::new()),
+                fail_view: true,
+                reads: AtomicUsize::new(0),
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl InboxService for FakeInbox {
+        async fn view(&self, _config: &CoreConfig) -> Result<InboxView, CoreError> {
+            if self.fail_view {
+                return Err(CoreError::State(StateError::Read {
+                    path: "state.json".into(),
+                    message: "read-only".into(),
+                }));
+            }
+            Ok(self
+                .views
+                .lock()
+                .expect("views")
+                .pop_front()
+                .expect("scripted view"))
+        }
+
+        async fn mark_read(&self, _id: &str) -> Result<ReadOutcome, CoreError> {
+            self.reads.fetch_add(1, Ordering::SeqCst);
+            Ok(ReadOutcome {
+                found: true,
+                changed: 1,
+                unread: 0,
+            })
+        }
+
+        async fn mark_all_read(&self) -> Result<ReadOutcome, CoreError> {
+            self.reads.fetch_add(1, Ordering::SeqCst);
+            Ok(ReadOutcome {
+                found: true,
+                changed: 1,
+                unread: 0,
+            })
+        }
+    }
+
+    fn core_config() -> CoreConfig {
+        CoreConfig {
+            accounts: Default::default(),
+            events: Default::default(),
+            watch: Default::default(),
+        }
+    }
+
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, KeyModifiers::NONE)
+    }
 
     fn view(activity: Vec<ActivityRecord>) -> InboxView {
         InboxView {
@@ -236,8 +399,74 @@ mod tests {
     fn snapshot_marks_the_selected_activity() {
         let app = TuiApp::new(view(vec![record("a2", false), record("a1", true)]));
         let frame = app.snapshot();
-        assert!(frame.contains("> a2"), "{frame}");
-        assert!(!frame.contains("> a1"), "{frame}");
+        assert!(frame.contains("▶ a2"), "{frame}");
+        assert!(!frame.contains("▶ a1"), "{frame}");
         assert!(frame.contains("New comment from @alice"), "{frame}");
+    }
+
+    #[test]
+    fn snapshot_shows_the_configured_watch_scope() {
+        let mut view = view(Vec::new());
+        view.scope = vec!["acme/api".to_string(), "acme/web".to_string()];
+        let frame = TuiApp::new(view).snapshot();
+        assert!(frame.contains("watch scope: acme/api, acme/web"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn reload_clamps_the_selection_when_the_list_shrinks() {
+        let mut app = TuiApp::new(view(vec![record("a2", false), record("a1", false)]));
+        app.selected = 1;
+        let inbox = FakeInbox::new(vec![view(vec![record("a2", true)])]);
+        app.reload(&inbox, &core_config()).await.expect("reload");
+        assert_eq!(app.selected, 0);
+        assert_eq!(
+            app.selected_summary().as_deref(),
+            Some("New comment from @alice")
+        );
+    }
+
+    #[tokio::test]
+    async fn a_failed_reload_after_a_read_is_reported() {
+        let mut app = TuiApp::new(view(vec![record("a2", false)]));
+        let inbox = FakeInbox::failing_view();
+        let error = app
+            .handle_key(key(KeyCode::Char('r')), &inbox, &core_config())
+            .await
+            .expect_err("reload failure");
+        assert!(matches!(error, CoreError::State(_)));
+        assert_eq!(inbox.reads.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn an_unbound_key_changes_nothing() {
+        let mut app = TuiApp::new(view(vec![record("a2", false), record("a1", false)]));
+        let inbox = FakeInbox::new(Vec::new());
+        let action = app
+            .handle_key(key(KeyCode::Char('x')), &inbox, &core_config())
+            .await
+            .expect("continue");
+        assert_eq!(action, TuiAction::Continue);
+        assert_eq!(app.selected, 0);
+        assert_eq!(inbox.reads.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn load_view_maps_config_errors_to_exit_two() {
+        let config = ConfigLoader::parse("[accounts.work]\n");
+        let error = load_view(&config, &FakeInbox::new(Vec::new()))
+            .await
+            .expect_err("configuration error");
+        assert_eq!(error.exit, 2);
+        assert!(error.message.contains("configuration error"), "{error:?}");
+    }
+
+    #[tokio::test]
+    async fn load_view_maps_state_errors_to_exit_three() {
+        let config = ConfigLoader::parse("[accounts.personal]\ntoken_env = \"TOKEN\"\n");
+        let error = load_view(&config, &FakeInbox::failing_view())
+            .await
+            .expect_err("state error");
+        assert_eq!(error.exit, 3);
+        assert!(error.message.contains("state error"), "{error:?}");
     }
 }

@@ -86,16 +86,15 @@ Feature: Activity inbox terminal UI
   @givn.added
   Scenario: The terminal UI reports a configuration error
     Given a configured account "work" with no credential source
-    When the developer opens the inbox TUI
+    When the developer starts the inbox TUI binary
     Then the TUI reports "configuration error"
     And the exit status is 2
 
   @givn.added
   Scenario: The terminal UI reports a state error
     Given a configured account "personal" with login "octo-personal"
-    And a version-1 state file with one watched pull request
-    And the state directory cannot be written
-    When the developer opens the inbox TUI
+    And the state path is a directory
+    When the developer starts the inbox TUI binary
     Then the TUI reports "state error"
     And the exit status is 3
 

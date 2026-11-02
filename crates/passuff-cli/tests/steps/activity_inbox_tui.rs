@@ -1,10 +1,20 @@
-use cucumber::{then, when};
+use cucumber::{given, then, when};
 
 use crate::support::World;
 
 #[when(regex = r#"^the developer opens the inbox TUI$"#)]
 async fn opens(world: &mut World) {
     world.run_tui_snapshot().await;
+}
+
+#[when(regex = r#"^the developer starts the inbox TUI binary$"#)]
+async fn starts_binary(world: &mut World) {
+    world.run_tui_binary();
+}
+
+#[given(regex = r#"^the state path is a directory$"#)]
+async fn state_path_is_directory(world: &mut World) {
+    std::fs::create_dir_all(world.state_path()).expect("state path directory");
 }
 
 #[when(regex = r#"^the developer presses "([^"]+)"$"#)]
