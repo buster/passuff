@@ -101,7 +101,7 @@ Feature: Pull request activity notification
     Given a configured account "work" with a personal access token file that does not exist
     When passuff runs one check
     Then the transcript reports "account work failed"
-    And the transcript reports "token file is missing"
+    And the transcript reports "token file is missing: "
     And the exit status is 1
 
   @givn.added

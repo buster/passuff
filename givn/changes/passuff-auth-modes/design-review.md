@@ -98,3 +98,15 @@ branches above are signed off with the listed non-blocking findings carried to
 tasks.
 
 DESIGN-REVIEW: PASS
+
+## Remediation re-check (2026-11-02)
+
+The final review found contract and test gaps. The remediation added the four
+credential source adapters, TOML parsing for gh OAuth accounts, gh failure
+messages and process tests, token-file boundary tests, and wording alignment
+(per-gh-login attempt rule, login-set exclusion, credential mode). The plan is
+unchanged: the same contract, the same scopes, and no new consumer action. The
+delta gained boundary scenarios only. Re-checked against the design rules: no
+new blocker.
+
+DESIGN-REVIEW: PASS

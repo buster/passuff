@@ -158,7 +158,7 @@ sequenceDiagram
 
 **Steps:**
 
-1. The credential source records that a login was attempted for the account.
+1. The credential source records that a login was attempted for the gh login.
 2. It runs gh's browser login with inherited stdio; gh owns the prompts and the
    browser.
 3. It retries the token read once. A failure after login is an account failure.

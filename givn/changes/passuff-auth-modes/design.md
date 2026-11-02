@@ -28,7 +28,7 @@ Constraints:
 | TTY detection | `std::io::IsTerminal` on stdin and stdout | No new dependency; both ends must be interactive for a browser prompt to make sense. |
 | Token file permissions | `mode & 0o077 == 0` on Unix, plus owner-read (`0o400`) | Accepts `0600` and `0400`; rejects any group/other access. |
 | Tilde expansion | `~` and `~/...` expand from `HOME`; relative paths are rejected | Avoids depending on the process working directory; no shell expansion of environment variables. |
-| Login retry | Once per account per process, tracked in the credential source | Prevents browser-tab loops in the watch cycle. |
+| Login retry | Once per gh login per process, tracked in the credential source | Prevents browser-tab loops in the watch cycle. |
 | Watch cycle seam | `WatchControl` port with `Interrupt` and a test-only `StopAfter` | Lets scenarios run one or two cycles without spawning a signal handler; production default stays `Interrupt`. |
 
 Versions: Rust stable via `rust-toolchain.toml`; cucumber-rs from the existing

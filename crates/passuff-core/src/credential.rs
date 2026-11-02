@@ -279,6 +279,51 @@ mod tests {
         assert_eq!(file_token(path).await.unwrap(), "token-value");
     }
 
+    fn fake_gh_script(dir: &std::path::Path, body: &str) -> PathBuf {
+        let script = dir.join("gh");
+        std::fs::write(&script, format!("#!/bin/sh\n{body}\n")).unwrap();
+        let mut permissions = std::fs::metadata(&script).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&script, permissions).unwrap();
+        script
+    }
+
+    #[tokio::test]
+    async fn gh_source_reports_missing_binaries_empty_output_and_failures() {
+        let dir = tempfile::tempdir().unwrap();
+        let spec = CredentialSpec::GhOAuth {
+            login: "octo-work".to_string(),
+            host: "github.com".to_string(),
+        };
+        let source = GhOAuthCredential::new(false, None);
+
+        let old = std::env::var("PATH").unwrap_or_default();
+        std::env::set_var("PATH", dir.path());
+        assert!(matches!(
+            source.token(&spec).await,
+            Err(CredentialError::GhNotFound)
+        ));
+
+        fake_gh_script(dir.path(), "exit 0");
+        assert!(matches!(
+            source.token(&spec).await,
+            Err(CredentialError::CommandEmpty)
+        ));
+
+        fake_gh_script(dir.path(), "printf '\\377'");
+        assert!(matches!(
+            source.token(&spec).await,
+            Err(CredentialError::GhTokenFailed)
+        ));
+
+        fake_gh_script(dir.path(), "exit 1");
+        assert!(matches!(
+            source.token(&spec).await,
+            Err(CredentialError::GhTokenFailed)
+        ));
+        std::env::set_var("PATH", old);
+    }
+
     #[tokio::test]
     async fn file_source_rejects_missing_empty_and_insecure_files() {
         let dir = tempfile::tempdir().unwrap();

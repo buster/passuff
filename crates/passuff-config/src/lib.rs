@@ -637,6 +637,31 @@ mod tests {
     }
 
     #[test]
+    fn rejects_a_tilde_token_file_without_home() {
+        let saved = std::env::var_os("HOME");
+        std::env::remove_var("HOME");
+        let result = parse("[accounts.work]\ntoken_file = \"~/work.token\"\n");
+        if let Some(home) = saved {
+            std::env::set_var("HOME", home);
+        }
+        let error = result.unwrap_err();
+        assert!(error.to_string().contains("HOME is not set"));
+    }
+
+    #[test]
+    fn rejects_a_github_user_with_whitespace() {
+        let error = parse(
+            r#"
+            [accounts.work]
+            auth = "gh_oauth"
+            github_user = "octo work"
+            "#,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("must be a login"));
+    }
+
+    #[test]
     fn rejects_relative_and_insecure_token_files() {
         assert!(parse("[accounts.work]\ntoken_file = \"relative.token\"\n").is_err());
 

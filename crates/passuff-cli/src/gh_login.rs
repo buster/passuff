@@ -71,6 +71,15 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn login_reports_a_missing_gh() {
+        let old = std::env::var("PATH").unwrap_or_default();
+        std::env::set_var("PATH", "/nonexistent");
+        let result = SystemGhLogin.login("octo-work", "github.com").await;
+        std::env::set_var("PATH", old);
+        assert!(matches!(result, Err(CredentialError::GhNotFound)));
+    }
+
+    #[tokio::test]
     async fn login_reports_a_gh_failure() {
         let (dir, _log) = fake_gh(1);
         let old = std::env::var("PATH").unwrap_or_default();

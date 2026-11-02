@@ -1,6 +1,6 @@
 # Tasks: passuff-auth-modes
 
-Behavior batches. Non-@e2e first, then @e2e. One commit may serve several scenarios in a batch.
+Behavior batches. Regular scenarios first, then end-to-end. One commit may serve several scenarios in a batch.
 
 Legend: an unchecked box means pending; a checked box is done only when the batch commit is filled in. Check boxes immediately after each batch.
 
@@ -111,7 +111,7 @@ cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 7fa8b
   - [x] COMMIT: `7fa8bed` -- Batch: `credential-resolution`
 
 - [x] Scenario: `A token file path starting with ~ is expanded`
-  - [x] **Design constraints:** R35. `~`/`~/...` expand from `HOME`; a relative path is a configuration error; `HOME` unset is a credential failure. The test sets `HOME` to a temp directory.
+  - [x] **Design constraints:** R35. `~`/`~/...` expand from `HOME`; a relative path is a configuration error; `HOME` unset is a configuration error. The test sets `HOME` to a temp directory.
         Files: `crates/passuff-config/src/lib.rs`, `crates/passuff-core/src/credential.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
