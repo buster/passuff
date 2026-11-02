@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "change": "passuff-activity-inbox",
+  "status": "passed",
+  "head": "108b1f0d131cf9ab24902ff1a3905707eb5660f1",
+  "features_path": "givn/changes/passuff-activity-inbox/specs",
+  "features_digest": "a02af3a5933a64757ac248a50eec9ab4c2f7038b8a68ed230b03c056ecf49830",
+  "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+  "command": "./scripts/verify.sh",
+  "tested_content_digest": "773ccf4f89b790dfb89f7eaf449b53b78817b3a16acff0b1a30452fc62ef3c16",
+  "content_scope": "change-proof/v1",
+  "runner_exit": 0,
+  "result": {
+    "scope": null,
+    "total": 24,
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finished_at_unix": 1793656571
+}
