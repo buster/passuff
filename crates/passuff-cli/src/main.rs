@@ -22,12 +22,20 @@ async fn main() {
     }
 
     let dirs = directories::ProjectDirs::from("dev", "passuff", "passuff");
-    let config_path = args
-        .config
-        .unwrap_or_else(|| dirs.as_ref().map(|dirs| dirs.config_dir().join("config.toml")).unwrap_or_else(|| PathBuf::from("passuff.toml")));
-    let state_path = args
-        .state
-        .unwrap_or_else(|| dirs.as_ref().map(|dirs| dirs.state_dir().unwrap_or_else(|| dirs.data_dir()).join("state.json")).unwrap_or_else(|| PathBuf::from("passuff-state.json")));
+    let config_path = args.config.unwrap_or_else(|| {
+        dirs.as_ref()
+            .map(|dirs| dirs.config_dir().join("config.toml"))
+            .unwrap_or_else(|| PathBuf::from("passuff.toml"))
+    });
+    let state_path = args.state.unwrap_or_else(|| {
+        dirs.as_ref()
+            .map(|dirs| {
+                dirs.state_dir()
+                    .unwrap_or_else(|| dirs.data_dir())
+                    .join("state.json")
+            })
+            .unwrap_or_else(|| PathBuf::from("passuff-state.json"))
+    });
 
     let sound = Arc::new(SystemSoundPlayer::new());
     let delivery = build_delivery(sound);
@@ -50,7 +58,9 @@ async fn main() {
     std::process::exit(outcome.status);
 }
 
-fn build_delivery(sound: Arc<SystemSoundPlayer>) -> Arc<dyn passuff_cli::delivery::NotificationDelivery> {
+fn build_delivery(
+    sound: Arc<SystemSoundPlayer>,
+) -> Arc<dyn passuff_cli::delivery::NotificationDelivery> {
     #[cfg(feature = "test-support")]
     {
         if let Ok(sink) = std::env::var("PASSUFF_NOTIFICATION_SINK") {

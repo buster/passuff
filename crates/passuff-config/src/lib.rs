@@ -231,7 +231,9 @@ impl FileConfig {
 
 fn validate_graphql_url(label: &str, raw: &str) -> Result<Url, ConfigError> {
     let url = Url::parse(raw).map_err(|error| {
-        ConfigError::Validation(format!("account '{label}' has an invalid graphql_url: {error}"))
+        ConfigError::Validation(format!(
+            "account '{label}' has an invalid graphql_url: {error}"
+        ))
     })?;
     match url.scheme() {
         "https" => Ok(url),
@@ -378,6 +380,9 @@ mod tests {
             "#,
         )
         .unwrap();
-        assert_eq!(config.core.accounts["personal"].graphql_url.port(), Some(1234));
+        assert_eq!(
+            config.core.accounts["personal"].graphql_url.port(),
+            Some(1234)
+        );
     }
 }

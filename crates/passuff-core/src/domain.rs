@@ -189,11 +189,7 @@ impl WatchedPullRequest {
                 recorded_at,
                 seen_comment_ids: pr.comments.iter().map(|c| c.id.clone()).collect(),
                 seen_review_ids: pr.reviews.iter().map(|r| r.id.clone()).collect(),
-                seen_review_comment_ids: pr
-                    .review_comments
-                    .iter()
-                    .map(|c| c.id.clone())
-                    .collect(),
+                seen_review_comment_ids: pr.review_comments.iter().map(|c| c.id.clone()).collect(),
                 head_oid: pr.head_oid.clone(),
                 ci_state: pr.ci.state.clone(),
                 state: pr.state.clone(),
@@ -201,11 +197,7 @@ impl WatchedPullRequest {
             current: CurrentObservation {
                 seen_comment_ids: pr.comments.iter().map(|c| c.id.clone()).collect(),
                 seen_review_ids: pr.reviews.iter().map(|r| r.id.clone()).collect(),
-                seen_review_comment_ids: pr
-                    .review_comments
-                    .iter()
-                    .map(|c| c.id.clone())
-                    .collect(),
+                seen_review_comment_ids: pr.review_comments.iter().map(|c| c.id.clone()).collect(),
                 head_oid: pr.head_oid.clone(),
                 ci_state: pr.ci.state.clone(),
                 ci_failed: pr.ci.state.failed(),
@@ -303,7 +295,12 @@ pub struct LoginSet(HashSet<String>);
 
 impl LoginSet {
     pub fn new(logins: impl IntoIterator<Item = String>) -> Self {
-        Self(logins.into_iter().map(|login| login.to_ascii_lowercase()).collect())
+        Self(
+            logins
+                .into_iter()
+                .map(|login| login.to_ascii_lowercase())
+                .collect(),
+        )
     }
 
     pub fn contains(&self, login: &str) -> bool {

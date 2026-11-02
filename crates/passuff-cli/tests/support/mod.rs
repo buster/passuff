@@ -14,8 +14,8 @@ use passuff_config::{
 };
 use passuff_core::{
     AccountObservation, AuthoredPullRequest, CiResult, CiState, Comment, CredentialError,
-    CredentialSource, GitHubError, GitHubGateway, JsonStateStore, PrState, PullRequestKey, RefreshReport,
-    Review, ReviewComment, SnapshotStore, StateError, WatcherState,
+    CredentialSource, GitHubError, GitHubGateway, JsonStateStore, PrState, PullRequestKey,
+    RefreshReport, Review, ReviewComment, SnapshotStore, StateError, WatcherState,
 };
 use serde_json::Value;
 use tempfile::TempDir;
@@ -298,10 +298,7 @@ impl World {
         let delivery: Arc<dyn NotificationDelivery> = if self.failing_delivery {
             Arc::new(FailingDelivery)
         } else {
-            Arc::new(RecordingDelivery::new(
-                sound,
-                self.notification_log.clone(),
-            ))
+            Arc::new(RecordingDelivery::new(sound, self.notification_log.clone()))
         };
         let runtime = CliRuntime::new(CliPorts {
             gateway,

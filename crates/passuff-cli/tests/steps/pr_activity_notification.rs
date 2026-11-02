@@ -203,7 +203,9 @@ async fn own_merge(world: &mut World, _login: String, key: String) {
     set_state(world, &key, "merged");
 }
 
-#[when(regex = r#"^an authored pull request "([^"]+)" by "([^"]+)" appears with an existing comment by "([^"]+)"$"#)]
+#[when(
+    regex = r#"^an authored pull request "([^"]+)" by "([^"]+)" appears with an existing comment by "([^"]+)"$"#
+)]
 async fn first_seen_later(world: &mut World, key: String, author: String, commenter: String) {
     world.ensure_baseline().await;
     let pr = world.add_pr(&key, &author);
@@ -215,11 +217,15 @@ async fn first_seen_later(world: &mut World, key: String, author: String, commen
     });
     if world.e2e {
         world.e2e_add_pull_request(&key, &author).await;
-        world.e2e_set_comment(&key, "existing-later", &commenter, "Existing comment").await;
+        world
+            .e2e_set_comment(&key, "existing-later", &commenter, "Existing comment")
+            .await;
     }
 }
 
-#[when(regex = r#"^an authored pull request "([^"]+)" by "([^"]+)" is created and "([^"]+)" between checks$"#)]
+#[when(
+    regex = r#"^an authored pull request "([^"]+)" by "([^"]+)" is created and "([^"]+)" between checks$"#
+)]
 async fn short_lived(world: &mut World, key: String, author: String, state: String) {
     world.ensure_baseline().await;
     let pr = world.add_pr(&key, &author);
@@ -420,7 +426,10 @@ async fn apply_action(world: &mut World, action: &str, key: &str) {
         let author = caps[0].clone();
         let body = caps[1].clone();
         let comment = ReviewComment {
-            id: format!("review-comment-{}", world.pr_mut(key).review_comments.len() + 1),
+            id: format!(
+                "review-comment-{}",
+                world.pr_mut(key).review_comments.len() + 1
+            ),
             author,
             body,
             created_at: "2026-11-02T12:00:01Z".to_string(),

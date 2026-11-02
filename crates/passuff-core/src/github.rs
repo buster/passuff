@@ -208,7 +208,8 @@ impl GitHubGateway for GitHubApiAdapter {
             }
         }
 
-        let login = login.ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
+        let login =
+            login.ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
         Ok(AccountObservation {
             login,
             pull_requests,
@@ -243,7 +244,10 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
         for comment in thread.comments.nodes {
             review_comments.push(ReviewComment {
                 id: comment.id,
-                author: comment.author.and_then(|author| author.login).unwrap_or_else(|| "ghost".to_string()),
+                author: comment
+                    .author
+                    .and_then(|author| author.login)
+                    .unwrap_or_else(|| "ghost".to_string()),
                 body: comment.body,
                 created_at: comment.created_at,
             });
@@ -269,7 +273,12 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             .into_iter()
             .filter_map(|author| author.login)
             .collect(),
-        labels: node.labels.nodes.into_iter().map(|label| label.name).collect(),
+        labels: node
+            .labels
+            .nodes
+            .into_iter()
+            .map(|label| label.name)
+            .collect(),
         milestone: node.milestone.and_then(|milestone| milestone.title),
         base_ref: node.base_ref_name,
         head_oid,
@@ -280,7 +289,10 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             .into_iter()
             .map(|comment| Comment {
                 id: comment.id,
-                author: comment.author.and_then(|author| author.login).unwrap_or_else(|| "ghost".to_string()),
+                author: comment
+                    .author
+                    .and_then(|author| author.login)
+                    .unwrap_or_else(|| "ghost".to_string()),
                 body: comment.body,
                 created_at: comment.created_at,
             })
@@ -291,7 +303,10 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             .into_iter()
             .map(|review| Review {
                 id: review.id,
-                author: review.author.and_then(|author| author.login).unwrap_or_else(|| "ghost".to_string()),
+                author: review
+                    .author
+                    .and_then(|author| author.login)
+                    .unwrap_or_else(|| "ghost".to_string()),
                 state: review.state,
                 body: review.body,
                 submitted_at: review.submitted_at,
@@ -312,14 +327,11 @@ fn map_ci(rollup: &GqlRollup) -> CiResult {
     let mut failed_checks = Vec::new();
     if let Some(contexts) = rollup.contexts.as_ref() {
         for context in &contexts.nodes {
-            let failed = context
-                .conclusion
-                .as_deref()
-                .is_some_and(|value| value.eq_ignore_ascii_case("FAILURE") || value.eq_ignore_ascii_case("ERROR"))
-                || context
-                    .state
-                    .as_deref()
-                    .is_some_and(|value| value.eq_ignore_ascii_case("FAILURE") || value.eq_ignore_ascii_case("ERROR"));
+            let failed = context.conclusion.as_deref().is_some_and(|value| {
+                value.eq_ignore_ascii_case("FAILURE") || value.eq_ignore_ascii_case("ERROR")
+            }) || context.state.as_deref().is_some_and(|value| {
+                value.eq_ignore_ascii_case("FAILURE") || value.eq_ignore_ascii_case("ERROR")
+            });
             if failed {
                 if let Some(name) = context.name.as_ref().or(context.context.as_ref()) {
                     failed_checks.push(name.clone());

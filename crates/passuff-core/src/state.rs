@@ -34,16 +34,13 @@ impl JsonStateStore {
             .file_name()
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_else(|| "state.json".to_string());
-        self.path
-            .with_file_name(format!("{name}.corrupt.{stamp}"))
+        self.path.with_file_name(format!("{name}.corrupt.{stamp}"))
     }
 
     fn quarantine(&self) -> Result<(), StateError> {
-        fs::rename(&self.path, self.quarantine_path()).map_err(|error| {
-            StateError::Quarantine {
-                path: self.path.clone(),
-                message: error.to_string(),
-            }
+        fs::rename(&self.path, self.quarantine_path()).map_err(|error| StateError::Quarantine {
+            path: self.path.clone(),
+            message: error.to_string(),
         })
     }
 }
@@ -104,10 +101,11 @@ impl SnapshotStore for JsonStateStore {
                 path: self.path.clone(),
                 message: error.to_string(),
             })?;
-            file.write_all(&payload).map_err(|error| StateError::Write {
-                path: self.path.clone(),
-                message: error.to_string(),
-            })?;
+            file.write_all(&payload)
+                .map_err(|error| StateError::Write {
+                    path: self.path.clone(),
+                    message: error.to_string(),
+                })?;
             file.sync_all().map_err(|error| StateError::Write {
                 path: self.path.clone(),
                 message: error.to_string(),

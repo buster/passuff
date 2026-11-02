@@ -1,9 +1,9 @@
 mod support;
 
-#[path = "steps/pr_activity_notification.rs"]
-mod regular_steps;
 #[path = "steps/pr_activity_notification_e2e.rs"]
 mod e2e_steps;
+#[path = "steps/pr_activity_notification.rs"]
+mod regular_steps;
 
 use std::path::PathBuf;
 
@@ -102,28 +102,54 @@ fn resolve_features(features: &str) -> String {
 
 fn print_failures(text: &str) {
     let value: Value = serde_json::from_str(text).unwrap_or(Value::Array(Vec::new()));
-    let Some(features) = value.as_array() else { return; };
+    let Some(features) = value.as_array() else {
+        return;
+    };
     for feature in features {
         let feature_name = feature.get("name").and_then(Value::as_str).unwrap_or("?");
-        let Some(elements) = feature.get("elements").and_then(Value::as_array) else { continue; };
+        let Some(elements) = feature.get("elements").and_then(Value::as_array) else {
+            continue;
+        };
         for element in elements {
-            if element.get("type").and_then(Value::as_str) != Some("scenario") { continue; }
+            if element.get("type").and_then(Value::as_str) != Some("scenario") {
+                continue;
+            }
             let mut failed = false;
             let mut detail = String::new();
             if let Some(steps) = element.get("steps").and_then(Value::as_array) {
                 for step in steps {
-                    let status = step.get("result").and_then(|r| r.get("status")).and_then(Value::as_str).unwrap_or("");
-                    if matches!(status, "failed" | "undefined" | "ambiguous" | "pending" | "skipped") {
+                    let status = step
+                        .get("result")
+                        .and_then(|r| r.get("status"))
+                        .and_then(Value::as_str)
+                        .unwrap_or("");
+                    if matches!(
+                        status,
+                        "failed" | "undefined" | "ambiguous" | "pending" | "skipped"
+                    ) {
                         failed = true;
-                        detail.push_str(&format!("\n  {} {} -> {}", status, step.get("keyword").and_then(Value::as_str).unwrap_or(""), step.get("name").and_then(Value::as_str).unwrap_or("")));
-                        if let Some(err) = step.get("result").and_then(|r| r.get("error_message")).and_then(Value::as_str) {
+                        detail.push_str(&format!(
+                            "\n  {} {} -> {}",
+                            status,
+                            step.get("keyword").and_then(Value::as_str).unwrap_or(""),
+                            step.get("name").and_then(Value::as_str).unwrap_or("")
+                        ));
+                        if let Some(err) = step
+                            .get("result")
+                            .and_then(|r| r.get("error_message"))
+                            .and_then(Value::as_str)
+                        {
                             detail.push_str(&format!("\n    {err}"));
                         }
                     }
                 }
             }
             if failed {
-                eprintln!("FAILED: {} :: {}", feature_name, element.get("name").and_then(Value::as_str).unwrap_or("?"));
+                eprintln!(
+                    "FAILED: {} :: {}",
+                    feature_name,
+                    element.get("name").and_then(Value::as_str).unwrap_or("?")
+                );
                 eprintln!("{detail}");
             }
         }

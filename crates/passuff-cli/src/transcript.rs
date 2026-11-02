@@ -20,11 +20,7 @@ impl TranscriptRenderer {
         sound: bool,
     ) -> RenderedNotification {
         let title = format!("passuff: {}", notification.key);
-        let lines: Vec<String> = notification
-            .events
-            .iter()
-            .map(render_event)
-            .collect();
+        let lines: Vec<String> = notification.events.iter().map(render_event).collect();
         let body = lines.join("\n");
         let mut transcript = title.clone();
         for line in &lines {

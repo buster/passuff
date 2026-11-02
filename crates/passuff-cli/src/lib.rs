@@ -146,11 +146,7 @@ impl CliRuntime {
         }
     }
 
-    async fn process_report(
-        &self,
-        config: &AppConfig,
-        report: &RefreshReport,
-    ) -> (String, i32) {
+    async fn process_report(&self, config: &AppConfig, report: &RefreshReport) -> (String, i32) {
         let mut lines = Vec::new();
         for key in &report.baselines_recorded {
             lines.push(self.renderer.render_baseline(key));
@@ -176,7 +172,11 @@ impl CliRuntime {
         {
             lines.push(self.renderer.render_no_changes());
         }
-        let status = if report.account_failures.is_empty() { 0 } else { 1 };
+        let status = if report.account_failures.is_empty() {
+            0
+        } else {
+            1
+        };
         (lines.join("\n"), status)
     }
 
@@ -190,10 +190,7 @@ impl CliRuntime {
     }
 }
 
-fn render_delivery_errors(
-    renderer: &TranscriptRenderer,
-    delivery: &DeliveryReport,
-) -> Vec<String> {
+fn render_delivery_errors(renderer: &TranscriptRenderer, delivery: &DeliveryReport) -> Vec<String> {
     let mut lines = Vec::new();
     for error in &delivery.errors {
         if let Some(detail) = error.strip_prefix("desktop notification failed: ") {

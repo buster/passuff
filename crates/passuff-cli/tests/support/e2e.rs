@@ -105,7 +105,9 @@ impl DbustTwin {
         reader
             .read_line(&mut address)
             .map_err(|error| error.to_string())?;
-        reader.read_line(&mut pid).map_err(|error| error.to_string())?;
+        reader
+            .read_line(&mut pid)
+            .map_err(|error| error.to_string())?;
         let address = address.trim().to_string();
         if address.is_empty() {
             return Err("dbus-daemon printed no address".to_string());
@@ -174,7 +176,9 @@ impl World {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut permissions = fs::metadata(&script).expect("sound script metadata").permissions();
+            let mut permissions = fs::metadata(&script)
+                .expect("sound script metadata")
+                .permissions();
             permissions.set_mode(0o755);
             fs::set_permissions(&script, permissions).expect("sound script mode");
         }
@@ -205,7 +209,13 @@ impl World {
         self.e2e_config_dir = Some(dir);
         self.e2e_sound_dir = Some(sound_dir);
         self.e2e_sound_log = Some(sound_log);
-        self.e2e_state_path = Some(self.e2e_config_dir.as_ref().unwrap().path().join("state.json"));
+        self.e2e_state_path = Some(
+            self.e2e_config_dir
+                .as_ref()
+                .unwrap()
+                .path()
+                .join("state.json"),
+        );
         self.e2e_prs.clear();
         self.e2e_refresh_mock().await;
     }
