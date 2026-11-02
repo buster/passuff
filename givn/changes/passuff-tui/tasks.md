@@ -56,16 +56,16 @@ Legend: an unchecked box means pending; a checked box is done only when the comm
         ```
         ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; scenario green. COMMIT 45262ed.
         ```
-  - [x] COMMIT: `45262ed` -- Batch: `tui-render`
+  - [x] COMMIT: `a556688` -- Batch: `tui-render` (error scenarios now spawn the binary)
 
 - [x] Scenario: `The terminal UI reports a state error`
-  - [x] **Design constraints:** T5. v1 migration save failure, exit 3.
-        Files: `tui.rs`, support guard.
+  - [x] **Design constraints:** T5. State path is a directory; the spawned binary exits 3.
+        Files: `tui_main.rs`, `support/mod.rs`, step file.
   - [x] Implement and run; REFACTOR and re-run.
         ```
         ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; scenario green. COMMIT 45262ed.
         ```
-  - [x] COMMIT: `45262ed` -- Batch: `tui-render`
+  - [x] COMMIT: `a556688` -- Batch: `tui-render` (error scenarios now spawn the binary)
 
 ### Batch: `tui-keys`
 
@@ -113,6 +113,28 @@ Legend: an unchecked box means pending; a checked box is done only when the comm
         ./scripts/verify.sh (delta) -> 10/10; e2e -> 7/7; scenario green. COMMIT 45262ed.
         ```
   - [x] COMMIT: `45262ed` -- Batch: `tui-keys`
+
+### Batch: `tui-review-fixes`
+
+- [x] B1: quote the capability decision so the review gate reads `## Capability Routing`.
+      Files: `proposal.md`. COMMIT `a556688`.
+- [x] B2: align durable arc42 chapters with the built `InboxService` adapter
+      (`05` edge and table, `06` runtime note, `10` QS-011, `11` R-010).
+      COMMIT `a556688`.
+- [x] B3: terminal setup/draw/event failures exit 3 with a `passuff-tui:` message;
+      the selected row uses `▶` and reversed video.
+      Files: `tui_main.rs`, `tui.rs`. COMMIT `a556688`.
+- [x] B4: remove the dead `TuiApp::view` and `TuiApp::selected` accessors.
+      COMMIT `a556688`.
+- [x] B5: regression tests for the reload clamp, a failed reload after `r`, an
+      unbound key, a configured watch scope, `load_view` exits 2/3, and the
+      spawned binary's config/state error exits.
+      Files: `tui.rs` unit tests; `activity-inbox.feature`, step file, support.
+      ```
+      cargo test -p passuff-cli --lib -> 14 passed
+      ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; e2e -> 7/7
+      ```
+      COMMIT `a556688`.
 
 ---
 
