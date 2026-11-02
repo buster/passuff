@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "change": "passuff-activity-inbox",
+  "status": "pending",
+  "candidate_revision": null,
+  "tested_revision": null,
+  "scopes": {},
+  "coverage": null,
+  "scope_evidence": {},
+  "coverage_inputs": null,
+  "merge_completed": true,
+  "merged_deltas": [
+    "inspect-watch-status/watch-status.feature",
+    "review-activity-inbox/activity-inbox.feature",
+    "watch-pull-requests/pr-activity-notification.feature"
+  ],
+  "merge_in_progress": null,
+  "merge_plan": [
+    "inspect-watch-status/watch-status.feature",
+    "review-activity-inbox/activity-inbox.feature",
+    "watch-pull-requests/pr-activity-notification.feature"
+  ],
+  "merge_targets": {
+    "inspect-watch-status/watch-status.feature": "givn/specs/inspect-watch-status/watch-status.feature",
+    "review-activity-inbox/activity-inbox.feature": "givn/specs/review-activity-inbox/activity-inbox.feature",
+    "watch-pull-requests/pr-activity-notification.feature": "givn/specs/watch-pull-requests/pr-activity-notification.feature"
+  },
+  "started_at_unix": 1793657475,
+  "finished_at_unix": null
+}
