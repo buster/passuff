@@ -34,6 +34,7 @@ impl PassuffCore {
     }
 
     pub async fn refresh(&mut self) -> Result<RefreshReport, CoreError> {
+        tracing::debug!(accounts = self.config.accounts.len(), "refreshing accounts");
         let mut state = self.store.load().await?;
         let mut report = RefreshReport::default();
 
@@ -43,6 +44,7 @@ impl PassuffCore {
             let token = match self.credentials.resolve(&account.credential).await {
                 Ok(token) => token,
                 Err(error) => {
+                    tracing::debug!(account = %label, error = %error, "credential failed");
                     failures.push(AccountFailure {
                         label: label.clone(),
                         kind: AccountFailureKind::Credential,
@@ -67,12 +69,23 @@ impl PassuffCore {
                 .observe(&token, &account.graphql_url, &known)
                 .await
             {
-                Ok(observation) => observed.push((label.clone(), observation)),
-                Err(error) => failures.push(AccountFailure {
-                    label: label.clone(),
-                    kind: error.account_failure_kind(),
-                    detail: error.to_string(),
-                }),
+                Ok(observation) => {
+                    tracing::debug!(
+                        account = %label,
+                        login = %observation.login,
+                        pull_requests = observation.pull_requests.len(),
+                        "account observed"
+                    );
+                    observed.push((label.clone(), observation));
+                }
+                Err(error) => {
+                    tracing::debug!(account = %label, error = %error, "observation failed");
+                    failures.push(AccountFailure {
+                        label: label.clone(),
+                        kind: error.account_failure_kind(),
+                        detail: error.to_string(),
+                    });
+                }
             }
         }
 
@@ -85,6 +98,12 @@ impl PassuffCore {
                 .and_then(|account| account.expected_login.as_deref());
             if let Some(expected) = expected {
                 if !observation.login.eq_ignore_ascii_case(expected) {
+                    tracing::debug!(
+                        account = %label,
+                        expected = %expected,
+                        actual = %observation.login,
+                        "credential identity mismatch"
+                    );
                     failures.push(AccountFailure {
                         label: label.clone(),
                         kind: AccountFailureKind::Identity,
@@ -175,6 +194,12 @@ impl PassuffCore {
 
         report.account_failures = failures;
         self.store.save(&state).await?;
+        tracing::debug!(
+            notifications = report.notifications.len(),
+            baselines = report.baselines_recorded.len(),
+            failures = report.account_failures.len(),
+            "refresh complete"
+        );
         Ok(report)
     }
 }

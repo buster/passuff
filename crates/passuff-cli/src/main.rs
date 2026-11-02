@@ -16,11 +16,7 @@ use crate::cli::{Cli, Command};
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
-    if args.verbose {
-        let _ = tracing_subscriber::fmt()
-            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .try_init();
-    }
+    passuff_cli::init_logging(args.verbose);
 
     let dirs = directories::ProjectDirs::from("dev", "passuff", "passuff");
     let config_path = args.config.unwrap_or_else(|| {
@@ -38,6 +34,11 @@ async fn main() {
             .unwrap_or_else(|| PathBuf::from("passuff-state.json"))
     });
 
+    tracing::debug!(
+        config = %config_path.display(),
+        state = %state_path.display(),
+        "starting passuff"
+    );
     let interactive =
         args.command.is_none() && std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
     let credentials = system_credentials(interactive);

@@ -126,6 +126,10 @@ impl GitHubGateway for GitHubApiAdapter {
         graphql_url: &Url,
         known_node_ids: &[String],
     ) -> Result<AccountObservation, GitHubError> {
+        tracing::debug!(
+            host = graphql_url.host_str().unwrap_or("unknown"),
+            "querying GitHub"
+        );
         let mut login: Option<String> = None;
         let mut pull_requests = Vec::new();
         let mut after: Option<String> = None;
@@ -200,6 +204,10 @@ impl GitHubGateway for GitHubApiAdapter {
 
         let login =
             login.ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
+        tracing::debug!(
+            pull_requests = pull_requests.len(),
+            "GitHub observation parsed"
+        );
         Ok(AccountObservation {
             login,
             pull_requests,

@@ -55,6 +55,7 @@ fn normalize_terminal_states(mut state: WatcherState) -> WatcherState {
 #[async_trait]
 impl SnapshotStore for JsonStateStore {
     async fn load(&self) -> Result<WatcherState, StateError> {
+        tracing::debug!(path = %self.path.display(), "loading state");
         let text = match fs::read_to_string(&self.path) {
             Ok(text) => text,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -73,7 +74,11 @@ impl SnapshotStore for JsonStateStore {
 
         let parsed: Result<WatcherState, _> = serde_json::from_str(&text);
         match parsed {
-            Ok(state) if state.version == 1 => Ok(normalize_terminal_states(state)),
+            Ok(state) if state.version == 1 => {
+                let state = normalize_terminal_states(state);
+                tracing::debug!(accounts = state.accounts.len(), "state loaded");
+                Ok(state)
+            }
             Ok(_) | Err(_) => {
                 self.quarantine()?;
                 Ok(WatcherState {
@@ -85,6 +90,7 @@ impl SnapshotStore for JsonStateStore {
     }
 
     async fn save(&self, state: &WatcherState) -> Result<(), StateError> {
+        tracing::debug!(accounts = state.accounts.len(), "saving state");
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent).map_err(|error| StateError::Write {
                 path: self.path.clone(),

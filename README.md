@@ -95,6 +95,7 @@ passuff                     watch until interrupted
 passuff check               run one observation pass
 passuff --config PATH       use a specific configuration file
 passuff --state PATH        use a specific state file
+passuff --verbose           enable diagnostic logs on stderr
 passuff --help              show usage
 passuff --version           show the version
 ```
