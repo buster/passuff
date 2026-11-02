@@ -2,20 +2,20 @@
   "schema": 2,
   "change": "passuff-auth-modes",
   "status": "passed",
-  "head": "0023de13eeffe488ae3bfa7c3b373e7c7a144792",
+  "head": "4303242e949258447c61ba55f8d73c8804ea3f9e",
   "features_path": "givn/changes/passuff-auth-modes/specs",
-  "features_digest": "fc19b739189f4c200d4980c3f8f92b13a29cfa921c0b8bb361770ea0a3db22af",
+  "features_digest": "fd70022dc17719fb01de582b059de1920513f4e9489cb956f021be20bee8aa45",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
   "command": "./scripts/verify.sh",
-  "tested_content_digest": "1f4225714b2522ef94939e06a6c951516937c41a98169255ddac05c074594413",
+  "tested_content_digest": "a2c77425052abc1f1024b50fe3093d9fe78814b237371f9d27bece5eda3421d0",
   "content_scope": "change-proof/v1",
   "runner_exit": 0,
   "result": {
     "scope": null,
-    "total": 23,
-    "passed": 23,
+    "total": 27,
+    "passed": 27,
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1793649892
+  "finished_at_unix": 1793650674
 }
