@@ -1,8 +1,8 @@
 # passuff
 
 <!-- givn:begin:coverage-badge -->
-[![Line Coverage: 89.4%](https://img.shields.io/badge/line%20coverage-89.4%25-brightgreen)](coverage/cobertura-coverage.xml)
-[![Branch Coverage: 34.5%](https://img.shields.io/badge/branch%20coverage-34.5%25-yellow)](coverage/cobertura-coverage.xml)
+[![Line Coverage: 89%](https://img.shields.io/badge/line%20coverage-89%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Branch Coverage: 35%](https://img.shields.io/badge/branch%20coverage-35%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
 
 `passuff` watches the GitHub pull requests you authored across several
@@ -51,8 +51,14 @@ Credentials resolve from the named environment variable, or from a token
 command.
 
 <!-- givn:begin:run -->
-`givn run` starts `cargo run --release -p passuff-cli -- --help`
-(`product_type: cli`).
+## Run
+
+Run the tool:
+
+```sh
+cargo run --release -p passuff-cli -- --help
+```
+
 <!-- givn:end:run -->
 
 ## Prerequisites
@@ -110,3 +116,19 @@ split per capability under `crates/passuff-cli/tests/steps/`.
 ## License
 
 GPL-3.0-or-later. See `LICENSE`.
+
+<!-- givn:begin:coverage -->
+## Coverage
+
+Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
+
+Line coverage: 89% (962/1076)
+Branch coverage: 35% (114/330)
+
+Reproduce the result:
+
+```sh
+./measure-coverage.sh
+./merge-coverages.sh
+```
+<!-- givn:end:coverage -->
