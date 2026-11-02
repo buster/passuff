@@ -599,3 +599,186 @@ struct GqlContext {
     context: Option<String>,
     state: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn endpoint(server: &MockServer) -> Url {
+        Url::parse(&format!("{}/graphql", server.uri())).expect("url")
+    }
+
+    async fn mount(server: &MockServer, status: u16, body: serde_json::Value) {
+        Mock::given(method("POST"))
+            .and(path("/graphql"))
+            .respond_with(ResponseTemplate::new(status).set_body_json(body))
+            .mount(server)
+            .await;
+    }
+
+    fn node() -> serde_json::Value {
+        serde_json::json!({
+            "id": "node-1",
+            "number": 42,
+            "title": "Pull request",
+            "url": "https://github.com/acme/api/pull/42",
+            "state": "OPEN",
+            "merged": false,
+            "isDraft": true,
+            "createdAt": "2026-11-02T10:00:00Z",
+            "updatedAt": "2026-11-02T11:00:00Z",
+            "baseRefName": "main",
+            "author": { "login": "octo" },
+            "repository": { "nameWithOwner": "acme/api" },
+            "assignees": { "nodes": [{ "login": "alice" }] },
+            "labels": { "nodes": [{ "name": "bug" }] },
+            "milestone": { "title": "v1" },
+            "comments": { "nodes": [{
+                "id": "c1", "author": { "login": "alice" }, "body": "hi",
+                "createdAt": "2026-11-02T10:30:00Z"
+            }] },
+            "reviews": { "nodes": [{
+                "id": "r1", "author": { "login": "bob" }, "state": "APPROVED",
+                "body": "", "submittedAt": "2026-11-02T10:40:00Z"
+            }] },
+            "reviewThreads": { "nodes": [{ "comments": { "nodes": [{
+                "id": "rc1", "author": { "login": "carol" }, "body": "nit",
+                "createdAt": "2026-11-02T10:50:00Z"
+            }] } }] },
+            "commits": { "nodes": [{ "commit": {
+                "oid": "abc123",
+                "statusCheckRollup": {
+                    "state": "FAILURE",
+                    "contexts": { "nodes": [
+                        { "__typename": "CheckRun", "name": "build", "conclusion": "FAILURE" },
+                        { "__typename": "StatusContext", "context": "unit", "state": "ERROR" }
+                    ] }
+                }
+            } }] }
+        })
+    }
+
+    #[tokio::test]
+    async fn observe_maps_authored_pull_requests() {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            200,
+            serde_json::json!({
+                "data": { "viewer": { "login": "octo", "pullRequests": {
+                    "pageInfo": { "hasNextPage": false, "endCursor": null },
+                    "nodes": [node()]
+                } } }
+            }),
+        )
+        .await;
+        let observation = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect("observation");
+        assert_eq!(observation.login, "octo");
+        let pull_request = &observation.pull_requests[0];
+        assert_eq!(pull_request.key.to_string(), "acme/api#42");
+        assert_eq!(pull_request.author, "octo");
+        assert_eq!(pull_request.state, PrState::Open);
+        assert!(pull_request.is_draft);
+        assert_eq!(pull_request.head_oid, "abc123");
+        assert_eq!(pull_request.ci.state, CiState::Failure);
+        assert_eq!(pull_request.ci.failed_checks, vec!["build", "unit"]);
+        assert_eq!(pull_request.comments[0].author, "alice");
+        assert_eq!(pull_request.reviews[0].state, "APPROVED");
+        assert_eq!(pull_request.review_comments[0].id, "rc1");
+        assert_eq!(pull_request.labels, vec!["bug"]);
+        assert_eq!(pull_request.assignees, vec!["alice"]);
+        assert_eq!(pull_request.milestone.as_deref(), Some("v1"));
+    }
+
+    #[tokio::test]
+    async fn observe_maps_http_failures() {
+        let server = MockServer::start().await;
+        mount(&server, 401, serde_json::json!({})).await;
+        let error = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect_err("authentication error");
+        assert!(matches!(error, GitHubError::Authentication));
+        assert_eq!(
+            error.account_failure_kind(),
+            AccountFailureKind::Authentication
+        );
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/graphql"))
+            .respond_with(
+                ResponseTemplate::new(429).insert_header("x-ratelimit-reset", "1700000000"),
+            )
+            .mount(&server)
+            .await;
+        let error = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect_err("rate limit error");
+        assert!(matches!(
+            error,
+            GitHubError::RateLimited { reset_at } if reset_at == "1700000000"
+        ));
+
+        let server = MockServer::start().await;
+        mount(&server, 500, serde_json::json!({})).await;
+        let error = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect_err("transport error");
+        assert!(matches!(error, GitHubError::Transport(_)));
+    }
+
+    #[tokio::test]
+    async fn observe_maps_graphql_and_body_failures() {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            200,
+            serde_json::json!({ "errors": [{ "message": "Bad query" }] }),
+        )
+        .await;
+        let error = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect_err("graphql error");
+        assert!(matches!(error, GitHubError::GraphQl(message) if message == "Bad query"));
+
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/graphql"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("not json"))
+            .mount(&server)
+            .await;
+        let error = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect_err("malformed response");
+        assert!(matches!(error, GitHubError::Malformed(_)));
+    }
+
+    #[tokio::test]
+    async fn observe_accepts_a_viewer_without_pull_requests() {
+        let server = MockServer::start().await;
+        mount(
+            &server,
+            200,
+            serde_json::json!({
+                "data": { "viewer": { "login": "octo", "pullRequests": null } }
+            }),
+        )
+        .await;
+        let observation = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect("observation");
+        assert_eq!(observation.login, "octo");
+        assert!(observation.pull_requests.is_empty());
+    }
+}
