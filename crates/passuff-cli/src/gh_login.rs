@@ -23,12 +23,6 @@ impl SystemGhLogin {
     }
 }
 
-impl Default for SystemGhLogin {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[async_trait]
 impl GhLogin for SystemGhLogin {
     async fn login(&self, _login: &str, host: &str) -> Result<(), CredentialError> {
