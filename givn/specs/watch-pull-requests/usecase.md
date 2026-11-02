@@ -24,7 +24,7 @@ The developer starts the watcher, or runs a single check pass.
 ## Main flow
 
 1. The watcher resolves each configured account through its declared credential mode to its GitHub login and forms the configured login set.
-2. The watcher observes the pull requests authored by the configured login set.
+2. The watcher observes the pull requests authored by the configured login set that the watch scope allows.
 3. On the first observation of an open pull request, the watcher records a baseline and reports no activity. A short-lived closed pull request is handled by R27.
 4. On each later observation, the watcher compares the pull request with its recorded observation.
 5. The watcher classifies eligible changes into activity events, including the R27 short-lived state change.
@@ -83,6 +83,7 @@ The developer starts the watcher, or runs a single check pass.
 - R36: When an account declares its expected login, a credential belonging to a different login, compared case-insensitively, is an account failure that names both logins, and no pull requests are processed for that account.
 - R37: An account configured with only an environment variable or a helper command, with no declared mode, remains a personal access token account.
 - R38: A failed or abandoned browser login is reported as an account failure and is attempted at most once per gh login per process; the remaining accounts are still observed.
+- R39: When a repository allowlist is configured, an authored pull request outside it is not observed, notified, or retained; a watched pull request that falls outside the scope is removed from the state on the next successful observation of its account.
 
 ## Examples
 
@@ -137,9 +138,9 @@ The developer receives one grouped desktop notification with sound, when both ar
 - Mobile push, email, Slack, Telegram, or other external delivery channels.
 - Windows desktop support.
 - A graphical interface, tray icon, or installer.
-- A TUI, activity history, read state, and configurable watch scope; these are
-  separate follow-up use cases.
-- Per-repository or per-organization allow/deny filters beyond the account boundary.
+- A TUI; it is a separate follow-up use case.
+- Per-account repository scopes; the first watch scope is one global allowlist.
+- Activity history, read state, and status; these are separate use cases.
 - Replaying activity that existed before the first observation of an account. The R27 short-lived state change is not a replay; it is a newly created pull request's terminal state.
 
 ## Diagram

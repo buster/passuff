@@ -16,6 +16,9 @@
   played by a system player. No hosted push channel, audio library, or
   third-party account is involved. See
   [ADR-0002](adr/ADR-0002-local-desktop-notifications.md).
+- Persist a bounded activity history in the watch state and expose a read model
+  (`InboxService`) to the CLI and the future TUI. Status, inbox, and read never
+  contact GitHub. See [ADR-0005](adr/ADR-0005-state-version-2-migration.md).
 - Delegate GitHub OAuth to the gh CLI and keep personal access tokens for
   headless use. passuff reads an existing session with
   `gh auth token --user <login>` and starts `gh auth login --web` only in an

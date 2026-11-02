@@ -27,6 +27,27 @@ pub struct AppConfig {
 pub struct CoreConfig {
     pub accounts: BTreeMap<String, AccountConfig>,
     pub events: EventToggles,
+    pub watch: WatchConfig,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct WatchConfig {
+    pub repositories: Vec<String>,
+}
+
+impl WatchConfig {
+    pub fn is_all(&self) -> bool {
+        self.repositories.is_empty()
+    }
+
+    pub fn allows_repository(&self, repository: &str) -> bool {
+        self.repositories.is_empty()
+            || self
+                .repositories
+                .iter()
+                .any(|allowed| allowed.eq_ignore_ascii_case(repository))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -107,6 +128,7 @@ struct FileConfig {
     poll_interval_secs: u64,
     events: EventToggles,
     notifications: NotificationsConfig,
+    watch: WatchConfig,
     accounts: BTreeMap<String, AccountToml>,
 }
 
@@ -116,6 +138,7 @@ impl Default for FileConfig {
             poll_interval_secs: DEFAULT_POLL_INTERVAL_SECS,
             events: EventToggles::default(),
             notifications: NotificationsConfig::default(),
+            watch: WatchConfig::default(),
             accounts: BTreeMap::new(),
         }
     }
@@ -192,6 +215,7 @@ impl FileConfig {
             }
         }
 
+        validate_watch_scope(&self.watch)?;
         let mut accounts = BTreeMap::new();
         for (label, account) in self.accounts {
             if label.trim().is_empty() {
@@ -299,10 +323,38 @@ impl FileConfig {
             core: CoreConfig {
                 accounts,
                 events: self.events,
+                watch: self.watch,
             },
             notifications: self.notifications,
         })
     }
+}
+
+fn validate_watch_scope(watch: &WatchConfig) -> Result<(), ConfigError> {
+    let mut seen: Vec<String> = Vec::new();
+    for repository in &watch.repositories {
+        let repository = repository.trim();
+        let valid = !repository.is_empty()
+            && !repository.chars().any(char::is_whitespace)
+            && repository.matches('/').count() == 1
+            && !repository.starts_with('/')
+            && !repository.ends_with('/');
+        if !valid {
+            return Err(ConfigError::Validation(format!(
+                "watch.repositories entry '{repository}' must be owner/repo"
+            )));
+        }
+        if seen
+            .iter()
+            .any(|existing| existing.eq_ignore_ascii_case(repository))
+        {
+            return Err(ConfigError::Validation(format!(
+                "watch.repositories contains duplicate '{repository}'"
+            )));
+        }
+        seen.push(repository.to_string());
+    }
+    Ok(())
 }
 
 fn gh_host(url: &Url) -> String {
@@ -687,6 +739,40 @@ mod tests {
         );
         let error = parse(&text).unwrap_err();
         assert!(error.to_string().contains("not a regular file"));
+    }
+
+    #[test]
+    fn parses_and_validates_the_watch_scope() {
+        let config = parse(
+            r#"
+            [watch]
+            repositories = ["Acme/API", "acme/web"]
+
+            [accounts.personal]
+            token_env = "A"
+            "#,
+        )
+        .unwrap();
+        assert!(config.core.watch.allows_repository("acme/api"));
+        assert!(config.core.watch.allows_repository("ACME/WEB"));
+        assert!(!config.core.watch.allows_repository("acme/other"));
+
+        let empty = parse("[accounts.personal]\ntoken_env = \"A\"\n").unwrap();
+        assert!(empty.core.watch.is_all());
+        assert!(empty.core.watch.allows_repository("anything/here"));
+
+        assert!(parse(
+            "[watch]\nrepositories = [\"bad\"]\n[accounts.personal]\ntoken_env = \"A\"\n"
+        )
+        .is_err());
+        assert!(parse(
+            "[watch]\nrepositories = [\"acme/api\", \"ACME/API\"]\n[accounts.personal]\ntoken_env = \"A\"\n"
+        )
+        .is_err());
+        assert!(parse(
+            "[watch]\nrepositories = [\"acme/api/web\"]\n[accounts.personal]\ntoken_env = \"A\"\n"
+        )
+        .is_err());
     }
 
     #[test]

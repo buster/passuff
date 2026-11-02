@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use passuff_cli::delivery::{FailingDelivery, NotificationDelivery, RecordingDelivery};
+use passuff_cli::inbox_cli::InboxCli;
 use passuff_cli::sound::{RecordingSoundPlayer, SoundPlayer, UnavailableSoundPlayer};
 use passuff_cli::{CliPorts, CliRuntime, StopAfter};
 use passuff_config::{
@@ -13,10 +14,10 @@ use passuff_config::{
     NotificationsConfig, SoundFile,
 };
 use passuff_core::{
-    AccountObservation, AuthoredPullRequest, CiResult, CiState, Comment, CredentialError,
-    CredentialSource, GhLogin, GitHubError, GitHubGateway, JsonStateStore, PrState, PullRequestKey,
-    RefreshReport, Review, ReviewComment, SnapshotStore, StateError, SystemCredentialSource,
-    WatcherState,
+    AccountObservation, ActivityEvent, ActivityRecord, AuthoredPullRequest, CiResult, CiState,
+    Comment, CredentialError, CredentialSource, GhLogin, GitHubError, GitHubGateway, Inbox,
+    JsonStateStore, PrState, PullRequestKey, RefreshReport, Review, ReviewComment, SnapshotStore,
+    StateError, SystemCredentialSource, WatchedPullRequest, WatcherState,
 };
 use serde_json::Value;
 use tempfile::TempDir;
@@ -158,6 +159,8 @@ pub struct World {
     pub interactive: bool,
     pub real_credentials: bool,
     pub config_text: Option<String>,
+    pub watch_scope: Vec<String>,
+    pub fail_state_write: bool,
 }
 
 impl Default for World {
@@ -204,6 +207,8 @@ impl Default for World {
             interactive: false,
             real_credentials: false,
             config_text: None,
+            watch_scope: Vec::new(),
+            fail_state_write: false,
         }
     }
 }
@@ -543,6 +548,9 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             core: CoreConfig {
                 accounts,
                 events: self.events.clone(),
+                watch: passuff_config::WatchConfig {
+                    repositories: self.watch_scope.clone(),
+                },
             },
             notifications: self.notifications.clone(),
         }
@@ -674,6 +682,185 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         self.last_report = outcome.report;
         self.last_transcript = outcome.transcript;
         self.last_status = outcome.status;
+    }
+
+    fn state_store(&self) -> Arc<dyn SnapshotStore> {
+        Arc::new(JsonStateStore::new(self.state_path()))
+    }
+
+    async fn with_state_write_guard<F, T>(&self, future: F) -> T
+    where
+        F: std::future::Future<Output = T>,
+    {
+        if !self.fail_state_write {
+            return future.await;
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let dir = self.state_path().parent().unwrap().to_path_buf();
+            let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o500));
+            let result = future.await;
+            let _ = std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700));
+            result
+        }
+        #[cfg(not(unix))]
+        {
+            future.await
+        }
+    }
+
+    pub async fn run_status(&mut self) {
+        let inbox = Inbox::new(self.state_store());
+        let cli = InboxCli::new(Arc::new(inbox));
+        let config = Ok(self.build_config());
+        let outcome = self.with_state_write_guard(cli.status(config)).await;
+        self.last_report = outcome.report;
+        self.last_transcript = outcome.transcript;
+        self.last_status = outcome.status;
+    }
+
+    pub async fn run_inbox(&mut self, all: bool) {
+        let inbox = Inbox::new(self.state_store());
+        let cli = InboxCli::new(Arc::new(inbox));
+        let config = Ok(self.build_config());
+        let outcome = self.with_state_write_guard(cli.inbox(config, all)).await;
+        self.last_report = outcome.report;
+        self.last_transcript = outcome.transcript;
+        self.last_status = outcome.status;
+    }
+
+    pub async fn run_read(&mut self, id: Option<String>, all: bool) {
+        let inbox = Inbox::new(self.state_store());
+        let cli = InboxCli::new(Arc::new(inbox));
+        let config = Ok(self.build_config());
+        let outcome = self.with_state_write_guard(cli.read(config, id, all)).await;
+        self.last_report = outcome.report;
+        self.last_transcript = outcome.transcript;
+        self.last_status = outcome.status;
+    }
+
+    pub async fn newest_activity_id(&self) -> String {
+        let state = self.state_store().load().await.expect("state");
+        state.activity.last().expect("activity").id.clone()
+    }
+
+    pub fn write_state(&self, state: &WatcherState) {
+        let text = serde_json::to_string_pretty(state).expect("state json");
+        std::fs::write(self.state_path(), text).expect("state write");
+    }
+
+    pub fn seed_watched_pull_request(&mut self, key: &str) {
+        let label = self
+            .accounts
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_else(|| "personal".to_string());
+        let account = self
+            .accounts
+            .get(&label)
+            .cloned()
+            .expect("configured account");
+        let fixture = self.pull_requests.get(key).expect("pull request").clone();
+        let authored = fixture.to_authored();
+        let watched =
+            WatchedPullRequest::from_baseline(&authored, "2026-11-02T10:00:00Z".to_string());
+        let mut state = WatcherState {
+            version: 2,
+            accounts: BTreeMap::new(),
+            activity: Vec::new(),
+            next_activity_id: 0,
+        };
+        state.accounts.insert(
+            label,
+            passuff_core::AccountState {
+                login: account.login,
+                last_check_at: Some("2026-11-02T10:00:00Z".to_string()),
+                pull_requests: [(key.to_string(), watched)].into(),
+            },
+        );
+        self.write_state(&state);
+    }
+
+    pub fn seed_version_one_state(&mut self) {
+        let label = self
+            .accounts
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_else(|| "personal".to_string());
+        let account = self
+            .accounts
+            .get(&label)
+            .cloned()
+            .expect("configured account");
+        let fixture = PullRequestFixture::new(parse_key("acme/api#42"), account.login.clone());
+        let watched = WatchedPullRequest::from_baseline(
+            &fixture.to_authored(),
+            "2026-11-02T10:00:00Z".to_string(),
+        );
+        let mut state = WatcherState {
+            version: 1,
+            accounts: BTreeMap::new(),
+            activity: Vec::new(),
+            next_activity_id: 0,
+        };
+        state.accounts.insert(
+            label,
+            passuff_core::AccountState {
+                login: account.login,
+                last_check_at: Some("2026-11-02T10:00:00Z".to_string()),
+                pull_requests: [("acme/api#42".to_string(), watched)].into(),
+            },
+        );
+        self.write_state(&state);
+    }
+
+    pub fn seed_activity_records(&mut self, count: u64) {
+        let label = self
+            .accounts
+            .keys()
+            .next()
+            .cloned()
+            .unwrap_or_else(|| "personal".to_string());
+        let login = self
+            .accounts
+            .get(&label)
+            .map(|account| account.login.clone())
+            .unwrap_or_else(|| "octo-personal".to_string());
+        let mut state = WatcherState {
+            version: 2,
+            accounts: BTreeMap::new(),
+            activity: Vec::new(),
+            next_activity_id: count,
+        };
+        state.accounts.insert(
+            label,
+            passuff_core::AccountState {
+                login,
+                last_check_at: None,
+                pull_requests: BTreeMap::new(),
+            },
+        );
+        for id in 1..=count {
+            state.activity.push(ActivityRecord {
+                id: format!("a{id}"),
+                key: parse_key("acme/api#42"),
+                observed_at: "2026-11-02T10:00:00Z".to_string(),
+                event: ActivityEvent::Comment {
+                    author: "seed".to_string(),
+                    body_excerpt: "seed".to_string(),
+                },
+                read: false,
+            });
+        }
+        self.write_state(&state);
+    }
+
+    pub fn state_json(&self) -> serde_json::Value {
+        let text = std::fs::read_to_string(self.state_path()).unwrap_or_default();
+        serde_json::from_str(&text).unwrap_or(serde_json::Value::Null)
     }
 
     pub async fn ensure_baseline(&mut self) {
@@ -813,6 +1000,8 @@ impl SnapshotStore for FailingStore {
         Ok(WatcherState {
             version: 1,
             accounts: BTreeMap::new(),
+            activity: Vec::new(),
+            next_activity_id: 0,
         })
     }
 

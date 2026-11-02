@@ -376,6 +376,41 @@ impl World {
         self.e2e_write_evidence();
     }
 
+    pub async fn e2e_run_status(&mut self) {
+        self.e2e_run_subcommand(&["status"]).await;
+    }
+
+    pub async fn e2e_run_inbox(&mut self, all: bool) {
+        let args: &[&str] = if all { &["inbox", "--all"] } else { &["inbox"] };
+        self.e2e_run_subcommand(args).await;
+    }
+
+    pub async fn e2e_run_read_all(&mut self) {
+        self.e2e_run_subcommand(&["read", "--all"]).await;
+    }
+
+    async fn e2e_run_subcommand(&mut self, args: &[&str]) {
+        let config = self
+            .e2e_config_dir
+            .as_ref()
+            .expect("e2e configured")
+            .path()
+            .join("config.toml");
+        let state = self.e2e_state_path.clone().expect("e2e state");
+        let mut command = Command::new(env!("CARGO_BIN_EXE_passuff"));
+        command
+            .args(args)
+            .arg("--config")
+            .arg(config)
+            .arg("--state")
+            .arg(state);
+        self.configure_child(&mut command);
+        let output = command.output().expect("run passuff read command");
+        self.last_status = output.status.code().unwrap_or(3);
+        self.last_transcript = String::from_utf8_lossy(&output.stdout).to_string();
+        self.e2e_write_evidence();
+    }
+
     pub async fn e2e_run_with(&mut self, flag: &str) {
         let mut command = Command::new(env!("CARGO_BIN_EXE_passuff"));
         command.arg(flag);
@@ -497,11 +532,16 @@ impl World {
             return;
         }
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let base = if root.join("givn/changes/passuff-pr-watch/specs").is_dir() {
-            root.join("givn/changes/passuff-pr-watch/evidence/visual")
-        } else {
-            root.join("target/visual")
-        };
+        let changes = root.join("givn/changes");
+        let active = std::fs::read_dir(&changes).ok().and_then(|entries| {
+            entries
+                .flatten()
+                .map(|entry| entry.path())
+                .find(|path| path.join("specs").is_dir())
+        });
+        let base = active
+            .map(|path| path.join("evidence/visual"))
+            .unwrap_or_else(|| root.join("target/visual"));
         let directory = base.join(&self.e2e_scenario);
         if fs::create_dir_all(&directory).is_err() {
             return;

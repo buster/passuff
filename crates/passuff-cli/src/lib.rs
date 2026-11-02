@@ -1,5 +1,6 @@
 pub mod delivery;
 pub mod gh_login;
+pub mod inbox_cli;
 pub mod sound;
 pub mod transcript;
 
@@ -419,6 +420,8 @@ mod tests {
             Ok(WatcherState {
                 version: 1,
                 accounts: BTreeMap::new(),
+                activity: Vec::new(),
+                next_activity_id: 0,
             })
         }
 
@@ -472,6 +475,7 @@ mod tests {
         let config = AppConfig {
             poll_interval_secs: 1,
             core: CoreConfig {
+                watch: passuff_config::WatchConfig::default(),
                 accounts: BTreeMap::from([(
                     "work".to_string(),
                     AccountConfig {

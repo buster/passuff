@@ -19,6 +19,9 @@
 | R-013 | gh login cannot select the account; the browser session decides who authorizes. | Medium | High | Every gh OAuth account declares `github_user`; the resolved `viewer.login` is checked before observation, and a mismatch is an account failure naming both logins. |
 | R-014 | gh login can change the host's git protocol preference. | Low | Low | passuff passes no `--git-protocol`; gh's prompt and the README explain the side effect, and the operator keeps control. |
 | R-015 | A token file's permissions can change between configuration load and credential use. | Low | Medium | The resolver repeats the `0o077` check; a changed file becomes an account failure, not a silent read. |
+| R-016 | The version-1 to version-2 rewrite fails on a read-only state filesystem. | Low | Medium | The load reports a state error (exit 3) instead of serving a partial view; the operator fixes the filesystem. |
+| R-017 | Activity ids collide after a partial write or restored backup. | Low | Medium | Load recomputes `next_activity_id` from the maximum record number before appending. |
+| R-018 | The global watch scope cannot express per-account exceptions. | Medium | Low | Deferred; the allowlist is one operator-level list and status states it explicitly. |
 
 ## Technical debt
 
@@ -27,4 +30,4 @@
 | TD-001 | Real macOS notification delivery is not automated in CI. | A macOS-specific regression could go unnoticed until the manual smoke test. | Add a macOS CI runner with a scripted notification surface or a platform-specific fake; the Linux D-Bus fake is the model. |
 | TD-002 | The state uses a bounded seen-ID window rather than an unbounded high-water mark. | A very large burst between two checks can omit events. | Replace the window with a timestamp high-water mark plus ID overlap if a real omission is observed. |
 | TD-003 | Coverage merging uses a small project-owned Cobertura merger. | Extra code to maintain when the report format changes. | Replace with a maintained merger if the project grows or the format changes. |
-| TD-004 | The core has no public PR-list or activity-history query API yet. | The first TUI cannot show the inbox until the follow-up change lands. | Add `pull_requests`, `activity`, and `mark_read` in `passuff-activity-inbox`, then build the TUI. |
+| TD-004 | The core has no public PR-list or activity-history query API yet. | Resolved by `InboxService` (`view`, `mark_read`, `mark_all_read`); the TUI is the remaining consumer. | Done in `passuff-activity-inbox`; the TUI change consumes the contract. |

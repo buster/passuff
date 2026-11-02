@@ -200,7 +200,7 @@ impl WatchedPullRequest {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActivityEvent {
     Comment {
         author: String,
@@ -274,6 +274,19 @@ pub enum CoreError {
 pub struct WatcherState {
     pub version: u32,
     pub accounts: BTreeMap<String, AccountState>,
+    #[serde(default)]
+    pub activity: Vec<ActivityRecord>,
+    #[serde(default)]
+    pub next_activity_id: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActivityRecord {
+    pub id: String,
+    pub key: PullRequestKey,
+    pub observed_at: String,
+    pub event: ActivityEvent,
+    pub read: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

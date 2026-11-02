@@ -45,3 +45,7 @@ flowchart LR
 | QS-013 | Recoverability | An interactive watch starts with a gh OAuth account whose session is missing. | One gh browser login is started for that account, a retry resolves the token, and the watch reaches `passuff: watching`; a check or non-interactive run starts no login and reports the account failure. |
 | QS-014 | Security | A token file is readable by another local user. | The configuration is rejected with exit 2 and no observation occurs; an owner-only file is accepted, and the token value appears in no artifact. |
 | QS-015 | Correctness | A token belongs to a login other than the account's expected login. | The account fails with both logins named, no pull request from that account is processed, and other accounts still notify. |
+| QS-016 | Inspectability | The developer asks for status before and after the first check. | Before: `not resolved`, `never`, no watched pull requests, 0 unread of 0. After: login, last check, watched PRs with state/CI. Exit 0. |
+| QS-017 | Reviewability | Two events are recorded, then the newest is marked read. | Inbox lists unread newest first; `read <id>` leaves 1 unread of 2; read state survives a restart. |
+| QS-018 | Bounded state | The 501st activity record is recorded. | Exactly 500 records remain and the oldest is gone. |
+| QS-019 | Scope | A watched PR falls outside a newly configured repository allowlist. | It is not notified, is pruned from the state, and status does not list it. |

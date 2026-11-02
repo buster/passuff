@@ -16,7 +16,10 @@ grouped report, and a UI adapter delivers it. Delivery is an external
 relationship, not part of the Notification value. An account's credential mode
 and expected login are configuration and validation attributes, not separate
 domain entities; the account remains the identity that owns authored pull
-requests.
+requests. An activity record is a retained fact about a watched pull request;
+the inbox is a read model over records and watched pull requests, not a second
+aggregate. The watch scope is configuration that filters which pull requests
+enter the model.
 
 Account failure is a report condition, not a domain entity. Event-family
 settings are configuration, not domain structure; both are defined in the
@@ -68,6 +71,7 @@ flowchart TB
         authored["Authored Pull Request<br/>repository and number"]
         watched{{"Watched Pull Request<br/>Aggregate"}}
         state["Watcher State<br/>durable observations"]
+        activity["Activity Record<br/>retained event"]
         notification["Notification<br/>grouped report"]
     end
 
@@ -80,6 +84,8 @@ flowchart TB
     account -->|authors| authored
     authored -->|observed as| watched
     watched -->|part of| state
+    watched -->|recorded as| activity
+    activity -->|part of| state
     watched -->|produces| notification
     authored -->|short-lived state change| notification
     github -->|reports activity on| authored
@@ -100,10 +106,12 @@ flowchart TB
 | Bounded context | Responsibility | Explicitly outside its responsibility |
 |---|---|---|
 | Pull Request Watching | Observe authored pull requests, classify eligible activity, deduplicate it, and produce one grouped notification per pull request per check cycle. | Changing GitHub state, reviewing code, and delivering notifications beyond the local desktop surface. |
+| Activity Review | Retain activity records and expose the watch status and inbox read model with read state. | Changing GitHub state, delivery, and configuration editing. |
 
 | Aggregate | Owning context | Consistency responsibility |
 |---|---|---|
 | Watched Pull Request | Pull Request Watching | Holds the baseline, the seen activity identities, the last CI result, and the pull request state for one authored pull request. Guarantees that an activity event is reported at most once. A short-lived pull request first seen after the first cycle is recorded as a Watched Pull Request with its state-change report already marked. |
+| Activity Record | Activity Review | Retains one activity event with a stable id, observation time, pull request key, and read flag. The history is bounded to 500 records. |
 
 ## Relationships
 
@@ -116,6 +124,9 @@ flowchart TB
 | Notification → Desktop notification surface | A UI adapter displays the grouped report as a local desktop message. | `watch-pull-requests` use case, Success guarantee |
 | Notification → Audio player | A UI adapter may request one sound when sound is enabled. | `watch-pull-requests` use case, R24 |
 | GitHub → Authored Pull Request | GitHub is the source of comments, reviews, CI results, and pull request state. | `watch-pull-requests` use case, R3–R8 |
+| Watched Pull Request → Activity Record | Each retained event becomes one activity record with a read flag. | `review-activity-inbox` use case, R5 |
+| Activity Record → Inbox | The read model lists records newest first and counts unread. | `review-activity-inbox` use case, R1–R4 |
+| Watched Pull Request → Watch status | Status lists watched pull requests with state and CI. | `inspect-watch-status` use case, S3 |
 
 ## Open modeling questions
 

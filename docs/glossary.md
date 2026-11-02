@@ -4,9 +4,9 @@
 boundaries, and relationships live in [the domain model](domain-model.md);
 behaviour lives in the governing use-case contract and specifications.
 
-Behavioural rules are owned by the `watch-pull-requests` use case and its
-`pr-activity-notification` capability. This glossary defines terms; it does not
-restate the rules.
+Behavioural rules are owned by `watch-pull-requests` (`pr-activity-notification`),
+`inspect-watch-status` (`watch-status`), and `review-activity-inbox`
+(`activity-inbox`). This glossary defines terms; it does not restate the rules.
 
 | Term | Definition | Code symbol | Anti-terms |
 |---|---|---|---|
@@ -17,6 +17,7 @@ restate the rules.
 | Personal access token | A GitHub token read from an environment variable, a helper command, or a token file, independent of the gh session. | `CredentialSpec::{Env,Command,File}` | password, secret — a token authenticates; it is not an account. |
 | Token file | A file containing a personal access token, accepted only when group and other users cannot read or write it. | `CredentialSpec::File` | credentials file, secret file — the file holds one token for one account. |
 | Account failure | A failure to observe one configured account, reported in the refresh report while other accounts continue. | `AccountFailure` | error — an error can be a configuration or state error; an account failure is scoped to one account. |
+| Activity record | A persisted, addressable record of one activity event with an observation time and a read flag. | `ActivityRecord` | notification — a notification groups events; a record preserves one event. |
 | Activity event | A change on an authored pull request that is eligible for notification: a comment, a review, a CI result transition, or a pull request state change. | `ActivityEvent` | notification, update — a notification reports activity events; it is not one. |
 | Authored pull request | A pull request whose author login belongs to the configured login set. | `AuthoredPullRequest` | my PR (informal), watched PR — a watched pull request is the observation record, not the GitHub object. |
 | Baseline | The first recorded observation of an authored pull request, used to suppress notification of activity that already existed. | `Baseline` | snapshot — a snapshot is any observation; the baseline is the first one. |
@@ -35,6 +36,10 @@ restate the rules.
 | Reopen | A transition of a known closed or merged pull request back to open; it resets the state-change report flag without a notification. | `ActivityClassifier` | unmerge — a reopen is not a merge reversal. |
 | Review | A submitted assessment of a pull request with one of the states approved, changes requested, or commented. | `ActivityEvent::Review` | approval — approval is one review state. |
 | Short-lived pull request | An authored pull request created after the account's last successful observation and merged or closed before the next observation. | `ActivityClassifier` | fast merge — a short-lived pull request is defined by the observation boundary, not speed. |
+| Activity history | The bounded set of retained activity records with their read state. | `WatcherState.activity` | log, feed — the history is reviewed, not delivered. |
+| Inbox | The read model of configured accounts, the watch scope, watched pull requests, and activity records. | `Inbox` | list, feed, tracked — the inbox includes the watch summary and reviewed history. |
+| Read state | Whether an activity record has been acknowledged by the developer. | `ActivityRecord.read` | seen — a record can be seen but unread, or read after review. |
+| Watch scope | The optional repository allowlist that limits which authored pull requests are observed. | `WatchConfig` | filter, subscription — the scope is configuration, not a separate account. |
 | Watched pull request | An authored pull request with a persisted observation record and a known baseline. | `WatchedPullRequest` | subscription, monitored repo |
 | Watcher | The passuff process that performs check cycles: observation and classification live in the core; scheduling and delivery live in the UI adapter. | `passuff` process | poller, monitor — a watcher is the product's observation role. |
 | Watcher state | The persisted record of observations and already-notified activity across check cycles. | `WatcherState` | cache, database — the state is the durable observation record, not an implementation store. |

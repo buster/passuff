@@ -19,19 +19,24 @@ The essential requirements are:
 - Group all new activity for one pull request into one notification, with one
   sound.
 - Persist observations so a restart never replays notified activity.
+- Show which accounts, watch scope, and pull requests are watched, and how much
+  recorded activity is unread.
+- Retain a bounded activity history and let the developer mark it read.
 - Run on macOS and Linux with desktop notifications and configurable sound.
 - Keep credentials out of configuration and persisted state.
 
-The authoritative behaviour is the [`watch-pull-requests` use case](../../givn/specs/watch-pull-requests/usecase.md)
-and its `pr-activity-notification` specification at
-`givn/specs/watch-pull-requests/pr-activity-notification.feature` (populated
-when this change is archived).
+The authoritative behaviour is in three use cases:
+[`watch-pull-requests`](../../givn/specs/watch-pull-requests/usecase.md),
+[`inspect-watch-status`](../../givn/specs/inspect-watch-status/usecase.md), and
+[`review-activity-inbox`](../../givn/specs/review-activity-inbox/usecase.md),
+with their feature files under `givn/specs/`.
 
 ## Quality goals
 
 | Priority | Quality attribute | Motivation |
 |---|---|---|
 | 1 | Accuracy | A notification must mean eligible activity on an authored pull request. False positives destroy trust faster than missed edge cases. |
+| 3 | Inspectability | The developer can see the watched accounts, scope, and pull requests and can review retained activity without contacting GitHub. |
 | 2 | No replay | A restart must not repeat activity the developer already saw. The core persists observations before returning the report; the CLI delivers afterwards. |
 | 3 | Reliability | One failed account, malformed response, or corrupt state must not stop the other accounts or crash the watcher. |
 | 4 | Timeliness | A change should be visible within one configured observation interval plus a small processing margin. |

@@ -45,6 +45,7 @@ flowchart LR
 | Credentials | Environment variable, `/bin/sh -c` command output, permission-checked token file, or gh OAuth session | Read |
 | Interactive authentication | gh CLI browser login (`gh auth login --web`) | Outbound, interactive |
 | Terminal transcript | Standard output and standard error | Write |
+| Status, inbox, and read | Terminal output over the local configuration and state; no GitHub call | Read and write state |
 
 ## Scope boundaries
 

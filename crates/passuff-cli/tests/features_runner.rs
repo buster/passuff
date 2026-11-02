@@ -1,9 +1,13 @@
 mod support;
 
+#[path = "steps/activity_inbox.rs"]
+mod activity_inbox_steps;
 #[path = "steps/pr_activity_notification_e2e.rs"]
 mod e2e_steps;
 #[path = "steps/pr_activity_notification.rs"]
 mod regular_steps;
+#[path = "steps/watch_status.rs"]
+mod watch_status_steps;
 
 use std::path::PathBuf;
 

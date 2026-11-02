@@ -27,4 +27,18 @@ pub struct Cli {
 pub enum Command {
     /// Run one observation pass and print notifications
     Check,
+    /// Show accounts, watch scope, watched pull requests, and unread activity
+    Status,
+    /// List unread activity, or all activity with --all
+    Inbox {
+        #[arg(long)]
+        all: bool,
+    },
+    /// Mark one activity read by id, or every activity with --all
+    Read {
+        /// Activity id, for example a12
+        id: Option<String>,
+        #[arg(long, conflicts_with = "id")]
+        all: bool,
+    },
 }

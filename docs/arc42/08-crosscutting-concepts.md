@@ -17,6 +17,16 @@ The interactive gh login is available only to an interactive continuous watch;
 process that waits for a browser. The credential source attempts a login at most
 once per gh login per process.
 
+## Activity history and watch scope
+
+Watch state version 2 carries up to 500 activity records: one per event, with a
+stable `a<n>` id, the observation time, the pull request key, and a read flag.
+The oldest records are dropped on append. Version-1 files load with their
+watched pull requests and are rewritten as version 2; unknown versions are
+quarantined. Read state persists and is independent of delivery. The optional
+global repository allowlist filters observation before classification and prunes
+out-of-scope pull requests from the state after each account observation.
+
 ## Persistence and deduplication
 
 The watcher state is a versioned JSON file containing, per account, the resolved

@@ -166,3 +166,35 @@ sequenceDiagram
    account failure and the account's pull requests are skipped.
 5. The remaining accounts are observed normally. A one-shot check never enters
    this flow.
+
+
+## Scenario: Record activity and show status
+
+**Trigger:** A check cycle notifies, then the developer asks for status.
+
+```mermaid
+sequenceDiagram
+    participant CLI
+    participant Core
+    participant State
+    CLI->>Core: refresh
+    Core->>State: load
+    Core->>Core: classify accepted notifications
+    Core->>State: append ActivityRecord per event, cap 500
+    Core->>State: save
+    Core-->>CLI: RefreshReport
+    CLI->>Core: InboxService.view(config)
+    Core->>State: load (migrate v1, normalize)
+    Core-->>CLI: InboxView
+    CLI->>CLI: render accounts, scope, watched PRs, unread/total
+```
+
+## Scenario: Mark activity read
+
+**Trigger:** The developer marks one record or all records read.
+
+1. `InboxService::mark_read` loads state, finds the id, sets `read`, and saves.
+2. An unknown id returns `found = false`; the CLI prints `no activity with id`
+   and exits 2.
+3. `mark_all_read` sets every record read, saves, and returns the changed count.
+4. A save failure is a state error (exit 3).

@@ -1,4 +1,7 @@
-use passuff_core::{AccountFailure, ActivityEvent, Notification, PrState, PullRequestKey};
+use passuff_core::{
+    AccountFailure, ActivityEvent, ActivityRecord, CiState, InboxView, Notification, PrState,
+    PullRequestKey, ReadOutcome,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RenderedNotification {
@@ -67,6 +70,109 @@ impl TranscriptRenderer {
 
     pub fn render_state_error(&self, detail: &str) -> String {
         format!("passuff: state error: {detail}")
+    }
+
+    pub fn render_status(&self, view: &InboxView) -> String {
+        let mut lines = vec!["passuff: accounts".to_string()];
+        for account in &view.accounts {
+            let login = account
+                .login
+                .as_deref()
+                .map(|login| format!("@{login}"))
+                .unwrap_or_else(|| "not resolved".to_string());
+            let last = account.last_check_at.as_deref().unwrap_or("never");
+            lines.push(format!("  {} {} last check {}", account.label, login, last));
+        }
+        let scope = if view.scope.is_empty() {
+            "all authored pull requests".to_string()
+        } else {
+            view.scope.join(", ")
+        };
+        lines.push(format!("passuff: watch scope: {scope}"));
+        if view.pull_requests.is_empty() {
+            lines.push("passuff: no watched pull requests".to_string());
+        } else {
+            lines.push("passuff: watched pull requests".to_string());
+            for pull_request in &view.pull_requests {
+                lines.push(format!(
+                    "  {} {} {} {}",
+                    pull_request.key,
+                    state_label(&pull_request.state),
+                    ci_label(&pull_request.ci_state),
+                    pull_request.title
+                ));
+            }
+        }
+        lines.push(format!(
+            "passuff: activity: {} unread of {}",
+            view.unread,
+            view.activity.len()
+        ));
+        lines.join("\n")
+    }
+
+    pub fn render_inbox(&self, view: &InboxView, all: bool) -> String {
+        let records: Vec<&ActivityRecord> = view
+            .activity
+            .iter()
+            .filter(|record| all || !record.read)
+            .collect();
+        if records.is_empty() {
+            return if all && view.activity.is_empty() {
+                "passuff: no activity".to_string()
+            } else {
+                "passuff: no unread activity".to_string()
+            };
+        }
+        let mut lines = vec!["passuff: inbox".to_string()];
+        for record in records {
+            lines.push(format!(
+                "  {} {} {} {} {}",
+                record.id,
+                record.observed_at,
+                record.key,
+                if record.read { "read" } else { "unread" },
+                render_event(&record.event)
+            ));
+        }
+        lines.join("\n")
+    }
+
+    pub fn render_read(&self, outcome: ReadOutcome) -> String {
+        let noun = if outcome.changed == 1 {
+            "activity record"
+        } else {
+            "activity records"
+        };
+        format!(
+            "passuff: {} {} read\npassuff: {} unread remaining",
+            outcome.changed, noun, outcome.unread
+        )
+    }
+
+    pub fn render_unknown_activity(&self, id: &str) -> String {
+        format!("passuff: no activity with id {id}")
+    }
+
+    pub fn render_activity_event(&self, event: &ActivityEvent) -> String {
+        render_event(event)
+    }
+}
+
+fn state_label(state: &PrState) -> &'static str {
+    match state {
+        PrState::Open => "open",
+        PrState::Merged => "merged",
+        PrState::Closed => "closed",
+    }
+}
+
+fn ci_label(state: &CiState) -> &'static str {
+    match state {
+        CiState::Success => "CI passing",
+        CiState::Failure | CiState::Error => "CI failing",
+        CiState::Pending => "CI pending",
+        CiState::None => "CI not started",
     }
 }
 

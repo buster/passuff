@@ -41,7 +41,7 @@ impl JsonStateStore {
     }
 }
 
-fn normalize_terminal_states(mut state: WatcherState) -> WatcherState {
+fn normalize_terminal_states(state: &mut WatcherState) {
     for account in state.accounts.values_mut() {
         for pull_request in account.pull_requests.values_mut() {
             if pull_request.current.state.is_terminal() {
@@ -49,7 +49,17 @@ fn normalize_terminal_states(mut state: WatcherState) -> WatcherState {
             }
         }
     }
-    state
+}
+
+fn normalize_next_activity_id(state: &mut WatcherState) {
+    let max_id = state
+        .activity
+        .iter()
+        .filter_map(|record| record.id.strip_prefix('a'))
+        .filter_map(|suffix| suffix.parse::<u64>().ok())
+        .max()
+        .unwrap_or(0);
+    state.next_activity_id = state.next_activity_id.max(max_id);
 }
 
 #[async_trait]
@@ -60,8 +70,10 @@ impl SnapshotStore for JsonStateStore {
             Ok(text) => text,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 return Ok(WatcherState {
-                    version: 1,
+                    version: 2,
                     accounts: Default::default(),
+                    activity: Vec::new(),
+                    next_activity_id: 0,
                 });
             }
             Err(error) => {
@@ -74,16 +86,24 @@ impl SnapshotStore for JsonStateStore {
 
         let parsed: Result<WatcherState, _> = serde_json::from_str(&text);
         match parsed {
-            Ok(state) if state.version == 1 => {
-                let state = normalize_terminal_states(state);
+            Ok(mut state) if state.version == 1 || state.version == 2 => {
+                let migrate = state.version == 1;
+                state.version = 2;
+                normalize_terminal_states(&mut state);
+                normalize_next_activity_id(&mut state);
+                if migrate {
+                    self.save(&state).await?;
+                }
                 tracing::debug!(accounts = state.accounts.len(), "state loaded");
                 Ok(state)
             }
             Ok(_) | Err(_) => {
                 self.quarantine()?;
                 Ok(WatcherState {
-                    version: 1,
+                    version: 2,
                     accounts: Default::default(),
+                    activity: Vec::new(),
+                    next_activity_id: 0,
                 })
             }
         }
@@ -146,7 +166,8 @@ impl SnapshotStore for JsonStateStore {
 mod tests {
     use super::*;
     use crate::domain::{
-        AccountState, AuthoredPullRequest, CiResult, PullRequestKey, WatchedPullRequest,
+        AccountState, ActivityRecord, AuthoredPullRequest, CiResult, PullRequestKey,
+        WatchedPullRequest,
     };
 
     fn merged_pull_request() -> AuthoredPullRequest {
@@ -178,7 +199,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let store = JsonStateStore::new(dir.path().join("state.json"));
         let state = store.load().await.unwrap();
-        assert_eq!(state.version, 1);
+        assert_eq!(state.version, 2);
         assert!(state.accounts.is_empty());
     }
 
@@ -190,6 +211,8 @@ mod tests {
         let mut state = WatcherState {
             version: 1,
             accounts: Default::default(),
+            activity: Vec::new(),
+            next_activity_id: 0,
         };
         state.accounts.insert(
             "personal".to_string(),
@@ -220,13 +243,69 @@ mod tests {
         let store = JsonStateStore::new(&path);
         fs::write(&path, r#"{"version": 999, "accounts": {}}"#).unwrap();
         let loaded = store.load().await.unwrap();
-        assert_eq!(loaded.version, 1);
+        assert_eq!(loaded.version, 2);
         assert!(loaded.accounts.is_empty());
         let quarantined = fs::read_dir(dir.path())
             .unwrap()
             .filter_map(Result::ok)
             .any(|entry| entry.file_name().to_string_lossy().contains(".corrupt."));
         assert!(quarantined);
+    }
+
+    #[tokio::test]
+    async fn version_one_migrates_and_preserves_watched_pull_requests() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.json");
+        let merged = merged_pull_request();
+        let watched =
+            WatchedPullRequest::from_baseline(&merged, "2026-11-02T10:00:00Z".to_string());
+        let mut state = WatcherState {
+            version: 1,
+            accounts: Default::default(),
+            activity: Vec::new(),
+            next_activity_id: 0,
+        };
+        state.accounts.insert(
+            "work".to_string(),
+            AccountState {
+                login: "octo".to_string(),
+                last_check_at: Some("2026-11-02T10:00:00Z".to_string()),
+                pull_requests: [("acme/api#42".to_string(), watched)].into(),
+            },
+        );
+        std::fs::write(&path, serde_json::to_string(&state).unwrap()).unwrap();
+        let store = JsonStateStore::new(&path);
+        let loaded = store.load().await.unwrap();
+        assert_eq!(loaded.version, 2);
+        assert!(loaded.accounts["work"]
+            .pull_requests
+            .contains_key("acme/api#42"));
+        assert!(loaded.activity.is_empty());
+        let on_disk: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(on_disk["version"], 2);
+    }
+
+    #[tokio::test]
+    async fn next_activity_id_is_recomputed_from_existing_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.json");
+        let state = WatcherState {
+            version: 2,
+            accounts: Default::default(),
+            activity: vec![ActivityRecord {
+                id: "a7".to_string(),
+                key: PullRequestKey::new("acme/api".to_string(), 42),
+                observed_at: "2026-11-02T10:00:00Z".to_string(),
+                event: crate::domain::ActivityEvent::CiRecovery,
+                read: false,
+            }],
+            next_activity_id: 3,
+        };
+        std::fs::write(&path, serde_json::to_string(&state).unwrap()).unwrap();
+        let store = JsonStateStore::new(&path);
+        let loaded = store.load().await.unwrap();
+        assert_eq!(loaded.next_activity_id, 7);
     }
 
     #[tokio::test]
@@ -239,6 +318,8 @@ mod tests {
         let mut state = WatcherState {
             version: 1,
             accounts: Default::default(),
+            activity: Vec::new(),
+            next_activity_id: 0,
         };
         state.accounts.insert(
             "work".to_string(),
@@ -266,6 +347,8 @@ mod tests {
         let state = WatcherState {
             version: 1,
             accounts: Default::default(),
+            activity: Vec::new(),
+            next_activity_id: 0,
         };
         assert!(matches!(
             store.save(&state).await,

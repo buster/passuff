@@ -5,8 +5,8 @@ use passuff_config::CoreConfig;
 use crate::classifier::classify;
 use crate::credential::CredentialSource;
 use crate::domain::{
-    AccountFailure, AccountFailureKind, CoreError, LoginSet, Notification, RefreshReport,
-    WatchedPullRequest,
+    AccountFailure, AccountFailureKind, ActivityRecord, CoreError, LoginSet, Notification,
+    RefreshReport, WatchedPullRequest,
 };
 use crate::github::{AccountObservation, GitHubGateway};
 use crate::state::SnapshotStore;
@@ -143,6 +143,13 @@ impl PassuffCore {
             let last_check_at = entry.last_check_at.clone();
 
             for pull_request in observation.pull_requests {
+                if !self
+                    .config
+                    .watch
+                    .allows_repository(&pull_request.key.repository)
+                {
+                    continue;
+                }
                 if !pull_request.author.eq_ignore_ascii_case(&login) {
                     continue;
                 }
@@ -183,16 +190,34 @@ impl PassuffCore {
                 };
                 entry.pull_requests.insert(key_string, watched);
                 if !classification.events.is_empty() {
-                    report.notifications.push(Notification {
+                    let notification = Notification {
                         key,
                         events: classification.events,
-                    });
+                    };
+                    for event in &notification.events {
+                        state.next_activity_id += 1;
+                        state.activity.push(ActivityRecord {
+                            id: format!("a{}", state.next_activity_id),
+                            key: notification.key.clone(),
+                            observed_at: observation.checked_at.clone(),
+                            event: event.clone(),
+                            read: false,
+                        });
+                    }
+                    report.notifications.push(notification);
                 }
             }
+            entry
+                .pull_requests
+                .retain(|_, pr| self.config.watch.allows_repository(&pr.repository));
             entry.last_check_at = Some(observation.checked_at);
         }
 
         report.account_failures = failures;
+        if state.activity.len() > 500 {
+            let excess = state.activity.len() - 500;
+            state.activity.drain(0..excess);
+        }
         self.store.save(&state).await?;
         tracing::debug!(
             notifications = report.notifications.len(),

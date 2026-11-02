@@ -135,6 +135,19 @@ allows it.
 | gh OAuth source | Run `gh auth token --user <login>`, optionally retry after an interactive `gh auth login --web`, once per gh login per process. |
 | Identity check | Compare the resolved token's `viewer.login` with the account's expected login before processing its pull requests. |
 
+### Inbox
+
+**Responsibility:** Build the watch-status and activity read model from the
+persisted state and mark activity read.
+
+**Contained elements:**
+
+| Element | Responsibility |
+|---|---|
+| `InboxService` | View configured accounts, watched pull requests, and activity; mark one or all records read. |
+| State version 2 | Bounded activity history (`ActivityRecord`) and a monotonic record id counter. |
+| Watch scope | Global repository allowlist applied before observation; excluded pull requests are pruned. |
+
 ### CLI delivery
 
 **Responsibility:** Turn one `Notification` from the core into a transcript
