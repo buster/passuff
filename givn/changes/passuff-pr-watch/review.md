@@ -1,8 +1,9 @@
 # Review: passuff-pr-watch
 
 Review kind: self-review
-Author: Maki implementation agent
-Reviewer context: self (same context; not an independent review)
+PERSONAS: multi-account-developer
+Author: self-review — main authoring context; a read-only review analyst subagent supplied evidence; this is not an independent reviewer.
+Reviewer context: self-review — main authoring context; a read-only review analyst subagent supplied evidence; this is not an independent reviewer.
 
 ## Implementation evidence check
 
@@ -102,13 +103,11 @@ Advisory shape/subset findings are dispositioned below. Shape pairs are variants
 | A submitted review notifies | A pull request merged or closed while the watcher was stopped is reported | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A submitted review notifies | A merge performed by the configured account still notifies | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A review from a configured account stays silent | A commit push stays silent | shape | variant | distinct event family and rule; merging would hide which rule regressed |
-| A review from a configured account stays silent | Activity on someone else | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A review from a configured account stays silent | A reopened pull request stays silent | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A review from a configured account stays silent | A disabled event family suppresses its notification | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A review from a configured account stays silent | A comment from another configured account stays silent | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A review from a configured account stays silent | A restart does not replay notified activity | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A review from a configured account stays silent | A non-notified change stays silent | shape | variant | distinct event family and rule; merging would hide which rule regressed |
-| A commit push stays silent | Activity on someone else | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A commit push stays silent | A reopened pull request stays silent | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A commit push stays silent | A disabled event family suppresses its notification | shape | variant | distinct event family and rule; merging would hide which rule regressed |
 | A commit push stays silent | A comment from another configured account stays silent | shape | variant | distinct event family and rule; merging would hide which rule regressed |
@@ -284,9 +283,6 @@ Advisory shape/subset findings are dispositioned below. Shape pairs are variants
 | A reopened pull request stays silent | A single check with no changes reports no notifications | subst | boundary | isolates a distinct suppression rule that the generic scenario does not prove |
 | A disabled event family suppresses its notification | A single check with no changes reports no notifications | subst | boundary | isolates a distinct suppression rule that the generic scenario does not prove |
 | A comment from another configured account stays silent | A single check with no changes reports no notifications | subst | boundary | isolates a distinct suppression rule that the generic scenario does not prove |
-| A restart does not replay notified activity | A single check with no changes reports no notifications | subst | boundary | isolates a distinct suppression rule that the generic scenario does not prove |
-| A non-notified change stays silent | A single check with no changes reports no notifications | subst | boundary | isolates a distinct suppression rule that the generic scenario does not prove |
-| No authored pull requests produce no notifications | A single check with no changes reports no notifications | subst | boundary | isolates a distinct suppression rule that the generic scenario does not prove |
 
 ## Split-or-keep
 
