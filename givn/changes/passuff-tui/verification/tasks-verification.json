@@ -2,12 +2,12 @@
   "schema": 2,
   "change": "passuff-tui",
   "status": "passed",
-  "head": "79a6daa8e9282853e5385c96772475069ae821d2",
+  "head": "f8138590198a6e9b894803a9a679d13dffa2cf2c",
   "features_path": "givn/changes/passuff-tui/specs",
-  "features_digest": "02ad6b6c539cafea348e1a4bf3f86d4fc4fe184400ffe5cc1a17513d55f379df",
+  "features_digest": "5543f1946f1a458f98c2d573ac85386936d497e145d1d092d42486cc48e3187f",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
   "command": "./scripts/verify.sh",
-  "tested_content_digest": "977bc89006d41157a4a7a112225399f44dc7b2eeb42017f57357a4a8ff1e5bcf",
+  "tested_content_digest": "f8867a6b4f1ebc8755b36075936dfa47e6b2a81b9f1e6194a55911873db6dfae",
   "content_scope": "change-proof/v1",
   "runner_exit": 0,
   "result": {
@@ -17,5 +17,5 @@
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1793658298
+  "finished_at_unix": 1793659754
 }
