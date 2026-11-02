@@ -31,9 +31,9 @@ The CLI read commands require a separate invocation for status, listing, and rea
 
 ## Capability Routing
 
-| Proposed capability | Decision | Rationale |
-|---|---|---|
-| activity-inbox | `EXTEND activity-inbox` | The TUI is a second adapter for the same review/read goal; no new capability or use case. Route reported no signal (tie), so the decision is recorded from the use-case placement test. |
+| Proposed capability | Route's recommendation | Decision | Rationale (if you deviated from route) |
+|---|---|---|---|
+| activity-inbox | no signal (tie) | `EXTEND activity-inbox` | The TUI is a second adapter for the same review/read goal; no new capability or use case. Route reported no signal (tie), so the decision is recorded from the use-case placement test. |
 
 ## Out of Scope
 
