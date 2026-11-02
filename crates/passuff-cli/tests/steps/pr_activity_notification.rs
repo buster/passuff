@@ -183,6 +183,11 @@ async fn state_while_stopped(world: &mut World, key: String, state: String) {
     set_state(world, &key, &state);
 }
 
+#[given(regex = r#"^the pull request "([^"]+)" is "(merged|closed|open)"$"#)]
+async fn pull_request_state(world: &mut World, key: String, state: String) {
+    set_state(world, &key, &state);
+}
+
 #[when(regex = r#"^the pull request "([^"]+)" becomes "([^"]+)"$"#)]
 async fn state_change(world: &mut World, key: String, state: String) {
     world.ensure_baseline().await;

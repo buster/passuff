@@ -198,6 +198,15 @@ Feature: Pull request activity notification
       | enabled | "New comment from @dependabot[bot]" |
 
   @pr-activity-notification
+  Scenario: A pull request already merged at the baseline is not reported on the next cycle
+    Given a configured account "personal" with login "octo-personal"
+    And an authored pull request "acme/api#42" by "octo-personal"
+    And the pull request "acme/api#42" is "merged"
+    When passuff runs one check
+    Then the transcript reports no notifications
+    When passuff runs one check
+    Then the transcript reports no notifications
+
   Scenario: Historical activity is not replayed on first observation
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

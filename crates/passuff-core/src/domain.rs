@@ -194,7 +194,7 @@ impl WatchedPullRequest {
                 ci_state: pr.ci.state.clone(),
                 ci_failed: pr.ci.state.failed(),
                 state: pr.state.clone(),
-                state_reported: false,
+                state_reported: pr.state.is_terminal(),
             },
         }
     }

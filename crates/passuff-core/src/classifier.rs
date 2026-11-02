@@ -1,3 +1,4 @@
+use chrono::DateTime;
 use passuff_config::EventToggles;
 
 use crate::domain::{
@@ -23,7 +24,7 @@ pub fn classify(
     let Some(previous) = previous else {
         let short_lived = account_has_prior_cycle
             && current.state.is_terminal()
-            && last_check_at.is_some_and(|last| current.created_at.as_str() > last);
+            && last_check_at.is_some_and(|last| created_after(&current.created_at, last));
         let mut observation = current_observation(current);
         let mut events = Vec::new();
         if short_lived {
@@ -191,7 +192,17 @@ fn current_observation(current: &AuthoredPullRequest) -> CurrentObservation {
         ci_state: current.ci.state.clone(),
         ci_failed: current.ci.state.failed(),
         state: current.state.clone(),
-        state_reported: false,
+        state_reported: current.state.is_terminal(),
+    }
+}
+
+fn created_after(created_at: &str, last_check_at: &str) -> bool {
+    match (
+        DateTime::parse_from_rfc3339(created_at),
+        DateTime::parse_from_rfc3339(last_check_at),
+    ) {
+        (Ok(created), Ok(last)) => created > last,
+        _ => false,
     }
 }
 
@@ -220,5 +231,110 @@ fn normalize_review_state(state: &str) -> String {
         "CHANGES_REQUESTED" => "changes requested".to_string(),
         "COMMENTED" => "commented".to_string(),
         other => other.to_ascii_lowercase().replace('_', " "),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::{CiResult, PullRequestKey};
+
+    fn pull_request(state: PrState, created_at: &str) -> AuthoredPullRequest {
+        let merged = state == PrState::Merged;
+        AuthoredPullRequest {
+            key: PullRequestKey::new("acme/api".to_string(), 42),
+            node_id: "node-42".to_string(),
+            author: "octo".to_string(),
+            title: "Pull request".to_string(),
+            url: "https://github.com/acme/api/pull/42".to_string(),
+            created_at: created_at.to_string(),
+            updated_at: created_at.to_string(),
+            state,
+            merged,
+            is_draft: false,
+            assignees: Vec::new(),
+            labels: Vec::new(),
+            milestone: None,
+            base_ref: "main".to_string(),
+            head_oid: "abc123".to_string(),
+            ci: CiResult::default(),
+            comments: Vec::new(),
+            reviews: Vec::new(),
+            review_comments: Vec::new(),
+        }
+    }
+
+    fn login_set() -> LoginSet {
+        LoginSet::new(vec!["octo".to_string()])
+    }
+
+    #[test]
+    fn an_already_merged_baseline_is_not_reported_on_the_next_cycle() {
+        let toggles = EventToggles::default();
+        let merged = pull_request(PrState::Merged, "2026-11-02T09:00:00Z");
+        let first = classify(None, &merged, &toggles, &login_set(), false, None);
+        assert!(first.events.is_empty());
+        assert!(first.current.state_reported);
+
+        let mut watched = WatchedPullRequest::from_baseline(&merged, "checked".to_string());
+        watched.current = first.current;
+        let second = classify(Some(&watched), &merged, &toggles, &login_set(), true, None);
+        assert!(second.events.is_empty());
+    }
+
+    #[test]
+    fn an_open_baseline_merged_later_is_reported() {
+        let toggles = EventToggles::default();
+        let open = pull_request(PrState::Open, "2026-11-02T09:00:00Z");
+        let first = classify(None, &open, &toggles, &login_set(), false, None);
+        assert!(!first.current.state_reported);
+
+        let mut watched = WatchedPullRequest::from_baseline(&open, "checked".to_string());
+        watched.current = first.current;
+        let merged = pull_request(PrState::Merged, "2026-11-02T09:00:00Z");
+        let second = classify(Some(&watched), &merged, &toggles, &login_set(), true, None);
+        assert_eq!(
+            second.events,
+            vec![ActivityEvent::StateChange {
+                state: PrState::Merged
+            }]
+        );
+    }
+
+    #[test]
+    fn short_lived_uses_rfc3339_instants_not_string_order() {
+        let toggles = EventToggles::default();
+        let created_same_second = pull_request(PrState::Merged, "2026-11-02T10:00:00Z");
+        let last = "2026-11-02T10:00:00.500+00:00";
+        let same_second = classify(
+            None,
+            &created_same_second,
+            &toggles,
+            &login_set(),
+            true,
+            Some(last),
+        );
+        assert!(same_second.events.is_empty());
+
+        let created_later = pull_request(PrState::Merged, "2026-11-02T10:00:01Z");
+        let later = classify(
+            None,
+            &created_later,
+            &toggles,
+            &login_set(),
+            true,
+            Some(last),
+        );
+        assert_eq!(
+            later.events,
+            vec![ActivityEvent::StateChange {
+                state: PrState::Merged
+            }]
+        );
+    }
+
+    #[test]
+    fn invalid_timestamps_do_not_create_a_short_lived_notification() {
+        assert!(!created_after("not-a-date", "2026-11-02T10:00:00Z"));
     }
 }

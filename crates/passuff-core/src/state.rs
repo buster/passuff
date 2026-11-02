@@ -41,6 +41,17 @@ impl JsonStateStore {
     }
 }
 
+fn normalize_terminal_states(mut state: WatcherState) -> WatcherState {
+    for account in state.accounts.values_mut() {
+        for pull_request in account.pull_requests.values_mut() {
+            if pull_request.current.state.is_terminal() {
+                pull_request.current.state_reported = true;
+            }
+        }
+    }
+    state
+}
+
 #[async_trait]
 impl SnapshotStore for JsonStateStore {
     async fn load(&self) -> Result<WatcherState, StateError> {
@@ -62,7 +73,7 @@ impl SnapshotStore for JsonStateStore {
 
         let parsed: Result<WatcherState, _> = serde_json::from_str(&text);
         match parsed {
-            Ok(state) if state.version == 1 => Ok(state),
+            Ok(state) if state.version == 1 => Ok(normalize_terminal_states(state)),
             Ok(_) | Err(_) => {
                 self.quarantine()?;
                 Ok(WatcherState {
@@ -128,7 +139,33 @@ impl SnapshotStore for JsonStateStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::AccountState;
+    use crate::domain::{
+        AccountState, AuthoredPullRequest, CiResult, PullRequestKey, WatchedPullRequest,
+    };
+
+    fn merged_pull_request() -> AuthoredPullRequest {
+        AuthoredPullRequest {
+            key: PullRequestKey::new("acme/api".to_string(), 42),
+            node_id: "node-42".to_string(),
+            author: "octo".to_string(),
+            title: "Pull request".to_string(),
+            url: "https://github.com/acme/api/pull/42".to_string(),
+            created_at: "2026-11-02T09:00:00Z".to_string(),
+            updated_at: "2026-11-02T09:00:00Z".to_string(),
+            state: crate::domain::PrState::Merged,
+            merged: true,
+            is_draft: false,
+            assignees: Vec::new(),
+            labels: Vec::new(),
+            milestone: None,
+            base_ref: "main".to_string(),
+            head_oid: "abc123".to_string(),
+            ci: CiResult::default(),
+            comments: Vec::new(),
+            reviews: Vec::new(),
+            review_comments: Vec::new(),
+        }
+    }
 
     #[tokio::test]
     async fn missing_file_is_empty_state() {
@@ -184,6 +221,35 @@ mod tests {
             .filter_map(Result::ok)
             .any(|entry| entry.file_name().to_string_lossy().contains(".corrupt."));
         assert!(quarantined);
+    }
+
+    #[tokio::test]
+    async fn a_legacy_terminal_observation_is_marked_reported_on_load() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.json");
+        let merged = merged_pull_request();
+        let mut watched = WatchedPullRequest::from_baseline(&merged, "checked".to_string());
+        watched.current.state_reported = false;
+        let mut state = WatcherState {
+            version: 1,
+            accounts: Default::default(),
+        };
+        state.accounts.insert(
+            "work".to_string(),
+            AccountState {
+                login: "octo".to_string(),
+                last_check_at: Some("2026-11-02T10:00:00Z".to_string()),
+                pull_requests: [("acme/api#42".to_string(), watched)].into(),
+            },
+        );
+        let store = JsonStateStore::new(&path);
+        store.save(&state).await.unwrap();
+        let loaded = store.load().await.unwrap();
+        assert!(
+            loaded.accounts["work"].pull_requests["acme/api#42"]
+                .current
+                .state_reported
+        );
     }
 
     #[tokio::test]
