@@ -25,7 +25,7 @@ Legend: an unchecked box means pending; a checked box is done only when the comm
 - [x] Add `tui.rs` (`TuiApp`, `load_view`, snapshot), the `passuff-tui` binary, ratatui/crossterm, the step file, and the active-change evidence path.
 
       COMMIT 45262ed. Delta 10/10; permanent 112/112; delta e2e 1/1; permanent e2e 7/7; unit 47 passed.
-      Scenario-count proof: delta e2e 1 < full delta suite 10.
+      Scenario-count proof: delta e2e 1 < full delta suite 11.
 
 ---
 
@@ -40,25 +40,7 @@ Legend: an unchecked box means pending; a checked box is done only when the comm
         ```
   - [x] COMMIT: `45262ed` -- Batch: `tui-render`
 
-- [x] Scenario: `The terminal UI shows the empty inbox`
-  - [x] **Design constraints:** T4/T1. `no activity yet`, `0 unread of 0`.
-        Files: `tui.rs`.
-  - [x] Implement and run; REFACTOR and re-run.
-        ```
-        ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; scenario green. COMMIT 45262ed.
-        ```
-  - [x] COMMIT: `45262ed` -- Batch: `tui-render`
-
 ### Batch: `tui-keys`
-
-- [x] Scenario: `The selection moves and clamps`
-  - [x] **Design constraints:** T2. j moves to the comment, j clamps, k returns to CI.
-        Files: `tui.rs`, step file.
-  - [x] Implement and run; REFACTOR and re-run.
-        ```
-        ./scripts/verify.sh (delta) -> 10/10; permanent -> 112/112; scenario green. COMMIT 45262ed.
-        ```
-  - [x] COMMIT: `45262ed` -- Batch: `tui-keys`
 
 - [x] Scenario: `The selected activity is marked read`
   - [x] **Design constraints:** T3. r marks only the selected record; 1 unread of 2.
@@ -136,6 +118,43 @@ Legend: an unchecked box means pending; a checked box is done only when the comm
       ```
       COMMIT `a556688`.
 
+### Batch: `tui-review-closure`
+
+- [x] Review finding: the non-terminal guard (`tui_main.rs:65-68`) is untested.
+- [x] Review finding: `Down`/`Up` key dispatch and `r` on an empty activity list
+      are untested.
+
+- [x] Scenario: `The terminal UI requires a terminal`
+  - [x] **Design constraints:** T5. Without `--snapshot` and without a TTY, exit 3.
+        Files: `tui_main.rs`, step file, support.
+  - [x] Implement and run; REFACTOR and re-run.
+        ```
+        ./scripts/verify.sh (delta) -> 11/11; permanent -> 112/112; e2e -> 7/7.
+        ```
+  - [x] COMMIT: `c5a559b` -- Batch: `tui-review-closure`
+
+- [x] Scenario: `The terminal UI shows the empty inbox`
+  - [x] **Design constraints:** T4/T1. `r` with no activity keeps `0 unread of 0`.
+        Files: `tui.rs`, step file.
+  - [x] Implement and run; REFACTOR and re-run.
+        ```
+        ./scripts/verify.sh (delta) -> 11/11; permanent -> 112/112; e2e -> 7/7.
+        ```
+  - [x] COMMIT: `c5a559b` -- Batch: `tui-review-closure`
+
+- [x] Scenario: `The selection moves and clamps`
+  - [x] **Design constraints:** T2. `j`/`k` and `Down`/`Up` move and clamp.
+        Files: `tui.rs`, step file, support.
+  - [x] Implement and run; REFACTOR and re-run.
+        ```
+        ./scripts/verify.sh (delta) -> 11/11; permanent -> 112/112; e2e -> 7/7.
+        ```
+  - [x] COMMIT: `c5a559b` -- Batch: `tui-review-closure`
+
+- [x] Coverage after the closure: 1955/2320 lines (84.3%), 203/632 branches (32.1%);
+      the non-terminal guard and both arrow arms are hit in the merged report.
+      COMMIT `c5a559b`.
+
 ---
 
-**Done when:** every box checked with the commit, the regular and end-to-end suites exit 0, and the setup proof records an end-to-end count (1) less than the full delta count (10).
+**Done when:** every box checked with the commit, the regular and end-to-end suites exit 0, and the setup proof records an end-to-end count (1) less than the full delta count (11).
