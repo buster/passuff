@@ -2,7 +2,7 @@
 
 Behavior batches. Non-@e2e first, then @e2e. One commit may serve several scenarios in a batch.
 
-Legend: `[ ]` pending · `[x]` done only when the batch commit is filled in. Check boxes immediately after each batch.
+Legend: an unchecked box means pending; a checked box is done only when the batch commit is filled in. Check boxes immediately after each batch.
 
 ---
 
