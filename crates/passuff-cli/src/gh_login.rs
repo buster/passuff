@@ -1,17 +1,40 @@
+use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
 
 use async_trait::async_trait;
 use passuff_core::{CredentialError, GhLogin};
 
-pub struct SystemGhLogin;
+pub struct SystemGhLogin {
+    program: PathBuf,
+}
+
+impl SystemGhLogin {
+    pub fn new() -> Self {
+        Self {
+            program: PathBuf::from("gh"),
+        }
+    }
+
+    pub fn with_program(program: impl Into<PathBuf>) -> Self {
+        Self {
+            program: program.into(),
+        }
+    }
+}
+
+impl Default for SystemGhLogin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[async_trait]
 impl GhLogin for SystemGhLogin {
     async fn login(&self, _login: &str, host: &str) -> Result<(), CredentialError> {
         let status = tokio::time::timeout(
             Duration::from_secs(300),
-            tokio::process::Command::new("gh")
+            tokio::process::Command::new(&self.program)
                 .args(["auth", "login", "--web", "--hostname", host])
                 .stdin(Stdio::inherit())
                 .stdout(Stdio::inherit())
@@ -40,7 +63,7 @@ mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 
-    fn fake_gh(exit: i32) -> (tempfile::TempDir, std::path::PathBuf) {
+    fn fake_gh(exit: i32) -> (tempfile::TempDir, PathBuf, PathBuf) {
         let dir = tempfile::tempdir().expect("temp dir");
         let script = dir.path().join("gh");
         let log = dir.path().join("gh.log");
@@ -55,16 +78,15 @@ mod tests {
         let mut permissions = std::fs::metadata(&script).expect("metadata").permissions();
         permissions.set_mode(0o755);
         std::fs::set_permissions(&script, permissions).expect("mode");
-        (dir, log)
+        (dir, script, log)
     }
 
     #[tokio::test]
     async fn login_runs_the_web_flow_for_the_host() {
-        let (dir, log) = fake_gh(0);
-        let old = std::env::var("PATH").unwrap_or_default();
-        std::env::set_var("PATH", format!("{}:{}", dir.path().display(), old));
-        let result = SystemGhLogin.login("octo-work", "github.com").await;
-        std::env::set_var("PATH", old);
+        let (_dir, script, log) = fake_gh(0);
+        let result = SystemGhLogin::with_program(script)
+            .login("octo-work", "github.com")
+            .await;
         assert!(result.is_ok());
         let logged = std::fs::read_to_string(log).expect("log");
         assert!(logged.contains("auth login --web --hostname github.com"));
@@ -72,20 +94,19 @@ mod tests {
 
     #[tokio::test]
     async fn login_reports_a_missing_gh() {
-        let old = std::env::var("PATH").unwrap_or_default();
-        std::env::set_var("PATH", "/nonexistent");
-        let result = SystemGhLogin.login("octo-work", "github.com").await;
-        std::env::set_var("PATH", old);
+        let dir = tempfile::tempdir().expect("temp dir");
+        let result = SystemGhLogin::with_program(dir.path().join("missing"))
+            .login("octo-work", "github.com")
+            .await;
         assert!(matches!(result, Err(CredentialError::GhNotFound)));
     }
 
     #[tokio::test]
     async fn login_reports_a_gh_failure() {
-        let (dir, _log) = fake_gh(1);
-        let old = std::env::var("PATH").unwrap_or_default();
-        std::env::set_var("PATH", format!("{}:{}", dir.path().display(), old));
-        let result = SystemGhLogin.login("octo-work", "github.com").await;
-        std::env::set_var("PATH", old);
+        let (_dir, script, _log) = fake_gh(1);
+        let result = SystemGhLogin::with_program(script)
+            .login("octo-work", "github.com")
+            .await;
         assert!(matches!(result, Err(CredentialError::GhLoginFailed)));
     }
 }

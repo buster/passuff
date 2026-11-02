@@ -35,7 +35,7 @@ The observable outcome: the operator can add a second account by naming its logi
 
 | Proposed capability | Route's recommendation | Decision | Rationale (if you deviated from route) |
 |---|---|---|---|
-| Account authentication and credential sources | EXTEND pr-activity-notification (use case `watch-pull-requests`, score 16.00, signal) | `EXTEND pr-activity-notification` | None; the use case already owns credential-failure and configuration rules (R19, extension 1a), and the new modes change how step 1 resolves an account, not the notification outcome. |
+| pr-activity-notification | EXTEND pr-activity-notification (use case `watch-pull-requests`, score 16.00, signal) | `EXTEND pr-activity-notification` | None; the use case already owns credential-failure and configuration rules (R19, extension 1a), and the new modes change how step 1 resolves an account, not the notification outcome. |
 
 ## Out of Scope
 

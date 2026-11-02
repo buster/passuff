@@ -21,7 +21,7 @@ use crate::transcript::TranscriptRenderer;
 pub fn system_credentials(interactive: bool) -> Arc<dyn CredentialSource> {
     if interactive {
         Arc::new(SystemCredentialSource::interactive(Arc::new(
-            gh_login::SystemGhLogin,
+            gh_login::SystemGhLogin::new(),
         )))
     } else {
         Arc::new(SystemCredentialSource::headless())
