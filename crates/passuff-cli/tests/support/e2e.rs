@@ -497,9 +497,12 @@ impl World {
             return;
         }
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let directory = root
-            .join("givn/changes/passuff-pr-watch/evidence/visual")
-            .join(&self.e2e_scenario);
+        let base = if root.join("givn/changes/passuff-pr-watch/specs").is_dir() {
+            root.join("givn/changes/passuff-pr-watch/evidence/visual")
+        } else {
+            root.join("target/visual")
+        };
+        let directory = base.join(&self.e2e_scenario);
         if fs::create_dir_all(&directory).is_err() {
             return;
         }
