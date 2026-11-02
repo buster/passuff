@@ -42,11 +42,11 @@ impl PassuffCore {
         for (label, account) in &self.config.accounts {
             let token = match self.credentials.resolve(&account.credential).await {
                 Ok(token) => token,
-                Err(_) => {
+                Err(error) => {
                     failures.push(AccountFailure {
                         label: label.clone(),
                         kind: AccountFailureKind::Credential,
-                        detail: "credential unavailable".to_string(),
+                        detail: error.to_string(),
                     });
                     continue;
                 }
@@ -76,6 +76,29 @@ impl PassuffCore {
             }
         }
 
+        let mut accepted: Vec<(String, AccountObservation)> = Vec::new();
+        for (label, observation) in observed {
+            let expected = self
+                .config
+                .accounts
+                .get(&label)
+                .and_then(|account| account.expected_login.as_deref());
+            if let Some(expected) = expected {
+                if !observation.login.eq_ignore_ascii_case(expected) {
+                    failures.push(AccountFailure {
+                        label: label.clone(),
+                        kind: AccountFailureKind::Identity,
+                        detail: format!(
+                            "credential belongs to @{}, expected @{}",
+                            observation.login, expected
+                        ),
+                    });
+                    continue;
+                }
+            }
+            accepted.push((label, observation));
+        }
+
         let mut logins: Vec<String> = state
             .accounts
             .values()
@@ -83,15 +106,15 @@ impl PassuffCore {
             .map(|account| account.login.clone())
             .collect();
         logins.extend(
-            observed
+            accepted
                 .iter()
                 .map(|(_, observation)| observation.login.clone()),
         );
         let login_set = LoginSet::new(logins);
 
-        for (label, observation) in observed {
+        for (label, observation) in accepted {
             let entry = state.accounts.entry(label.clone()).or_default();
-            if !entry.login.is_empty() && entry.login != observation.login {
+            if !entry.login.is_empty() && !entry.login.eq_ignore_ascii_case(&observation.login) {
                 entry.pull_requests.clear();
                 entry.last_check_at = None;
             }
@@ -101,7 +124,7 @@ impl PassuffCore {
             let last_check_at = entry.last_check_at.clone();
 
             for pull_request in observation.pull_requests {
-                if pull_request.author != login {
+                if !pull_request.author.eq_ignore_ascii_case(&login) {
                     continue;
                 }
                 let key = pull_request.key.clone();

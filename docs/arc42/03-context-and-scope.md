@@ -30,7 +30,8 @@ flowchart LR
     passuff -->|D-Bus org.freedesktop.Notifications| desktop["Desktop notification service"]
     passuff -->|process invocation| player["afplay / paplay / pw-play / aplay"]
     passuff -->|read and write| files["Config and state files"]
-    passuff -->|read| credentials["Environment variables and credential command"]
+    passuff -->|read| credentials["Environment variables, helper commands, and token files"]
+    passuff -->|token and browser login| ghcli["gh CLI"]
 ```
 
 | Interface | Technology / Protocol | Direction |
@@ -41,7 +42,8 @@ flowchart LR
 | Sound playback | Child process: `afplay`, `paplay`, `pw-play`, or `aplay` | Outbound |
 | Configuration | TOML file | Read |
 | Persisted observation | Versioned JSON file plus atomic replacement | Read and write |
-| Credentials | Environment variable or `/bin/sh -c` command output | Read |
+| Credentials | Environment variable, `/bin/sh -c` command output, permission-checked token file, or gh OAuth session | Read |
+| Interactive authentication | gh CLI browser login (`gh auth login --web`) | Outbound, interactive |
 | Terminal transcript | Standard output and standard error | Write |
 
 ## Scope boundaries

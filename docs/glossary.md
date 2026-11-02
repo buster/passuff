@@ -11,6 +11,11 @@ restate the rules.
 | Term | Definition | Code symbol | Anti-terms |
 |---|---|---|---|
 | Account | A GitHub identity configured for observation, labelled locally and resolved to a GitHub login. | `Account` | user, profile, credential — a credential authenticates an account; it is not the account. |
+| Credential mode | The declared way an account obtains its token: a gh OAuth session or a personal access token. | `AuthMode`, `CredentialSpec` | auth type, login method — the mode names the source, not the identity. |
+| Expected login | The GitHub login an account declares; a resolved credential must belong to it. | `AccountConfig.expected_login` | username, owner — the expected login is a validation target. |
+| gh session | The OAuth token the GitHub CLI stores for a login on this machine. | `CredentialSpec::GhOAuth` | gh token, OAuth secret — the session belongs to the operator's gh installation. |
+| Personal access token | A GitHub token read from an environment variable, a helper command, or a token file, independent of the gh session. | `CredentialSpec::{Env,Command,File}` | password, secret — a token authenticates; it is not an account. |
+| Token file | A file containing a personal access token, accepted only when group and other users cannot read or write it. | `CredentialSpec::File` | credentials file, secret file — the file holds one token for one account. |
 | Account failure | A failure to observe one configured account, reported in the refresh report while other accounts continue. | `AccountFailure` | error — an error can be a configuration or state error; an account failure is scoped to one account. |
 | Activity event | A change on an authored pull request that is eligible for notification: a comment, a review, a CI result transition, or a pull request state change. | `ActivityEvent` | notification, update — a notification reports activity events; it is not one. |
 | Authored pull request | A pull request whose author login belongs to the configured login set. | `AuthoredPullRequest` | my PR (informal), watched PR — a watched pull request is the observation record, not the GitHub object. |

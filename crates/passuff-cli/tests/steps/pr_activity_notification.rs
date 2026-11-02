@@ -4,7 +4,7 @@ use regex::Regex;
 
 use cucumber::{given, then, when};
 
-use crate::support::{ci_failing, ci_success, World};
+use crate::support::{ci_failing, ci_success, AccountAuth, World};
 
 #[given(regex = r#"^a configured account "([^"]+)" with login "([^"]+)"$"#)]
 async fn configured_account(world: &mut World, label: String, login: String) {
@@ -290,14 +290,18 @@ async fn no_notifications(world: &mut World) {
 
 #[then(regex = r#"^the transcript reports a notification for "([^"]+)"$"#)]
 async fn reports_notification(world: &mut World, key: String) {
+    let report = world
+        .last_report
+        .as_ref()
+        .unwrap_or_else(|| panic!("run a check first; transcript: {:?}", world.last_transcript));
     assert!(
-        world
-            .last_report()
+        report
             .notifications
             .iter()
             .any(|notification| notification.key.to_string() == key),
-        "expected a notification for {key}, got {:?}",
-        world.last_report().notifications
+        "expected a notification for {key}, got {:?}; transcript: {:?}",
+        report.notifications,
+        world.last_transcript
     );
 }
 
@@ -545,4 +549,171 @@ fn capture(pattern: &str, text: &str) -> Option<Vec<String>> {
             .map(|capture| capture.expect("capture").as_str().to_string())
             .collect()
     })
+}
+
+fn login_for(label: &str) -> String {
+    match label {
+        "work" => "octo-work".to_string(),
+        "personal" => "octo-personal".to_string(),
+        "home" => "octo-home".to_string(),
+        other => format!("octo-{other}"),
+    }
+}
+
+#[given(regex = r#"^a configured account "([^"]+)" authenticating through gh as "([^"]+)"$"#)]
+async fn gh_account(world: &mut World, label: String, login: String) {
+    world.add_gh_account(&label, &login, false);
+}
+
+#[given(regex = r#"^gh is authenticated as "([^"]+)"$"#)]
+async fn gh_authenticated(world: &mut World, login: String) {
+    world.set_gh_authenticated(&login, true);
+}
+
+#[given(regex = r#"^gh is not authenticated as "([^"]+)"$"#)]
+async fn gh_not_authenticated(world: &mut World, login: String) {
+    world.set_gh_authenticated(&login, false);
+}
+
+#[given(regex = r#"^gh login always fails$"#)]
+async fn gh_login_fails(world: &mut World) {
+    world.gh_login_fails = true;
+}
+
+#[given(regex = r#"^the terminal is interactive$"#)]
+async fn terminal_interactive(world: &mut World) {
+    world.interactive = true;
+}
+
+#[given(regex = r#"^the terminal is not interactive$"#)]
+async fn terminal_not_interactive(world: &mut World) {
+    world.interactive = false;
+}
+
+#[given(
+    regex = r#"^a configured account "([^"]+)" with a personal access token in a file with mode "([^"]+)"$"#
+)]
+async fn token_file_with_mode(world: &mut World, label: String, mode: String) {
+    let mode = u32::from_str_radix(&mode, 8).expect("file mode");
+    world.add_file_account(&label, &login_for(&label), None, mode);
+    let path = world.account_token_file_path(&label);
+    world.set_config_token_file(&label, &path.display().to_string());
+}
+
+#[given(
+    regex = r#"^a configured account "([^"]+)" with a personal access token file that does not exist$"#
+)]
+async fn token_file_missing(world: &mut World, label: String) {
+    world.add_account(&label, &login_for(&label), false);
+    world.enable_real_credentials();
+    world.set_config_missing_token_file(&label);
+}
+
+#[given(regex = r#"^a configured account "([^"]+)" with a personal access token in "([^"]+)"$"#)]
+async fn token_file_tilde(world: &mut World, label: String, path: String) {
+    world.add_account(&label, &login_for(&label), false);
+    let token = world.accounts[&label].token.clone();
+    let file_name = path.trim_start_matches("~/");
+    world.prepare_home_token_file(file_name, &token);
+    world.enable_real_credentials();
+    world.set_config_token_file(&label, &path);
+}
+
+#[given(
+    regex = r#"^a configured account "([^"]+)" with an expected login "([^"]+)" and a personal access token belonging to "([^"]+)"$"#
+)]
+async fn account_expected_login(
+    world: &mut World,
+    label: String,
+    expected: String,
+    belonging: String,
+) {
+    world.add_account(&label, &belonging, false);
+    world.set_expected_login(&label, &expected);
+    world.enable_real_credentials();
+}
+
+#[given(regex = r#"^a configured account "([^"]+)" with an environment credential$"#)]
+async fn account_environment(world: &mut World, label: String) {
+    world.add_account(&label, &login_for(&label), false);
+}
+
+#[given(regex = r#"^a configured account "([^"]+)" with a command credential$"#)]
+async fn account_command(world: &mut World, label: String) {
+    world.add_account(&label, &login_for(&label), false);
+    if let Some(account) = world.accounts.get_mut(&label) {
+        account.auth = AccountAuth::Command {
+            command: "legacy-command".to_string(),
+        };
+        account.token = "token-legacy-command".to_string();
+    }
+}
+
+#[given(
+    regex = r#"^a configured account "([^"]+)" with (no credential source|an unknown auth mode|two personal access token sources|gh OAuth but no expected login|gh OAuth and a personal access token source|a literal personal access token)$"#
+)]
+async fn invalid_credential_config(world: &mut World, label: String, invalid: String) {
+    world.set_config_invalid(&label, &invalid);
+}
+
+#[when(regex = r#"^the watcher starts interactively$"#)]
+async fn watcher_starts_interactively(world: &mut World) {
+    world.interactive = true;
+    world.run_watch_cycles(1).await;
+}
+
+#[when(regex = r#"^the watcher runs one observation cycle$"#)]
+async fn watcher_runs_one_cycle(world: &mut World) {
+    world.run_watch_cycles(1).await;
+}
+
+#[when(regex = r#"^the watcher runs two observation cycles$"#)]
+async fn watcher_runs_two_cycles(world: &mut World) {
+    world.run_watch_cycles(2).await;
+}
+
+#[when(regex = r#"^the credential for "([^"]+)" becomes a token belonging to "([^"]+)"$"#)]
+async fn rotate(world: &mut World, label: String, new_login: String) {
+    let old_login = world.accounts[&label].login.clone();
+    world.rotate_credential(&label, &new_login);
+    for pull_request in world.pull_requests.values_mut() {
+        if pull_request.author == old_login {
+            pull_request.author = new_login.clone();
+        }
+    }
+}
+
+#[then(regex = r#"^gh started a browser login for "([^"]+)"$"#)]
+async fn gh_started_login(world: &mut World, login: String) {
+    let attempts = world.gh_login_attempts.lock().expect("login attempts");
+    assert!(
+        attempts.iter().any(|attempt| attempt == &login),
+        "expected a browser login for {login}, got {attempts:?}"
+    );
+}
+
+#[then(regex = r#"^gh did not start a browser login$"#)]
+async fn gh_did_not_start_login(world: &mut World) {
+    let attempts = world.gh_login_attempts.lock().expect("login attempts");
+    assert!(attempts.is_empty(), "unexpected logins: {attempts:?}");
+}
+
+#[then(regex = r#"^gh started one browser login for "([^"]+)"$"#)]
+async fn gh_started_one_login(world: &mut World, login: String) {
+    let attempts = world.gh_login_attempts.lock().expect("login attempts");
+    let count = attempts.iter().filter(|attempt| *attempt == &login).count();
+    assert_eq!(count, 1, "expected one login for {login}, got {attempts:?}");
+}
+
+#[then(regex = r#"^the transcript reports no notification for "([^"]+)"$"#)]
+async fn no_notification_for(world: &mut World, key: String) {
+    assert!(
+        !world
+            .last_report()
+            .notifications
+            .iter()
+            .any(|notification| notification.key.to_string() == key),
+        "unexpected notification for {key}: {:?}",
+        world.last_report().notifications
+    );
 }

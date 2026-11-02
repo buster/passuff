@@ -27,3 +27,6 @@
 
 # Editor/agent-local configuration
 /.maki/
+
+# Agent tooling artefacts
+/paseo.json

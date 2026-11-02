@@ -26,6 +26,7 @@ fn main() {
     );
     let scope = std::env::var("GIVN_RESULT_SCOPE").unwrap_or_else(|_| "change".to_string());
     let result_file = std::env::var("GIVN_RESULT_FILE").ok();
+    let scenario_filter = std::env::var("GIVN_SCENARIO").ok();
     if let Some(path) = result_file.as_deref() {
         let _ = std::fs::remove_file(path);
     }
@@ -50,11 +51,15 @@ fn main() {
             .max_concurrent_scenarios(Some(1))
             .filter_run(features, move |_, _, scenario| {
                 let is_e2e = scenario.tags.iter().any(|tag| tag == "e2e");
-                match scope.as_str() {
+                let matches_scope = match scope.as_str() {
                     "e2e" => is_e2e,
                     "regular" => !is_e2e,
                     _ => true,
-                }
+                };
+                let matches_name = scenario_filter
+                    .as_deref()
+                    .is_none_or(|name| scenario.name == name);
+                matches_scope && matches_name
             })
             .await;
     });

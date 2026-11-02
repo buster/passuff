@@ -35,7 +35,7 @@ when this change is archived).
 | 2 | No replay | A restart must not repeat activity the developer already saw. The core persists observations before returning the report; the CLI delivers afterwards. |
 | 3 | Reliability | One failed account, malformed response, or corrupt state must not stop the other accounts or crash the watcher. |
 | 4 | Timeliness | A change should be visible within one configured observation interval plus a small processing margin. |
-| 5 | Security | Tokens come from the environment or a credential command and never appear in config, state, logs, or transcripts. |
+| 5 | Security | Tokens come from a gh session, an environment variable, a helper command, or a permission-checked token file, and never appear in config, state, logs, or transcripts. |
 | 6 | Portability | The same binary runs on Linux and macOS, with platform notification and sound adapters. |
 | 7 | Reusability | Observation, classification, configuration, and state live in a UI-agnostic core library so the CLI and a future TUI share one implementation. |
 

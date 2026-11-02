@@ -51,7 +51,7 @@ flowchart TB
 |---|---|
 | `passuff-config` | Shared TOML schema, validation, `AppConfig`, `CoreConfig`, and `NotificationsConfig`. No UI or terminal dependency. |
 | `passuff-core` | UI-agnostic observation, classification, credential resolution, state, and the `RefreshReport` contract. |
-| `PassuffCore` | Expose `open`, `with_gateway`, `with_ports`, and `refresh`; run one cycle over all accounts; return notifications, account failures, and baselines. |
+| `PassuffCore` | Expose `with_ports` and `refresh`; run one cycle over all accounts; validate expected logins; return notifications, account failures, and baselines. |
 | `ActivityClassifier` | Pure classification of comments, reviews, review comments, CI transitions, state transitions, short-lived PRs, and reopen resets. |
 | `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for one account observation. |
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
@@ -117,7 +117,23 @@ no-replay guarantee.
 |---|---|
 | Core settings | Accounts, event toggles, poll interval, GraphQL URL. |
 | UI settings | Desktop, sound, sound file, urgency. |
-| Validation | Unknown keys, mutual credential sources, loopback-only HTTP, sound-file existence. |
+| Validation | Unknown keys, one credential mode per account, mutual credential sources, gh login requirements, token-file path and permissions, loopback-only HTTP, sound-file existence. |
+
+### Credential acquisition
+
+**Responsibility:** Resolve one configured account to a GitHub token through its
+declared credential mode, performing an interactive gh login only when the CLI
+allows it.
+
+**Contained elements:**
+
+| Element | Responsibility |
+|---|---|
+| Environment source | Read a non-empty environment variable. |
+| Command source | Run a helper through `/bin/sh -c` with a 10-second timeout and trim the output. |
+| Token-file source | Expand `~`, require a regular file with no group/other access, read and trim the token. |
+| gh OAuth source | Run `gh auth token --user <login>`, optionally retry after an interactive `gh auth login --web`, once per account per process. |
+| Identity check | Compare the resolved token's `viewer.login` with the account's expected login before processing its pull requests. |
 
 ### CLI delivery
 

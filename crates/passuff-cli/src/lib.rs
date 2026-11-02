@@ -3,6 +3,7 @@ pub mod sound;
 pub mod transcript;
 
 use std::process::ExitCode;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -29,6 +30,71 @@ pub struct RunOutcome {
     pub status: i32,
     pub report: Option<RefreshReport>,
     pub transcript: String,
+    pub emitted: bool,
+}
+
+#[async_trait::async_trait]
+pub trait WatchControl: Send + Sync {
+    fn should_continue(&self) -> bool;
+    async fn wait(&self, interval: Duration);
+}
+
+pub struct Interrupt {
+    cancelled: Arc<AtomicBool>,
+}
+
+impl Interrupt {
+    pub fn install() -> Self {
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let flag = cancelled.clone();
+        tokio::spawn(async move {
+            let _ = tokio::signal::ctrl_c().await;
+            flag.store(true, Ordering::SeqCst);
+        });
+        Self { cancelled }
+    }
+}
+
+#[async_trait::async_trait]
+impl WatchControl for Interrupt {
+    fn should_continue(&self) -> bool {
+        !self.cancelled.load(Ordering::SeqCst)
+    }
+
+    async fn wait(&self, interval: Duration) {
+        let deadline = tokio::time::Instant::now() + interval;
+        while tokio::time::Instant::now() < deadline {
+            if !self.should_continue() {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    }
+}
+
+pub struct StopAfter {
+    remaining: AtomicUsize,
+}
+
+impl StopAfter {
+    pub fn new(cycles: usize) -> Self {
+        Self {
+            remaining: AtomicUsize::new(cycles),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl WatchControl for StopAfter {
+    fn should_continue(&self) -> bool {
+        self.remaining
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
+                remaining.checked_sub(1)
+            })
+            .is_ok()
+    }
+
+    async fn wait(&self, _interval: Duration) {}
 }
 
 pub struct CliRuntime {
@@ -53,6 +119,7 @@ impl CliRuntime {
                     status: 2,
                     report: None,
                     transcript: self.renderer.render_config_error(&error.to_string()),
+                    emitted: false,
                 };
             }
         };
@@ -79,10 +146,20 @@ impl CliRuntime {
             status,
             report: Some(report),
             transcript,
+            emitted: false,
         }
     }
 
     pub async fn run_watch(&self, config: Result<AppConfig, ConfigError>) -> RunOutcome {
+        let control = Interrupt::install();
+        self.run_watch_with(config, &control).await
+    }
+
+    pub async fn run_watch_with(
+        &self,
+        config: Result<AppConfig, ConfigError>,
+        control: &dyn WatchControl,
+    ) -> RunOutcome {
         let config = match config {
             Ok(config) => config,
             Err(error) => {
@@ -91,6 +168,7 @@ impl CliRuntime {
                     status: 2,
                     report: None,
                     transcript: self.renderer.render_config_error(&error.to_string()),
+                    emitted: false,
                 };
             }
         };
@@ -106,41 +184,43 @@ impl CliRuntime {
             Err(error) => return self.state_error(error),
         };
 
+        let mut output: Vec<String> = Vec::new();
         let mut last_report = None;
         let mut first_success = false;
-        let mut ctrl_c = Box::pin(tokio::signal::ctrl_c());
-        loop {
+        while control.should_continue() {
             match core.refresh().await {
                 Ok(report) => {
                     let (transcript, _status) = self.process_report(&config, &report).await;
                     if !transcript.is_empty() {
+                        output.push(transcript.clone());
                         println!("{transcript}");
                     }
-                    use std::io::Write;
-                    let _ = std::io::stdout().flush();
                     if !first_success && report.account_failures.is_empty() {
                         first_success = true;
-                        println!("{}", self.renderer.render_watching());
-                        let _ = std::io::stdout().flush();
+                        let watching = self.renderer.render_watching();
+                        output.push(watching.clone());
+                        println!("{watching}");
                     }
                     last_report = Some(report);
                 }
                 Err(error) => {
-                    println!("{}", self.renderer.render_state_error(&error.to_string()));
-                    use std::io::Write;
-                    let _ = std::io::stdout().flush();
+                    let line = self.renderer.render_state_error(&error.to_string());
+                    output.push(line.clone());
+                    println!("{line}");
                 }
             }
-            tokio::select! {
-                _ = tokio::time::sleep(Duration::from_secs(config.poll_interval_secs.max(1))) => {}
-                _ = &mut ctrl_c => break,
-            }
+            use std::io::Write;
+            let _ = std::io::stdout().flush();
+            control
+                .wait(Duration::from_secs(config.poll_interval_secs.max(1)))
+                .await;
         }
         RunOutcome {
             exit: ExitCode::SUCCESS,
             status: 0,
             report: last_report,
-            transcript: String::new(),
+            transcript: output.join("\n"),
+            emitted: true,
         }
     }
 
@@ -184,6 +264,7 @@ impl CliRuntime {
             status: 3,
             report: None,
             transcript: self.renderer.render_state_error(&error.to_string()),
+            emitted: false,
         }
     }
 }

@@ -251,6 +251,7 @@ pub enum AccountFailureKind {
     Transport,
     MalformedResponse,
     Credential,
+    Identity,
 }
 
 #[derive(Debug, Clone, Error)]

@@ -16,6 +16,10 @@
   played by a system player. No hosted push channel, audio library, or
   third-party account is involved. See
   [ADR-0002](adr/ADR-0002-local-desktop-notifications.md).
+- Delegate GitHub OAuth to the gh CLI and keep personal access tokens for
+  headless use. passuff reads an existing session with
+  `gh auth token --user <login>` and starts `gh auth login --web` only in an
+  interactive watch. See [ADR-0004](adr/ADR-0004-gh-delegated-authentication.md).
 - Keep the core UI-agnostic: `passuff-config` owns the shared configuration
   schema; `passuff-core` owns observation, classification, and state;
   `passuff-cli` is the first adapter and `passuff-tui` is a future adapter over
@@ -34,6 +38,7 @@
 | Workspace boundary | `passuff-config` library, `passuff-core` library, `passuff-cli` binary | Shared config schema; UI and delivery dependencies stay out of the core; a future TUI reuses config and core. |
 | GitHub access | GraphQL via `reqwest` with rustls | One query returns authored pull requests, comments, reviews, and CI state. |
 | Configuration | TOML via `serde` | Readable, typed, with unknown-key rejection. |
+| Authentication | gh CLI session, environment, helper command, or token file | Reuses existing OAuth sessions, keeps tokens out of config, and leaves a headless path. |
 | State | Versioned JSON with atomic replacement | Small local dataset; inspectable; no database dependency. |
 | Notifications | `notify-rust` | Covers Linux D-Bus and macOS notifications. |
 | Sound | Bundled WAV + system player | Avoids ALSA/CoreAudio build dependencies. |

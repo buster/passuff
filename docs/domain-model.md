@@ -10,11 +10,13 @@ Excluded: code review of diffs, GitHub mutations (commenting, approving,
 merging), delivery channels other than the local desktop surface, and
 organization-level policy.
 
-This is a proposed model for the `passuff-pr-watch` change. No implementation
-exists yet; the model records the intended structure, not implemented behavior.
-The core is UI-agnostic: a notification is a grouped report, and a UI adapter
-delivers it. Delivery is an external relationship, not part of the Notification
-value.
+This model covers the implemented `passuff-pr-watch` capability and the
+`passuff-auth-modes` change. The core is UI-agnostic: a notification is a
+grouped report, and a UI adapter delivers it. Delivery is an external
+relationship, not part of the Notification value. An account's credential mode
+and expected login are configuration and validation attributes, not separate
+domain entities; the account remains the identity that owns authored pull
+requests.
 
 Account failure is a report condition, not a domain entity. Event-family
 settings are configuration, not domain structure; both are defined in the

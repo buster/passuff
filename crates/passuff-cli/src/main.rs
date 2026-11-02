@@ -1,5 +1,7 @@
 mod cli;
+mod gh_login;
 
+use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -8,9 +10,10 @@ use passuff_cli::delivery::DesktopDelivery;
 use passuff_cli::sound::SystemSoundPlayer;
 use passuff_cli::{CliPorts, CliRuntime};
 use passuff_config::ConfigLoader;
-use passuff_core::{GitHubApiAdapter, JsonStateStore, SystemCredentialSource};
+use passuff_core::{CredentialSource, GitHubApiAdapter, JsonStateStore, SystemCredentialSource};
 
 use crate::cli::{Cli, Command};
+use crate::gh_login::SystemGhLogin;
 
 #[tokio::main]
 async fn main() {
@@ -37,12 +40,19 @@ async fn main() {
             .unwrap_or_else(|| PathBuf::from("passuff-state.json"))
     });
 
+    let interactive =
+        args.command.is_none() && std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
+    let credentials: Arc<dyn CredentialSource> = if interactive {
+        Arc::new(SystemCredentialSource::interactive(Arc::new(SystemGhLogin)))
+    } else {
+        Arc::new(SystemCredentialSource::headless())
+    };
     let sound = Arc::new(SystemSoundPlayer::new());
     let delivery = build_delivery(sound);
     let ports = CliPorts {
         gateway: Arc::new(GitHubApiAdapter::new()),
         store: Arc::new(JsonStateStore::new(state_path)),
-        credentials: Arc::new(SystemCredentialSource),
+        credentials,
         delivery,
     };
     let runtime = CliRuntime::new(ports);
@@ -52,7 +62,7 @@ async fn main() {
         Some(Command::Check) => runtime.run_check(config).await,
         None => runtime.run_watch(config).await,
     };
-    if !outcome.transcript.is_empty() {
+    if !outcome.emitted && !outcome.transcript.is_empty() {
         println!("{}", outcome.transcript);
     }
     std::process::exit(outcome.status);

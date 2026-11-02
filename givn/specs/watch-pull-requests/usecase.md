@@ -18,12 +18,12 @@ The developer starts the watcher, or runs a single check pass.
 
 ## Preconditions
 
-- At least one GitHub account is configured with a usable credential.
+- At least one GitHub account is configured with a credential source; an interactive continuous watch may obtain a gh credential during the flow.
 - Each configured account can read the repositories that contain its authored pull requests.
 
 ## Main flow
 
-1. The watcher resolves each configured account to its GitHub login and forms the configured login set.
+1. The watcher resolves each configured account through its declared credential mode to its GitHub login and forms the configured login set.
 2. The watcher observes the pull requests authored by the configured login set.
 3. On the first observation of an open pull request, the watcher records a baseline and reports no activity. A short-lived closed pull request is handled by R27.
 4. On each later observation, the watcher compares the pull request with its recorded observation.
@@ -35,6 +35,8 @@ The developer starts the watcher, or runs a single check pass.
 ## Extensions
 
 - 1a. A runtime credential value is missing or invalid, or the account cannot be reached: the watcher reports the account failure and continues with the remaining accounts. `check` exits 1; continuous mode retries. A configuration with no credential source at all is a configuration error (R19).
+- 1b. A gh OAuth session is missing in an interactive continuous watch: the watcher starts gh's browser login once for that account, then retries the account. A failed or abandoned login is an account failure (R38).
+- 1c. A credential belongs to a login other than the expected one: the watcher reports the account failure with both logins and does not observe that account (R36).
 - 2a. No authored pull requests exist: the watcher reports no notifications and completes the pass.
 - 4a. The persisted observation is corrupt or has an unknown version: the watcher sets it aside, records a fresh baseline, and continues. A permission or I/O failure that prevents reading, writing, or quarantining exits 3 in `check` mode.
 - 5a. A change is an own action, a commit push, or activity on a pull request outside the configured login set: the watcher discards it.
@@ -74,6 +76,13 @@ The developer starts the watcher, or runs a single check pass.
 - R29: A missing runtime credential value or an invalid credential is an account failure; `check` exits 1 and continuous mode reports it and retries.
 - R30: A state read, write, or quarantine failure that cannot be recovered in `check` exits with status 3. A corrupt or unknown-version state is quarantined and replaced, not treated as an error.
 - R31: `check` exits 0 when all accounts were observed, 1 when at least one account failed, 2 for configuration or CLI errors, and 3 for a core state failure.
+- R32: An account selects exactly one credential source: a gh OAuth session with an expected login, or a personal access token from exactly one of an environment variable, a helper command, or a token file. Declaring more than one source, a gh OAuth account without an expected login, or a literal token is a configuration error that exits with status 2.
+- R33: A gh OAuth account names its expected GitHub login and obtains its token from the operator's gh session for that login.
+- R34: A gh OAuth account whose gh session is missing starts gh's browser login once per account when the continuous watcher runs interactively. The one-shot check and every non-interactive run never start a browser login and report the account failure instead.
+- R35: A personal access token file is used only when group and other users cannot read or write it; a leading `~` names the operator's home directory. A missing token file is an account failure; insecure permissions are a configuration error.
+- R36: When an account declares its expected login, a credential belonging to a different login, compared case-insensitively, is an account failure that names both logins, and no pull requests are processed for that account.
+- R37: An account configured with only an environment variable or a helper command, with no declared mode, remains a personal access token account.
+- R38: A failed or abandoned browser login is reported as an account failure; the remaining accounts are still observed.
 
 ## Examples
 
@@ -83,6 +92,8 @@ The developer starts the watcher, or runs a single check pass.
 - A pull request created and merged between two checks notifies once as merged.
 - A merge of the developer's own pull request notifies once; own comments and reviews stay silent.
 - Disabling the comments event family silences new comments but not CI failures.
+- A work account without a gh session opens a browser login on start, then watches its pull requests.
+- A token file readable by other local users is refused before any observation.
 
 ## Minimal guarantee
 

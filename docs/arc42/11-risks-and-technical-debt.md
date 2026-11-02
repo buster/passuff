@@ -15,6 +15,10 @@
 | R-009 | The macOS desktop notification adapter is not automated in CI; Linux uses the private D-Bus fake. | Medium | Medium | Linux E2E asserts the real `notify-rust` path; unit-test notification construction; record the manual macOS smoke before archive. |
 | R-010 | The core API is consumed only by the CLI in this change; the first TUI may expose missing query methods or error types. | Medium | Medium | Contract tests on `PassuffCore::refresh`; the inbox change adds the read/query API before the TUI; `cargo tree -p passuff-core` keeps UI dependencies out of the core. |
 | R-011 | Linux E2E depends on `dbus-daemon` and the mock notification service. | Medium | Low | The setup task installs and verifies `dbus-daemon`; the E2E scope fails with a clear message when the private bus cannot start; the regular scope still runs. |
+| R-012 | The gh OAuth mode depends on a gh version with `gh auth token --user` and `gh auth login --web`. | Medium | Medium | A missing or old gh is a credential failure naming gh; the README states the minimum; PAT accounts are unaffected. |
+| R-013 | gh login cannot select the account; the browser session decides who authorizes. | Medium | High | Every gh OAuth account declares `github_user`; the resolved `viewer.login` is checked before observation, and a mismatch is an account failure naming both logins. |
+| R-014 | gh login can change the host's git protocol preference. | Low | Low | passuff passes no `--git-protocol`; gh's prompt and the README explain the side effect, and the operator keeps control. |
+| R-015 | A token file's permissions can change between configuration load and credential use. | Low | Medium | The resolver repeats the `0o077` check; a changed file becomes an account failure, not a silent read. |
 
 ## Technical debt
 

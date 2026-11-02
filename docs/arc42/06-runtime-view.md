@@ -127,3 +127,42 @@ sequenceDiagram
 **Notes:** A corrupt state file is quarantined and replaced with a fresh
 baseline; the cycle continues. A rate-limit response reports the reset time and
 skips only that account for the cycle.
+
+
+## Scenario: Interactive credential recovery
+
+**Trigger:** An interactive continuous watch resolves a gh OAuth account whose
+gh session is missing.
+
+```mermaid
+sequenceDiagram
+    participant CLI
+    participant Core
+    participant Source as Credential source
+    participant Gh as gh CLI
+    participant GitHub
+
+    CLI->>Core: refresh (interactive)
+    Core->>Source: resolve gh OAuth account
+    Source->>Gh: gh auth token --user <login>
+    Gh-->>Source: no session
+    Source->>Gh: gh auth login --web --hostname <host>
+    Gh-->>Source: login complete
+    Source->>Gh: gh auth token --user <login> (retry once)
+    Gh-->>Source: token
+    Core->>GitHub: observe with token
+    GitHub-->>Core: viewer login and pull requests
+    Core->>Core: compare viewer login with expected login
+    Core-->>CLI: report
+```
+
+**Steps:**
+
+1. The credential source records that a login was attempted for the account.
+2. It runs gh's browser login with inherited stdio; gh owns the prompts and the
+   browser.
+3. It retries the token read once. A failure after login is an account failure.
+4. The core validates the resolved login. A mismatch becomes an identity
+   account failure and the account's pull requests are skipped.
+5. The remaining accounts are observed normally. A one-shot check never enters
+   this flow.

@@ -7,25 +7,37 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use passuff_cli::delivery::{FailingDelivery, NotificationDelivery, RecordingDelivery};
 use passuff_cli::sound::{RecordingSoundPlayer, SoundPlayer, UnavailableSoundPlayer};
-use passuff_cli::{CliPorts, CliRuntime};
+use passuff_cli::{CliPorts, CliRuntime, StopAfter};
 use passuff_config::{
-    AccountConfig, AppConfig, ConfigError, CoreConfig, CredentialSpec, EventToggles,
+    AccountConfig, AppConfig, ConfigError, ConfigLoader, CoreConfig, CredentialSpec, EventToggles,
     NotificationsConfig, SoundFile,
 };
 use passuff_core::{
     AccountObservation, AuthoredPullRequest, CiResult, CiState, Comment, CredentialError,
-    CredentialSource, GitHubError, GitHubGateway, JsonStateStore, PrState, PullRequestKey,
-    RefreshReport, Review, ReviewComment, SnapshotStore, StateError, WatcherState,
+    CredentialSource, GhLogin, GitHubError, GitHubGateway, JsonStateStore, PrState, PullRequestKey,
+    RefreshReport, Review, ReviewComment, SnapshotStore, StateError, SystemCredentialSource,
+    WatcherState,
 };
 use serde_json::Value;
 use tempfile::TempDir;
 use url::Url;
 
 #[derive(Debug, Clone)]
+pub enum AccountAuth {
+    Env { variable: String },
+    Command { command: String },
+    File { path: PathBuf, mode: u32 },
+    GhOAuth { login: String, host: String },
+}
+
+#[derive(Debug, Clone)]
 pub struct AccountFixture {
     pub label: String,
     pub login: String,
+    pub token: String,
     pub token_var: String,
+    pub expected_login: Option<String>,
+    pub auth: AccountAuth,
 }
 
 #[derive(Debug, Clone)]
@@ -139,6 +151,13 @@ pub struct World {
     pub e2e_sink: Option<PathBuf>,
     #[cfg(target_os = "linux")]
     pub e2e_dbus: Option<e2e::DbustTwin>,
+    pub auth_dir: Option<TempDir>,
+    pub home_dir: Option<TempDir>,
+    pub gh_login_attempts: Arc<Mutex<Vec<String>>>,
+    pub gh_login_fails: bool,
+    pub interactive: bool,
+    pub real_credentials: bool,
+    pub config_text: Option<String>,
 }
 
 impl Default for World {
@@ -178,6 +197,13 @@ impl Default for World {
             e2e_sink: None,
             #[cfg(target_os = "linux")]
             e2e_dbus: None,
+            auth_dir: None,
+            home_dir: None,
+            gh_login_attempts: Arc::new(Mutex::new(Vec::new())),
+            gh_login_fails: false,
+            interactive: false,
+            real_credentials: false,
+            config_text: None,
         }
     }
 }
@@ -211,14 +237,238 @@ impl World {
         if invalid {
             self.fail_invalid_credential = true;
         }
+        let token = format!("token-{token_var}");
         self.accounts.insert(
             label.to_string(),
             AccountFixture {
                 label: label.to_string(),
                 login: login.to_string(),
-                token_var,
+                token,
+                token_var: token_var.clone(),
+                expected_login: None,
+                auth: AccountAuth::Env {
+                    variable: token_var,
+                },
             },
         );
+    }
+
+    fn auth_root(&mut self) -> PathBuf {
+        if self.auth_dir.is_none() {
+            let dir = TempDir::new().expect("auth dir");
+            let bin = dir.path().join("bin");
+            std::fs::create_dir_all(&bin).expect("auth bin");
+            let script = bin.join("gh");
+            std::fs::write(
+                &script,
+                "#!/bin/sh
+if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"\n  while [ $# -gt 0 ]; do\n    case \"$1\" in\n      --user) user=\"$2\"; shift 2 ;;\n      *) shift ;;\n    esac\n  done\n  if [ -n \"$user\" ] && [ -f \"$FAKE_GH_DIR/token-$user\" ]; then\n    cat \"$FAKE_GH_DIR/token-$user\"\n    exit 0\n  fi\nfi\nexit 1\n",
+            )
+            .expect("fake gh");
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut permissions = std::fs::metadata(&script)
+                    .expect("fake gh metadata")
+                    .permissions();
+                permissions.set_mode(0o755);
+                std::fs::set_permissions(&script, permissions).expect("fake gh mode");
+            }
+            self.auth_dir = Some(dir);
+        }
+        self.auth_dir
+            .as_ref()
+            .expect("auth dir")
+            .path()
+            .to_path_buf()
+    }
+
+    pub fn add_gh_account(&mut self, label: &str, login: &str, authenticated: bool) {
+        self.add_account(label, login, false);
+        if let Some(account) = self.accounts.get_mut(label) {
+            account.auth = AccountAuth::GhOAuth {
+                login: login.to_string(),
+                host: "github.com".to_string(),
+            };
+            account.expected_login = Some(login.to_string());
+            account.token = format!("token-{login}");
+        }
+        self.real_credentials = true;
+        let root = self.auth_root();
+        let token_file = root.join(format!("token-{login}"));
+        if authenticated {
+            std::fs::write(token_file, format!("token-{login}")).expect("gh token");
+        } else {
+            let _ = std::fs::remove_file(token_file);
+        }
+    }
+
+    pub fn add_file_account(
+        &mut self,
+        label: &str,
+        login: &str,
+        expected: Option<&str>,
+        mode: u32,
+    ) {
+        self.add_account(label, login, false);
+        let root = self.auth_root();
+        let path = root.join(format!("{label}.token"));
+        let token = self.accounts[label].token.clone();
+        std::fs::write(&path, token).expect("token file");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&path)
+                .expect("token metadata")
+                .permissions();
+            permissions.set_mode(mode);
+            std::fs::set_permissions(&path, permissions).expect("token mode");
+        }
+        if let Some(account) = self.accounts.get_mut(label) {
+            account.auth = AccountAuth::File { path, mode };
+            account.expected_login = expected.map(str::to_string);
+        }
+        self.real_credentials = true;
+    }
+
+    pub fn set_gh_authenticated(&mut self, login: &str, authenticated: bool) {
+        let root = self.auth_root();
+        let token_file = root.join(format!("token-{login}"));
+        if authenticated {
+            std::fs::write(token_file, format!("token-{login}")).expect("gh token");
+        } else {
+            let _ = std::fs::remove_file(token_file);
+        }
+    }
+
+    pub fn set_expected_login(&mut self, label: &str, login: &str) {
+        if let Some(account) = self.accounts.get_mut(label) {
+            account.expected_login = Some(login.to_string());
+        }
+    }
+
+    pub fn rotate_credential(&mut self, label: &str, new_login: &str) {
+        if let Some(account) = self.accounts.get_mut(label) {
+            account.login = new_login.to_string();
+            account.token = format!("token-{new_login}");
+            if let AccountAuth::GhOAuth { login, .. } = &mut account.auth {
+                *login = new_login.to_string();
+            }
+        }
+        let root = self.auth_root();
+        let _ = std::fs::write(
+            root.join(format!("token-{new_login}")),
+            format!("token-{new_login}"),
+        );
+    }
+
+    pub fn set_config_text(&mut self, text: String) {
+        self.config_text = Some(text);
+    }
+
+    pub fn enable_real_credentials(&mut self) {
+        self.real_credentials = true;
+        self.auth_root();
+    }
+
+    pub fn account_token_file_path(&self, label: &str) -> PathBuf {
+        match &self.accounts[label].auth {
+            AccountAuth::File { path, .. } => path.clone(),
+            other => panic!("account {label} is not a token-file account: {other:?}"),
+        }
+    }
+
+    pub fn set_config_token_file(&mut self, label: &str, path: &str) {
+        self.set_config_text(format!("[accounts.{label}]\ntoken_file = \"{path}\"\n"));
+    }
+
+    pub fn set_config_missing_token_file(&mut self, label: &str) {
+        let path = self.state_path().with_file_name("missing.token");
+        let _ = std::fs::remove_file(&path);
+        self.set_config_token_file(label, &path.display().to_string());
+    }
+
+    pub fn set_config_invalid(&mut self, label: &str, invalid: &str) {
+        let text = match invalid {
+            "no credential source" => format!("[accounts.{label}]\n"),
+            "an unknown auth mode" => {
+                format!("[accounts.{label}]\nauth = \"magic\"\ntoken_env = \"X\"\n")
+            }
+            "two personal access token sources" => format!(
+                "[accounts.{label}]\ntoken_env = \"A\"\ntoken_command = \"echo B\"\n"
+            ),
+            "gh OAuth but no expected login" => {
+                format!("[accounts.{label}]\nauth = \"gh_oauth\"\n")
+            }
+            "gh OAuth and a personal access token source" => format!(
+                "[accounts.{label}]\nauth = \"gh_oauth\"\ngithub_user = \"octo-work\"\ntoken_env = \"A\"\n"
+            ),
+            "a literal personal access token" => {
+                format!("[accounts.{label}]\ntoken = \"ghp_x\"\n")
+            }
+            other => panic!("unknown invalid configuration {other}"),
+        };
+        self.set_config_text(text);
+    }
+
+    pub fn prepare_home_token_file(&mut self, name: &str, token: &str) {
+        let home = TempDir::new().expect("home dir");
+        let path = home.path().join(name);
+        std::fs::write(&path, token).expect("home token file");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = std::fs::metadata(&path)
+                .expect("home token metadata")
+                .permissions();
+            permissions.set_mode(0o600);
+            std::fs::set_permissions(&path, permissions).expect("home token mode");
+        }
+        self.home_dir = Some(home);
+    }
+
+    fn apply_auth_env(&self) {
+        if let Some(dir) = self.auth_dir.as_ref() {
+            let bin = dir.path().join("bin");
+            let path = format!(
+                "{}:{}",
+                bin.display(),
+                std::env::var("PATH").unwrap_or_default()
+            );
+            std::env::set_var("PATH", path);
+            std::env::set_var("FAKE_GH_DIR", dir.path());
+        }
+        for account in self.accounts.values() {
+            if let AccountAuth::Env { variable } = &account.auth {
+                std::env::set_var(variable, &account.token);
+            }
+        }
+        if let Some(home) = self.home_dir.as_ref() {
+            std::env::set_var("HOME", home.path());
+        }
+    }
+
+    fn credentials(&self, interactive: bool) -> Arc<dyn CredentialSource> {
+        if self.real_credentials {
+            let dir = self
+                .auth_dir
+                .as_ref()
+                .expect("auth dir")
+                .path()
+                .to_path_buf();
+            Arc::new(SystemCredentialSource::with_login(
+                interactive,
+                Some(Arc::new(RecordingGhLogin {
+                    attempts: self.gh_login_attempts.clone(),
+                    fails: self.gh_login_fails,
+                    dir,
+                })),
+            ))
+        } else {
+            Arc::new(FakeCredentials {
+                fail_invalid: self.fail_invalid_credential,
+            })
+        }
     }
 
     pub fn add_pr(&mut self, key: &str, author: &str) -> &mut PullRequestFixture {
@@ -237,13 +487,25 @@ impl World {
             .accounts
             .values()
             .map(|account| {
+                let credential = match &account.auth {
+                    AccountAuth::Env { variable } => CredentialSpec::Env {
+                        variable: variable.clone(),
+                    },
+                    AccountAuth::Command { command } => CredentialSpec::Command {
+                        command: command.clone(),
+                    },
+                    AccountAuth::File { path, .. } => CredentialSpec::File { path: path.clone() },
+                    AccountAuth::GhOAuth { login, host } => CredentialSpec::GhOAuth {
+                        login: login.clone(),
+                        host: host.clone(),
+                    },
+                };
                 (
                     account.label.clone(),
                     AccountConfig {
-                        credential: CredentialSpec::Env {
-                            variable: account.token_var.clone(),
-                        },
+                        credential,
                         graphql_url: Url::parse("http://127.0.0.1/graphql").expect("url"),
+                        expected_login: account.expected_login.clone(),
                     },
                 )
             })
@@ -263,7 +525,7 @@ impl World {
             .values()
             .map(|account| {
                 (
-                    format!("token-{}", account.token_var),
+                    account.token.clone(),
                     account.login.clone(),
                     self.pull_requests
                         .values()
@@ -275,7 +537,10 @@ impl World {
     }
 
     pub async fn run_check_internal(&mut self) {
-        let config = if self.invalid_config {
+        self.apply_auth_env();
+        let config = if let Some(text) = self.config_text.clone() {
+            ConfigLoader::parse(&text)
+        } else if self.invalid_config {
             Err(ConfigError::Validation("invalid configuration".to_string()))
         } else {
             Ok(self.build_config())
@@ -284,9 +549,7 @@ impl World {
             self.gateway_snapshot(),
             self.check_clock.clone(),
         ));
-        let credentials = Arc::new(FakeCredentials {
-            fail_invalid: self.fail_invalid_credential,
-        });
+        let credentials = self.credentials(false);
         let store: Arc<dyn SnapshotStore> = if self.failing_store {
             Arc::new(FailingStore)
         } else {
@@ -309,6 +572,73 @@ impl World {
             delivery,
         });
         let outcome = runtime.run_check(config).await;
+        self.last_report = outcome.report;
+        self.last_transcript = outcome.transcript;
+        self.last_status = outcome.status;
+    }
+
+    pub async fn run_watch_cycles(&mut self, cycles: usize) {
+        if self.pending_baseline {
+            self.ensure_baseline().await;
+            self.last_report = None;
+        }
+        self.apply_auth_env();
+        let config = if let Some(text) = self.config_text.clone() {
+            ConfigLoader::parse(&text)
+        } else {
+            Ok(self.build_config())
+        };
+        let config = match config {
+            Ok(config) => config,
+            Err(error) => {
+                let runtime = CliRuntime::new(CliPorts {
+                    gateway: Arc::new(FakeGateway::new(
+                        self.gateway_snapshot(),
+                        self.check_clock.clone(),
+                    )),
+                    store: Arc::new(JsonStateStore::new(self.state_path())),
+                    credentials: self.credentials(false),
+                    delivery: Arc::new(RecordingDelivery::new(
+                        Arc::new(RecordingSoundPlayer::new(self.sound_log.clone())),
+                        self.notification_log.clone(),
+                    )),
+                });
+                let outcome = runtime.run_check(Err(error)).await;
+                self.last_report = outcome.report;
+                self.last_transcript = outcome.transcript;
+                self.last_status = outcome.status;
+                return;
+            }
+        };
+        let gateway = Arc::new(FakeGateway::new(
+            self.gateway_snapshot(),
+            self.check_clock.clone(),
+        ));
+        let credentials = self.credentials(self.interactive);
+        let store: Arc<dyn SnapshotStore> = if self.failing_store {
+            Arc::new(FailingStore)
+        } else {
+            Arc::new(JsonStateStore::new(self.state_path()))
+        };
+        let sound: Arc<dyn SoundPlayer> = if self.unavailable_sound {
+            Arc::new(UnavailableSoundPlayer)
+        } else {
+            Arc::new(RecordingSoundPlayer::new(self.sound_log.clone()))
+        };
+        let delivery: Arc<dyn NotificationDelivery> = if self.failing_delivery {
+            Arc::new(FailingDelivery)
+        } else {
+            Arc::new(RecordingDelivery::new(sound, self.notification_log.clone()))
+        };
+        let runtime = CliRuntime::new(CliPorts {
+            gateway,
+            store,
+            credentials,
+            delivery,
+        });
+        let outcome = runtime
+            .run_watch_with(Ok(config), &StopAfter::new(cycles))
+            .await;
         self.last_report = outcome.report;
         self.last_transcript = outcome.transcript;
         self.last_status = outcome.status;
@@ -393,6 +723,31 @@ impl GitHubGateway for FakeGateway {
     }
 }
 
+struct RecordingGhLogin {
+    attempts: Arc<Mutex<Vec<String>>>,
+    fails: bool,
+    dir: PathBuf,
+}
+
+#[async_trait]
+impl GhLogin for RecordingGhLogin {
+    async fn login(&self, login: &str, _host: &str) -> Result<(), CredentialError> {
+        self.attempts
+            .lock()
+            .expect("login attempts")
+            .push(login.to_string());
+        if self.fails {
+            return Err(CredentialError::CommandFailed);
+        }
+        std::fs::write(
+            self.dir.join(format!("token-{login}")),
+            format!("token-{login}"),
+        )
+        .map_err(|_| CredentialError::CommandFailed)?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 struct FakeCredentials {
     fail_invalid: bool,
@@ -402,6 +757,9 @@ struct FakeCredentials {
 impl CredentialSource for FakeCredentials {
     async fn resolve(&self, spec: &CredentialSpec) -> Result<String, CredentialError> {
         match spec {
+            CredentialSpec::File { .. } | CredentialSpec::GhOAuth { .. } => {
+                Err(CredentialError::CommandFailed)
+            }
             CredentialSpec::Env { variable } => {
                 if self.fail_invalid && variable.starts_with("INVALID_") {
                     Err(CredentialError::MissingEnv)

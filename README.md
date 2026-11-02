@@ -40,15 +40,30 @@ state_changes = true
 bot_comments = false
 
 [accounts.personal]
-token_env = "PASSUFF_PERSONAL_TOKEN"
+auth = "gh_oauth"
+github_user = "octo-personal"
 
 [accounts.work]
-token_env = "PASSUFF_WORK_TOKEN"
+auth = "github_pat"
+github_user = "octo-work"
+token_file = "~/.config/passuff/work.token"
 ```
 
 Then run `passuff` (watch continuously) or `passuff check` (one pass).
-Credentials resolve from the named environment variable, or from a token
-command.
+
+`gh_oauth` uses the token from `gh auth token --user <github_user>` and, in an
+interactive watch, starts `gh auth login --web` once when no session exists.
+`check` and non-interactive runs never open a browser.
+
+`github_pat` accepts exactly one of `token_env`, `token_command`, or
+`token_file`. A token file must be absolute or start with `~`, and must not be
+readable or writable by group or other users (`0600` or `0400`). A literal
+`token` in the configuration is rejected. Configurations with only
+`token_env` or `token_command` and no `auth` field remain valid personal access
+token accounts.
+
+When `github_user` is present, the resolved token must belong to that login
+(case-insensitive); a mismatch is an account failure naming both logins.
 
 <!-- givn:begin:run -->
 ## Run

@@ -33,12 +33,30 @@ pub struct CoreConfig {
 pub struct AccountConfig {
     pub credential: CredentialSpec,
     pub graphql_url: Url,
+    pub expected_login: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthMode {
+    GhOAuth,
+    Pat,
+}
+
+impl AccountConfig {
+    pub fn auth_mode(&self) -> AuthMode {
+        match self.credential {
+            CredentialSpec::GhOAuth { .. } => AuthMode::GhOAuth,
+            _ => AuthMode::Pat,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CredentialSpec {
     Env { variable: String },
     Command { command: String },
+    File { path: PathBuf },
+    GhOAuth { login: String, host: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -121,8 +139,12 @@ impl Default for FileConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct AccountToml {
+    auth: Option<String>,
+    github_user: Option<String>,
     token_env: Option<String>,
     token_command: Option<String>,
+    token_file: Option<String>,
+    token: Option<String>,
     graphql_url: Option<String>,
 }
 
@@ -186,21 +208,36 @@ impl FileConfig {
                     "account label must not be empty".to_string(),
                 ));
             }
-            let credential = match (account.token_env, account.token_command) {
-                (Some(variable), None) if !variable.trim().is_empty() => {
-                    CredentialSpec::Env { variable }
-                }
-                (None, Some(command)) if !command.trim().is_empty() => {
-                    CredentialSpec::Command { command }
-                }
-                (Some(_), Some(_)) => {
+            if account.token.is_some() {
+                return Err(ConfigError::Validation(format!(
+                    "account '{label}' must not contain a literal token"
+                )));
+            }
+            let github_user = account
+                .github_user
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty());
+            if let Some(user) = github_user.as_deref() {
+                if user.chars().any(char::is_whitespace) {
                     return Err(ConfigError::Validation(format!(
-                        "account '{label}' sets both token_env and token_command"
+                        "account '{label}' github_user must be a login"
                     )));
                 }
-                _ => {
+            }
+            let source_count = [
+                account.token_env.as_deref(),
+                account.token_command.as_deref(),
+                account.token_file.as_deref(),
+            ]
+            .into_iter()
+            .filter(|value| value.is_some_and(|value| !value.trim().is_empty()))
+            .count();
+            let mode = match account.auth.as_deref().map(str::trim) {
+                None | Some("github_pat") => AuthMode::Pat,
+                Some("gh_oauth") => AuthMode::GhOAuth,
+                Some(other) => {
                     return Err(ConfigError::Validation(format!(
-                        "account '{label}' must set exactly one of token_env or token_command"
+                        "account '{label}' has unknown auth mode '{other}'"
                     )));
                 }
             };
@@ -209,11 +246,59 @@ impl FileConfig {
                 .as_deref()
                 .unwrap_or(DEFAULT_GRAPHQL_URL);
             let graphql_url = validate_graphql_url(label.as_str(), graphql_url)?;
+            let (credential, expected_login) = match mode {
+                AuthMode::GhOAuth => {
+                    let Some(login) = github_user.clone() else {
+                        return Err(ConfigError::Validation(format!(
+                            "account '{label}' requires github_user when auth is gh_oauth"
+                        )));
+                    };
+                    if source_count > 0 {
+                        return Err(ConfigError::Validation(format!(
+                            "account '{label}' must not set a personal access token source when auth is gh_oauth"
+                        )));
+                    }
+                    (
+                        CredentialSpec::GhOAuth {
+                            login: login.clone(),
+                            host: gh_host(&graphql_url),
+                        },
+                        Some(login),
+                    )
+                }
+                AuthMode::Pat => {
+                    if source_count != 1 {
+                        return Err(ConfigError::Validation(format!(
+                            "account '{label}' must select exactly one credential source"
+                        )));
+                    }
+                    let credential = if let Some(variable) =
+                        account.token_env.filter(|value| !value.trim().is_empty())
+                    {
+                        CredentialSpec::Env { variable }
+                    } else if let Some(command) = account
+                        .token_command
+                        .filter(|value| !value.trim().is_empty())
+                    {
+                        CredentialSpec::Command { command }
+                    } else {
+                        let raw = account
+                            .token_file
+                            .filter(|value| !value.trim().is_empty())
+                            .expect("one source counted");
+                        CredentialSpec::File {
+                            path: resolve_token_file(&label, &raw)?,
+                        }
+                    };
+                    (credential, github_user)
+                }
+            };
             accounts.insert(
                 label,
                 AccountConfig {
                     credential,
                     graphql_url,
+                    expected_login,
                 },
             );
         }
@@ -227,6 +312,61 @@ impl FileConfig {
             notifications: self.notifications,
         })
     }
+}
+
+fn gh_host(url: &Url) -> String {
+    match url.host_str() {
+        Some("api.github.com") | None => "github.com".to_string(),
+        Some(host) => host.to_string(),
+    }
+}
+
+fn resolve_token_file(label: &str, raw: &str) -> Result<PathBuf, ConfigError> {
+    let raw = raw.trim();
+    let path = if raw == "~" || raw.starts_with("~/") {
+        let home = std::env::var_os("HOME").ok_or_else(|| {
+            ConfigError::Validation(format!(
+                "account '{label}' token_file uses ~ but HOME is not set"
+            ))
+        })?;
+        let mut path = PathBuf::from(home);
+        if raw.len() > 2 {
+            path.push(&raw[2..]);
+        }
+        path
+    } else if Path::new(raw).is_absolute() {
+        PathBuf::from(raw)
+    } else {
+        return Err(ConfigError::Validation(format!(
+            "account '{label}' token_file must be absolute or start with ~"
+        )));
+    };
+    if path.exists() {
+        let metadata = fs::metadata(&path).map_err(|error| {
+            ConfigError::Validation(format!(
+                "token_file cannot be inspected: {}: {error}",
+                path.display()
+            ))
+        })?;
+        if !metadata.is_file() {
+            return Err(ConfigError::Validation(format!(
+                "token_file is not a regular file: {}",
+                path.display()
+            )));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = metadata.permissions().mode();
+            if mode & 0o077 != 0 || mode & 0o400 == 0 {
+                return Err(ConfigError::Validation(format!(
+                    "token_file is not private: {}",
+                    path.display()
+                )));
+            }
+        }
+    }
+    Ok(path)
 }
 
 fn validate_graphql_url(label: &str, raw: &str) -> Result<Url, ConfigError> {

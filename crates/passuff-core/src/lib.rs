@@ -8,7 +8,7 @@ pub mod github;
 pub mod state;
 
 pub use classifier::{classify, Classification};
-pub use credential::{CredentialError, CredentialSource, SystemCredentialSource};
+pub use credential::{CredentialError, CredentialSource, GhLogin, SystemCredentialSource};
 pub use cycle::PassuffCore;
 pub use domain::{
     Account, AccountFailure, AccountFailureKind, AccountState, ActivityEvent, AuthoredPullRequest,

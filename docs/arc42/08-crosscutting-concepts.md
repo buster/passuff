@@ -3,10 +3,19 @@
 ## Configuration and credentials
 
 Configuration is TOML, validated with `deny_unknown_fields`. Each account
-declares exactly one credential source: an environment variable name or a
-credential command. Tokens are resolved at runtime and are never written to
-config or state, never logged, and never included in an error message. Plain
-HTTP GitHub addresses are accepted only for loopback test addresses.
+declares one credential mode: `gh_oauth` with an expected GitHub login, or
+`github_pat` with exactly one of an environment variable, a helper command, or a
+token file. A configuration without `auth` keeps the legacy personal-access-token
+form. A literal token field is rejected. Token files must be absolute or
+`~`-prefixed and must not be accessible to group or other users. Tokens are
+resolved at runtime and are never written to config or state, never logged, and
+never included in an error message. Plain HTTP GitHub addresses are accepted
+only for loopback test addresses.
+
+The interactive gh login is available only to an interactive continuous watch;
+`check` and non-interactive runs resolve credentials without starting a
+process that waits for a browser. The credential source attempts a login at most
+once per account per process.
 
 ## Persistence and deduplication
 
@@ -25,9 +34,8 @@ is the deliberate priority.
 ## UI adapter boundary
 
 `passuff-config` owns the shared TOML schema and validation; it has no UI or
-terminal dependency. `passuff-core` is UI-agnostic. It exposes
-`PassuffCore::open`, `with_gateway`, and `with_ports`, and `refresh`, and
-returns a `RefreshReport` containing notifications, account failures, and
+terminal dependency. `passuff-core` is UI-agnostic. It exposes `PassuffCore::with_ports` and
+`refresh`, and returns a `RefreshReport` containing notifications, account failures, and
 baselines recorded. It has no `clap`, `notify-rust`, `ratatui`, `crossterm`,
 terminal formatting, or delivery dependency. `passuff-cli` is the first adapter;
 it owns the transcript, desktop delivery, sound, signals, and exit codes. A
@@ -37,9 +45,9 @@ E2E scenarios spawn the CLI binary.
 
 ## Error handling and isolation
 
-Each account is an isolation boundary. Authentication failures, rate limits,
-timeouts, malformed responses, and transport errors are mapped to an account
-failure, reported with the account label, and do not stop other accounts.
+Each account is an isolation boundary. Authentication failures, identity
+mismatches, rate limits, timeouts, malformed responses, and transport errors are
+mapped to an account failure, reported with the account label, and do not stop other accounts.
 Configuration errors are returned by `passuff-config` and mapped by the CLI to
 status 2. A core state read/write failure in `check` maps to status 3. `check`
 exits 1 when the report contains an account failure but other work completed.
@@ -70,6 +78,16 @@ for the configured accounts. State and config files are local; the state file
 is created with private Unix permissions. There is no inbound network surface,
 no telemetry, and no third-party notification service. Tokens are redacted from
 all logs and errors.
+
+### Credentials and identities
+
+A gh OAuth token comes from the operator's gh session; passuff never sees or
+stores the OAuth refresh material. A personal access token comes from an
+environment variable, a helper process, or a file whose group and other bits are
+clear. The resolved token's GitHub login is compared with the account's expected
+login before any pull request is processed; a mismatch names both logins and
+skips the account. No token, token-file content, or Authorization header is
+written to the transcript, state, or evidence artifacts.
 
 ## Rate limiting
 
