@@ -7,7 +7,7 @@ watched pull requests
   acme/api#42 open CI passing Pull request acme/api#42
 
 activity
-> a1 2026-11-02T22:23:01.874945457+00:00 acme/api#42 unread New comment from @alice
+> a1 2026-11-02T22:24:41.373579531+00:00 acme/api#42 unread New comment from @alice
 
 q quit  j/k move  r read  a read all
 
