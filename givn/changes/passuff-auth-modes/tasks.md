@@ -32,7 +32,7 @@ cargo exit status: 1
 | R35 | PAT sources: environment, helper command, or private token file (`0600`/`0400`); missing file is an account failure, insecure file is a configuration error. | Credentials stay out of config and cannot leak to other users. |
 | R36 | A credential for a different login (case-insensitive) is an account failure naming both logins; its pull requests are not processed and its login does not join the configured login set. | A wrong token cannot silently watch the wrong account or suppress another account's activity. |
 | R37 | A legacy environment/command configuration without `auth` remains a PAT account. | Existing configurations keep working. |
-| R38 | A failed browser login is attempted once per account per process and does not stop other accounts. | No browser loops; partial outages still notify. |
+| R38 | A failed browser login is attempted once per gh login per process and does not stop other accounts. | No browser loops; partial outages still notify. |
 
 ---
 
@@ -41,14 +41,14 @@ cargo exit status: 1
 - [x] Set up the credential test harness: fake `gh` on `PATH` (token per login, login marker, invocation log), `RecordingGhLogin` for per-account attempt recording, token-file modes `600`/`400`/`640`/`604`/`660`, `HOME` override for `~`, credential-rotation helper, and the negative notification assertion (`no notification for "<key>"`). Implement `GIVN_SCENARIO` exact-title filtering in `features_runner.rs`. Keep `verify.command: ./scripts/verify.sh` and `verify.e2e_command: ./scripts/verify.sh --e2e`.
 
       Fake gh on PATH (token per login), RecordingGhLogin per-account attempts, token modes 600/400/640/604/660, HOME override, credential rotation, no-notification step, GIVN_SCENARIO filter.
-      COMMIT 7fa8bed.
-      `./scripts/verify.sh` delta: 23/23; permanent: 52/52.
+      COMMIT 8fd4ae9.
+      `./scripts/verify.sh` delta: 27/27; permanent: 52/52.
 
 - [x] Prove strict mode with the new delta, then return to a passing baseline. Record the e2e scenario-count proof (e2e 4 < full count) and the exact new count.
 
       Strict mode proven for the delta runner with the undefined-step probe above (failed 1, exit 1).
-      Delta regular: 23/23. Permanent regular: 52/52. E2E: 4/4.
-      Scenario-count proof: e2e 4 < full corpus 75 (52 permanent + 23 delta).
+      Delta regular: 27/27. Permanent regular: 52/52. E2E: 4/4. Unit: 28 passed.
+      Scenario-count proof: e2e 4 < full corpus 79 (52 permanent + 27 delta).
 
 ---
 
@@ -61,26 +61,26 @@ cargo exit status: 1
         Files: `crates/passuff-config/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`, `crates/passuff-cli/tests/support/mod.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A token file readable by other local users is refused" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A token file readable by other local users is refused" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `auth-config`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `auth-config`
 
 - [x] Scenario: `An invalid credential configuration is rejected`
   - [x] **Design constraints:** R32. Matrix: no source, unknown `auth`, two PAT sources, gh OAuth without `github_user`, gh OAuth plus a PAT source, literal `token`. Exact messages: `must select exactly one credential source`, `has unknown auth mode`, `requires github_user`, `must not set a personal access token source`, `must not contain a literal token`; exit 2.
         Files: `crates/passuff-config/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "An invalid credential configuration is rejected" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "An invalid credential configuration is rejected" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `auth-config`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `auth-config`
 
 ### Batch: `credential-resolution`
 
@@ -89,65 +89,65 @@ cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8b
         Files: `crates/passuff-core/src/credential.rs`, `crates/passuff-core/src/cycle.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A token file readable only by the operator is used" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A token file readable only by the operator is used" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `credential-resolution`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `credential-resolution`
 
 - [x] Scenario: `A missing token file is an account failure`
   - [x] **Design constraints:** R35. A missing file resolves as a credential failure with `token file is missing: <path>`; `check` exits 1; the failure is an account failure, not a configuration error.
         Files: `crates/passuff-core/src/credential.rs`, `crates/passuff-core/src/cycle.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A missing token file is an account failure" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A missing token file is an account failure" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `credential-resolution`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `credential-resolution`
 
 - [x] Scenario: `A token file path starting with ~ is expanded`
   - [x] **Design constraints:** R35. `~`/`~/...` expand from `HOME`; a relative path is a configuration error; `HOME` unset is a credential failure. The test sets `HOME` to a temp directory.
         Files: `crates/passuff-config/src/lib.rs`, `crates/passuff-core/src/credential.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A token file path starting with ~ is expanded" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A token file path starting with ~ is expanded" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `credential-resolution`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `credential-resolution`
 
 - [x] Scenario: `A legacy environment credential remains a personal access token account`
   - [x] **Design constraints:** R37. No `auth` and `token_env` parses as PAT; existing resolution and notification behavior; no migration required.
         Files: `crates/passuff-config/src/lib.rs`, `crates/passuff-core/src/credential.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A legacy environment credential remains a personal access token account" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A legacy environment credential remains a personal access token account" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `credential-resolution`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `credential-resolution`
 
 - [x] Scenario: `A legacy command credential remains a personal access token account`
   - [x] **Design constraints:** R37. No `auth` and `token_command` parses as PAT; `/bin/sh -c`, 10-second timeout, trimmed output.
         Files: `crates/passuff-config/src/lib.rs`, `crates/passuff-core/src/credential.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A legacy command credential remains a personal access token account" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A legacy command credential remains a personal access token account" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `credential-resolution`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `credential-resolution`
 
 ### Batch: `gh-session`
 
@@ -156,78 +156,78 @@ cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8b
         Files: `crates/passuff-core/src/credential.rs`, `crates/passuff-core/src/cycle.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`, `crates/passuff-cli/tests/support/mod.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A gh OAuth account uses the existing gh session" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A gh OAuth account uses the existing gh session" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `gh-session`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `gh-session`
 
 - [x] Scenario: `An interactive watch starts a browser login when the gh session is missing`
   - [x] **Design constraints:** R33/R34. `GhLogin` port with inherited stdio and `gh auth login --web --hostname <host>`; only when watch + stdin/stdout TTY; retry `gh auth token` once; the watch reaches `passuff: watching`.
         Files: `crates/passuff-core/src/credential.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/src/main.rs`, `crates/passuff-cli/tests/support/mod.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "An interactive watch starts a browser login when the gh session is missing" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "An interactive watch starts a browser login when the gh session is missing" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `gh-session`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `gh-session`
 
 - [x] Scenario: `A one-shot check never starts a browser login`
   - [x] **Design constraints:** R34. `check` builds the credential source with `interactive = false`; a missing gh session is an account failure, exit 1; no login call.
         Files: `crates/passuff-cli/src/main.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A one-shot check never starts a browser login" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A one-shot check never starts a browser login" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `gh-session`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `gh-session`
 
 - [x] Scenario: `A non-interactive watch never starts a browser login`
   - [x] **Design constraints:** R34. Watch with `stdin`/`stdout` not a TTY builds `interactive = false`; one observation cycle reports the account failure and no login call.
         Files: `crates/passuff-cli/src/main.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/support/mod.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A non-interactive watch never starts a browser login" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A non-interactive watch never starts a browser login" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `gh-session`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `gh-session`
 
 - [x] Scenario: `A failed browser login is attempted once per account`
   - [x] **Design constraints:** R38. Attempt set keyed by login in the credential source; two accounts, two cycles, one login attempt per account; both account failures are reported.
         Files: `crates/passuff-core/src/credential.rs`, `crates/passuff-cli/src/lib.rs`, `crates/passuff-cli/tests/support/mod.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A failed browser login is attempted once per account" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A failed browser login is attempted once per account" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `gh-session`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `gh-session`
 
 - [x] Scenario: `A failed browser login does not stop the other account`
   - [x] **Design constraints:** R38. The failing account sorts first (`alpha` before `personal`); its login failure is reported and the healthy account still notifies in the same cycle.
         Files: `crates/passuff-core/src/credential.rs`, `crates/passuff-core/src/cycle.rs`, `crates/passuff-cli/tests/support/mod.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A failed browser login does not stop the other account" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A failed browser login does not stop the other account" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `gh-session`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `gh-session`
 
 ### Batch: `identity-and-watch`
 
@@ -236,37 +236,37 @@ cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8b
         Files: `crates/passuff-core/src/cycle.rs`, `crates/passuff-core/src/domain.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`, `crates/passuff-cli/tests/support/mod.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A personal access token for a different login is an account failure" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A personal access token for a different login is an account failure" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `identity-and-watch`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `identity-and-watch`
 
 - [x] Scenario: `A personal access token whose login differs only in case is accepted`
   - [x] **Design constraints:** R36. ASCII case-insensitive comparison; observation login `octo-WORK`, expected `octo-work`, authored filter matches; notification after a baseline.
         Files: `crates/passuff-core/src/cycle.rs`, `crates/passuff-core/src/domain.rs`, `crates/passuff-cli/tests/steps/pr_activity_notification.rs`
   - [x] Implement the scenario and its tests. Run the relevant scenarios. Must pass.
         ```
-./scripts/verify.sh (delta) -> 23/23; permanent -> 52/52; scenario "A personal access token whose login differs only in case is accepted" green. COMMIT 7fa8bed.
+./scripts/verify.sh (delta) -> 27/27; permanent -> 52/52; scenario "A personal access token whose login differs only in case is accepted" green. COMMIT 8fd4ae9.
         ```
   - [x] REFACTOR: clean up, no behaviour change. Re-run, must still pass.
         ```
-cargo fmt --all (no behavior change); delta 23/23, permanent 52/52. COMMIT 7fa8bed.
+cargo fmt --all (no behavior change); delta 27/27, permanent 52/52. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `identity-and-watch`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `identity-and-watch`
 
 ---
 
 ## E2E Smoke Tests
 
-- [x] Keep the existing four `@e2e` scenarios green; no new `@e2e` scenario is added because the consumer actions are unchanged and the login variant is a regular scenario. Record the e2e count (4) strictly less than the full count, and capture a fresh run of `./scripts/verify.sh --e2e`.
+- [x] Keep the existing four end-to-end scenarios green; no new end-to-end scenario is added because the consumer actions are unchanged and the login variant is a regular scenario. Record the e2e count (4) strictly less than the full count, and capture a fresh run of `./scripts/verify.sh --e2e`.
   - [x] Run `./scripts/verify.sh --e2e`. Must pass.
         ```
-./scripts/verify.sh --e2e -> total 4, passed 4, failed 0, skipped 0. COMMIT 7fa8bed.
+./scripts/verify.sh --e2e -> total 4, passed 4, failed 0, skipped 0. COMMIT 8fd4ae9.
         ```
-  - [x] COMMIT: `7fa8bed` -- Batch: `e2e`
+  - [x] COMMIT: `8fd4ae9` -- Batch: `e2e`
 
 ---
 
