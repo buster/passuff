@@ -319,7 +319,7 @@ Feature: Activity inbox
     When  "alice" comments "Can you split this migration?" on "acme/api#42"
     And  passuff runs one check
     And  the developer opens the inbox TUI with keys "enter"
-    Then  the TUI shows "Activity a1"
+    Then  the TUI shows "Activity api#42"
     And  the TUI shows "New comment from @alice"
     And  the TUI shows "acme/api#42"
     And  the TUI shows "Pull request acme/api#42"
@@ -336,7 +336,7 @@ Feature: Activity inbox
     And  passuff runs one check
     And  the developer opens the inbox TUI with keys "enter,enter"
     Then  the browser opened "https://github.com/acme/api#42"
-    And  the TUI does not show "Activity a1"
+    And  the TUI does not show "Activity api#42"
     And  the exit status is 0
 
   @activity-inbox
@@ -349,7 +349,7 @@ Feature: Activity inbox
     And  the developer opens the inbox TUI
     And  the developer presses "enter"
     And  the developer presses "esc"
-    Then  the TUI does not show "Activity a1"
+    Then  the TUI does not show "Activity api#42"
     And  the TUI shows "Focus: activity"
 
   @activity-inbox
@@ -372,5 +372,5 @@ Feature: Activity inbox
     And  the developer presses "enter"
     And  the browser will fail to open
     And  the developer presses "enter"
-    Then  the TUI shows "Activity a1"
+    Then  the TUI shows "Activity api#42"
     And  the TUI shows "could not open browser"
