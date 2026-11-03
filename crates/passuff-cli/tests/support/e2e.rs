@@ -164,6 +164,26 @@ impl World {
         let server = MockServer::start().await;
         let sound_dir = tempfile::TempDir::new().expect("sound dir");
         let sound_log = sound_dir.path().join("sound.log");
+        let browser_log = sound_dir.path().join("browser.log");
+        let opener = sound_dir.path().join("xdg-open");
+        fs::write(
+            &opener,
+            format!(
+                "#!/bin/sh\nprintf '%s\\n' \"$1\" >> \"{}\"\n",
+                browser_log.display()
+            ),
+        )
+        .expect("browser opener script");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(&opener)
+                .expect("browser opener metadata")
+                .permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&opener, permissions).expect("browser opener mode");
+        }
+        self.e2e_browser_log = Some(browser_log);
         let script = sound_dir.path().join("paplay");
         fs::write(
             &script,

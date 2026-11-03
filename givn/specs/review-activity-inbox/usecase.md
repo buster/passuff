@@ -45,7 +45,7 @@ The developer lists the inbox or marks activity read.
 - R8: A missing state file is an empty inbox and exit 0.
 - R9: Recording history never replays a notification.
 - T1: The terminal UI shows the unread and total activity counts, configured accounts, watch scope, watched pull requests, and the activity list on one screen.
-- T2: `j`/down and `k`/up move the selection and clamp at the list ends; `q`/Escape quits.
+- T2: `j`/down and `k`/up move the selection and clamp at the list ends; `q` quits; Escape closes the detail popup or quits when none is open.
 - T3: `r` marks the selected activity record read and refreshes the view; `a` marks every record read and refreshes.
 - T4: An empty inbox shows "no activity yet".
 - T5: A configuration error exits 2 and a state error exits 3 before the interface starts; the message names the failure.
@@ -57,6 +57,10 @@ The developer lists the inbox or marks activity read.
 - T11: A refresh never changes focus or replays a notification.
 - T12: The inbox paces observation against the account's remaining API allowance; it never spends the allowance faster than it is replenished.
 - T13: A failed observation keeps the last view and is retried without ending the program.
+- T14: Enter on the focused activity opens a detail popup with the recorded id, event summary, observation time, read state, and the pull request's key, title, state, CI result, and stack position; it shows no comment or review body.
+- T15: Escape closes the detail popup and returns to the unchanged inbox.
+- T16: Enter in the detail popup opens the pull request's URL in the system browser and closes the popup; a launch failure keeps the popup open and reports the failure.
+- T17: Enter outside the activity pane, or with no selected activity, changes nothing.
 
 ## Examples
 
@@ -88,6 +92,8 @@ The developer can review the retained activity and mark it read; the history and
 | activity-inbox | list unread activity | Developer lists unread activity |
 | activity-inbox | mark activity read | Developer marks activity read |
 | activity-inbox | open the inbox in the terminal UI | Developer opens the inbox TUI |
+| activity-inbox | open an activity's detail | Developer opens an activity's details |
+| activity-inbox | open the pull request from an activity | Developer opens the pull request from an activity |
 | inbox-navigation | navigate the watched pull requests and activity, with automatic refresh | Developer navigates the inbox panes |
 | inbox-navigation | leave the inbox open while activity arrives | The inbox shows activity observed while it is open |
 

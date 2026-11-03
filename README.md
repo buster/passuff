@@ -123,7 +123,9 @@ redundant: both observe and write the same state.
 
 `Tab` switches focus between the watched pull requests and the activity list;
 `j`/`k` and the arrow keys move in the focused pane and the watched table
-scrolls. Press `p` to open the
+scrolls. With the activity list focused, `enter` opens a detail overlay for the
+selected activity; `esc` closes it, and `enter` in the overlay opens the pull
+request in your browser. Press `p` to open the
 watch-scope picker: `j`/`k` move,
 `space` toggles, `m` switches all/selected, type `owner/name` and press Enter to
 add, and `esc` closes. Scripted snapshots accept `--picker`,
@@ -175,8 +177,8 @@ GPL-3.0-or-later. See `LICENSE`.
 
 Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
 
-Line coverage: 88% (3476/3951)
-Branch coverage: 41% (545/1330)
+Line coverage: 88% (3571/4055)
+Branch coverage: 41% (557/1374)
 
 Reproduce the result:
 

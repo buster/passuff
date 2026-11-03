@@ -266,6 +266,23 @@ repository or switches the mode.
 5. A failed probe or cycle backs off and keeps the current view; the program
    continues.
 
+## Scenario: Open an activity detail and its pull request
+
+**Trigger:** The developer presses Enter on the focused activity, then Escape or
+Enter.
+
+1. `TuiApp::handle_key` finds the selected activity and the matching
+   `PullRequestView`, and stores an `ActivityDetail` with the record, the pull
+   request, and its URL.
+2. The renderer draws a centered `Clear` + bordered overlay with the activity id,
+   event summary, observation time, pull request key and title, state, CI result,
+   stack position, read state, and the key hints. No comment or review body is
+   shown.
+3. Escape clears the overlay and the inbox is unchanged.
+4. Enter returns `TuiAction::OpenUrl`; the binary adapter calls the platform
+   opener. Success closes the overlay; a failure keeps it and sets the footer
+   status line.
+
 ## Scenario: Mark activity read
 
 **Trigger:** The developer marks one record or all records read.

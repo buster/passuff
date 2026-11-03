@@ -31,6 +31,9 @@
   against the account's allowance, a check cycle runs only when the probe
   reports a change, and the view updates without a keypress while preserving
   the selected pull request. See [ADR-0007](adr/ADR-0007-probe-before-observing.md).
+- Let an activity open a detail overlay and its pull request: `TuiApp` returns
+  an open intent, and a small opener adapter launches the platform browser;
+  the key interpreter never spawns a process. See [chapter 06](06-runtime-view.md).
 - Persist a bounded activity history in the watch state and expose a read model
   (`InboxService`) to the CLI and the TUI. Status, inbox, and read never
   contact GitHub. See [ADR-0005](adr/ADR-0005-state-version-2-migration.md).

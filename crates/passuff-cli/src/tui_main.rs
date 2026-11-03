@@ -9,6 +9,7 @@ use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use passuff_cli::browser::{BrowserOpener, SystemBrowserOpener};
 use passuff_cli::delivery::build_delivery;
 use passuff_cli::live::{ObservationSession, ObservationUpdate};
 use passuff_cli::scope::{ScopeEditor, ScopePicker};
@@ -171,12 +172,14 @@ async fn main() {
                 "r" => KeyCode::Char('r'),
                 "a" => KeyCode::Char('a'),
                 "q" => KeyCode::Char('q'),
+                "enter" => KeyCode::Enter,
+                "esc" => KeyCode::Esc,
                 other => {
                     eprintln!("passuff-tui: unknown key {other}");
                     std::process::exit(2);
                 }
             };
-            if let Err(error) = app
+            match app
                 .handle_key(
                     KeyEvent::new(code, KeyModifiers::NONE),
                     &inbox,
@@ -184,8 +187,13 @@ async fn main() {
                 )
                 .await
             {
-                eprintln!("passuff: state error: {error}");
-                std::process::exit(3);
+                Ok(action) => {
+                    apply_action(&mut app, action, &SystemBrowserOpener::default());
+                }
+                Err(error) => {
+                    eprintln!("passuff: state error: {error}");
+                    std::process::exit(3);
+                }
             }
         }
     }
@@ -254,6 +262,20 @@ async fn observe_for(
         }
         app.set_status(update.failure);
         delay = update.next_delay;
+    }
+}
+
+fn apply_action(app: &mut TuiApp, action: TuiAction, opener: &dyn BrowserOpener) -> bool {
+    match action {
+        TuiAction::Continue => false,
+        TuiAction::Quit => true,
+        TuiAction::OpenUrl(url) => {
+            match opener.open(&url) {
+                Ok(()) => app.close_popup(),
+                Err(error) => app.set_status(Some(format!("could not open browser: {error}"))),
+            }
+            false
+        }
     }
 }
 
@@ -374,8 +396,11 @@ async fn run_terminal(
                     continue;
                 }
                 match app.handle_key(key, inbox, &config.core).await {
-                    Ok(TuiAction::Quit) => break Ok(()),
-                    Ok(TuiAction::Continue) => {}
+                    Ok(action) => {
+                        if apply_action(app, action, &SystemBrowserOpener::default()) {
+                            break Ok(());
+                        }
+                    }
                     Err(error) => break Err(format!("passuff: state error: {error}")),
                 }
             }
