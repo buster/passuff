@@ -22,6 +22,7 @@ pub struct PullRequestView {
     pub ci_state: CiState,
     pub title: String,
     pub url: String,
+    pub updated_at: String,
     pub stack: Option<PullRequestStack>,
 }
 
@@ -81,6 +82,7 @@ impl Inbox {
                 ci_state: pr.current.ci_state.clone(),
                 title: pr.title.clone(),
                 url: pr.url.clone(),
+                updated_at: pr.updated_at.clone(),
                 stack: pr.stack.clone(),
             })
             .collect();
