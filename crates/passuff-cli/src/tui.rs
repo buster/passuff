@@ -152,6 +152,17 @@ fn newest<'a>(pull_requests: impl Iterator<Item = &'a PullRequestView>) -> &'a s
         .unwrap_or("")
 }
 
+
+fn activity_label(record: &ActivityRecord) -> String {
+    let repository = record
+        .key
+        .repository
+        .rsplit('/')
+        .next()
+        .unwrap_or(&record.key.repository);
+    format!("{repository}#{}", record.key.number)
+}
+
 fn activity_stack(view: &InboxView, key: &PullRequestKey) -> Option<u64> {
     view.pull_requests
         .iter()
@@ -515,8 +526,14 @@ impl TuiApp {
                 .iter()
                 .map(|record| {
                     Row::new(vec![
-                        Cell::from(record.id.clone()),
-                        Cell::from(record.observed_at.clone()),
+                        Cell::from(activity_label(record)),
+                        Cell::from(
+                            record
+                                .observed_at
+                                .get(..19)
+                                .unwrap_or(&record.observed_at)
+                                .to_string(),
+                        ),
                         Cell::from(record.key.to_string()),
                         Cell::from(if record.read { "read" } else { "unread" }),
                         Cell::from(
@@ -531,8 +548,8 @@ impl TuiApp {
             let table = Table::new(
                 rows,
                 [
-                    Constraint::Length(5),
-                    Constraint::Length(27),
+                    Constraint::Length(10),
+                    Constraint::Length(19),
                     Constraint::Length(14),
                     Constraint::Length(7),
                     Constraint::Length(10),
@@ -598,7 +615,7 @@ impl TuiApp {
         let mut lines = vec![
             Line::from(vec![
                 Span::styled("Activity ", key_style),
-                Span::raw(detail.record.id.clone()),
+                Span::raw(activity_label(&detail.record)),
             ]),
             Line::from(format!(
                 "{}   {}",
@@ -880,6 +897,8 @@ mod tests {
         );
         assert!(snapshot.contains("open in browser"));
         assert!(snapshot.contains("Esc close"));
+        assert!(snapshot.contains("Activity api#42"), "{snapshot}");
+        assert!(!snapshot.contains("Activity a1"), "{snapshot}");
         let lines: Vec<&str> = snapshot.lines().collect();
         let hint_row = lines
             .iter()
@@ -947,10 +966,13 @@ mod tests {
 
     #[test]
     fn snapshot_marks_the_selected_activity() {
-        let app = TuiApp::new(view(vec![record("a2", false), record("a1", true)]));
+        let app = TuiApp::new(view(vec![
+            record_on("acme/api#43", "a2", false),
+            record_on("acme/api#42", "a1", true),
+        ]));
         let frame = app.snapshot();
-        assert!(frame.contains("▶ a2"), "{frame}");
-        assert!(!frame.contains("▶ a1"), "{frame}");
+        assert!(frame.contains("▶ api#43"), "{frame}");
+        assert!(!frame.contains("▶ api#42"), "{frame}");
         assert!(frame.contains("New comment from @alice"), "{frame}");
     }
 
