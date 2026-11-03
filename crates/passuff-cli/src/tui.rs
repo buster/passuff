@@ -547,11 +547,16 @@ impl TuiApp {
             width,
             height,
         );
+        let observed = detail
+            .record
+            .observed_at
+            .get(..19)
+            .unwrap_or(&detail.record.observed_at);
         let mut lines = vec![
             Line::from(format!("Activity {}", detail.record.id)),
             Line::from(format!(
                 "{}   {}",
-                detail.record.observed_at,
+                observed,
                 activity_summary(&detail.record.event)
             )),
         ];
