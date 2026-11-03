@@ -49,16 +49,18 @@ flowchart TB
     StatePort --> JsonStore
     Core --> CredentialPort
     CredentialPort --> Credential
-    TUI -.->|InboxService| Core
+    TUI -->|InboxService| Core
+    TUI -->|LiveObservation| Session
+    Session --> Core
 ```
 
 | Building block | Responsibility |
 |---|---|
 | `passuff-config` | Shared TOML schema, validation, `AppConfig`, `CoreConfig`, and `NotificationsConfig`. No UI or terminal dependency. |
 | `passuff-core` | UI-agnostic observation, classification, credential resolution, state, `InboxService`, and the `RefreshReport` contract. |
-| `PassuffCore` | Expose `with_ports` and `refresh`; run one cycle over all accounts; validate expected logins; return notifications, account failures, and baselines. |
+| `PassuffCore` | Expose `with_ports`, `probe`, and `refresh`; compare a cheap change probe with the last successful cycle, run one cycle over all accounts, validate expected logins, and return notifications, account failures, and baselines. |
 | `ActivityClassifier` | Pure classification of comments, reviews, review comments, CI transitions, state transitions, short-lived PRs, and reopen resets. |
-| `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for one account observation, including GitHub-reported stack membership. |
+| `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for one account observation and for the cheap change probe, including GitHub-reported stack membership and the GraphQL allowance. |
 | `PullRequestStack` | Value object carrying the stack number, size, position, and ultimate base on a watched pull request; absent means standalone. |
 | `WatchMode` / `WatchConfig` | Explicit all/selected scope; an empty selected set observes none. |
 | `ScopeEditor` | Edit the watch scope atomically and preserve unrelated configuration; the watcher derives catch-up from the previous scope and retained records. |
@@ -69,7 +71,8 @@ flowchart TB
 | `passuff-cli` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |
 | `InboxService` / `Inbox` | Build the status and activity read model over the state store and mark activity read. |
 | `InboxCli` | Render `status`, `inbox`, and `read` from `InboxService`; no GitHub calls. |
-| `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, refresh from `InboxService` on a timer, open the scope picker, handle keys, and mark records read; `--snapshot` prints one frame. |
+| `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, handle keys, and mark records read; a blocking input thread feeds keys, and `--snapshot` prints one frame. |
+| `ObservationSession` | Decide when to probe and when to run a check cycle from the reported allowance, deliver the cycle's notifications, keep the last view on failure, and hand updates to the terminal loop. |
 | `TranscriptRenderer` | Render notifications, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real `notify-rust` delivery; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |

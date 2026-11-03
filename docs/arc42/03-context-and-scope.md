@@ -46,7 +46,8 @@ flowchart LR
 | Interactive authentication | gh CLI browser login (`gh auth login --web`) | Outbound, interactive |
 | Terminal transcript | Standard output and standard error | Write |
 | GitHub stack metadata | GraphQL `stack` and `stackEntry` fields on authored pull requests | Read-only, preview-gated |
-| Status, inbox, read, and TUI | Terminal output over the local configuration and state; no GitHub call | Read and write state |
+| Status, inbox, and read | Terminal output over the local configuration and state; no GitHub call | Read and write state |
+| Terminal inbox (open) | GitHub GraphQL change probe and, on a change, a check cycle; terminal rendering | Read-only GitHub, read and write state |
 
 ## Scope boundaries
 

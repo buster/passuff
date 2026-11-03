@@ -54,3 +54,5 @@ flowchart LR
 | QS-022 | Controllability | The developer toggles a repository and reselects it after activity. | The picker persists the mode and set; the deselected records are hidden; reselect records gap activity as unread without a notification. |
 | QS-023 | Onboarding | A fresh machine runs passuff without a configuration. | `passuff setup` creates a validated configuration without a token value; the TUI opens; a non-terminal start points to `passuff setup`. |
 | QS-024 | Navigability | The developer opens an inbox with a large stack and no activity. | `Tab` focuses the PR table; `j` reaches and scrolls to the last member; the footer names the focus; a refresh preserves the selected PR. |
+| QS-025 | Timeliness | The developer leaves the inbox open and a comment arrives. | The inbox shows the comment within one observation delay without a keypress or another command; the selected pull request and focus are unchanged. |
+| QS-026 | Thrift | The account allowance is nearly exhausted. | The inbox widens the delay proportionally, never schedules past the reset, and defers a full check cycle below 100 remaining points. |

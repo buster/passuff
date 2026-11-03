@@ -90,8 +90,10 @@ sequenceDiagram
 
 **Notes:** A comment by a configured account, a push, a bot comment with bot
 comments disabled, or activity on a non-authored pull request produces no
-notification. The TUI renders the `InboxService` read model in its own event
-loop; it never calls `refresh` and never contacts GitHub.
+notification. The standalone watch command and the open terminal inbox both run
+check cycles; the inbox adds a cheap change probe and paces itself against the
+allowance. The CLI inbox and status commands never call `refresh` and never
+contact GitHub.
 
 ## Scenario: One account fails
 
@@ -235,17 +237,34 @@ repository or switches the mode.
 4. `passuff setup` exits 0; the terminal UI continues to the inbox. A
    non-interactive start prints the `passuff setup` hint and exits 2.
 
-## Scenario: Navigate and refresh the inbox
+## Scenario: Navigate the inbox
 
-**Trigger:** The developer presses `Tab` or a movement key, or the refresh tick fires.
+**Trigger:** The developer presses `Tab` or a movement key.
 
 1. `Tab`/`Shift-Tab` switches focus between the watched-PR pane and activity.
 2. `j`/`k` or the arrows move the selected row in the focused pane; the watched
    table scrolls and the activity selection clamps.
 3. The footer names the focused pane and its keys; `▶ ` marks the selected row.
-4. A one-second poll timeout reloads `InboxService::view`; the selected PR is
-   restored by key (or clamped) and focus is unchanged. A key wakes the poll
-   immediately.
+4. A key does not reload the view; observation updates arrive independently and
+   restore the selected PR by key (or clamp) without changing focus.
+
+## Scenario: Live inbox observation
+
+**Trigger:** The terminal inbox is open; the observation task's delay expires.
+
+1. `PassuffCore::probe` queries the open authored pull requests of each account
+   and compares their identity, update time, head commit, and CI state with the
+   last successful cycle. The probe reports the GraphQL allowance.
+2. No change: `ObservationSession` schedules the next probe from the remaining
+   allowance and the reset time; no check cycle runs.
+3. Change: a deferred check cycle runs when the allowance can afford it;
+   `PassuffCore::refresh` records activity, `CliRuntime` delivers the
+   notifications, and `ObservationSession` commits the probe as the new
+   baseline.
+4. The terminal loop reloads `InboxService::view`, redraws, and preserves focus
+   and the selected pull request.
+5. A failed probe or cycle backs off and keeps the current view; the program
+   continues.
 
 ## Scenario: Mark activity read
 

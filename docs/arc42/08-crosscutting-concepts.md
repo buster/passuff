@@ -84,11 +84,15 @@ text.
 
 ## Terminal UI
 
-The TUI is a second adapter over `InboxService`. It renders the same view as the
-read commands and marks records through the same service. `--snapshot` uses
-ratatui's `TestBackend` and prints the frame for scripts and E2E; interactive mode
-uses crossterm raw mode and the alternate screen. No token, body, command text,
-or enum name is rendered.
+The TUI is a second adapter over `InboxService` and a second watcher. It renders
+the same view as the read commands, marks records through the same service, and
+runs check cycles through `ObservationSession` while it is open. A blocking input
+thread feeds keys; observation updates arrive over a channel and redraw the
+frame. `--snapshot` uses ratatui's `TestBackend` and prints the frame for scripts
+and E2E; `--observe` performs one probe and cycle first, and `--observe-for`
+runs the real loop against the test backend. Interactive mode uses crossterm raw
+mode and the alternate screen. No token, body, command text, or enum name is
+rendered.
 
 ## Watch scope editing
 
@@ -102,13 +106,17 @@ a catch-up cycle: activity is recorded as unread without a desktop notification
 or sound. A running watcher reloads the configuration before each cycle; a
 failed reload keeps the previous configuration.
 
-## Inbox navigation and refresh
+## Inbox navigation and observation pacing
 
 The terminal inbox has one focus state (`watched` or `activity`). Movement keys
-apply to the focused pane; the watched table uses a `TableState` and scrolls
-to the selected PR, while activity keeps its clamp. A one-second `event::poll`
-timeout reloads the read model; the selected PR key is preserved and focus is
-not changed. The `--keys` snapshot surface drives the same handler for E2E.
+apply to the focused pane; the watched table uses a `TableState` and scrolls to
+the selected PR, while activity keeps its clamp. Observation runs independently
+of input: the probe delay is `clamp(time_to_reset / max(remaining / 2, 1),
+1s, time_to_reset)`, so the inbox spends at most half the remaining allowance
+across the window and never schedules past the reset. A check cycle is deferred
+below 100 remaining points. A failed probe backs off exponentially and keeps
+the view. Updates preserve the selected PR key and never change focus. The
+`--keys` and `--observe` snapshot surfaces drive the same handler for E2E.
 
 ## First-run setup
 

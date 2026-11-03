@@ -5,7 +5,7 @@
 | ID | Risk | Probability | Impact | Mitigation |
 |---|---|---|---|---|
 | R-001 | macOS attributes notifications to the terminal when the bare binary runs outside a bundle. | Medium | Medium | Ship the `Passuff.app` bundle with `dev.passuff.app`; run the documented macOS smoke test. |
-| R-002 | Polling adds latency and consumes rate-limit budget compared with webhooks. | Low | Medium | Default 60-second interval; one query per account; report rate-limit reset times; targeted known-PR query only when needed. |
+| R-002 | Polling adds latency and consumes rate-limit budget compared with webhooks. | Medium | Medium | The open inbox probes cheaply (1 point measured) and runs the full cycle (57 points measured) only on a change; the delay follows the reported allowance and defers below 100 points. The watch command keeps the configured interval. |
 | R-003 | GitHub changes the GraphQL schema or response shape. | Low | Medium | The adapter validates the response and fails per account without corrupting state; update the query in a focused change. |
 | R-004 | No desktop notification daemon is available, for example in an SSH or headless session. | Medium | Low | Report the delivery failure; keep the terminal transcript; state is already persisted. |
 | R-005 | No supported sound player exists on a Linux system. | Medium | Low | Fall back to the XDG sound hint; the desktop notification and transcript still deliver. |
@@ -30,7 +30,9 @@
 | R-024 | The TUI's mark-read actions and the watcher both save the whole state file, so one can overwrite the other's recent change. | Low | Medium | Pre-existing width; the scope edit adds no state writer. A future change may add file locking or a merge-on-save store. |
 | R-025 | A configuration writer drops the `mode` field and silently changes the scope semantics. | Low | Medium | `ScopeEditor` writes both `mode` and `repositories`; ADR-0006 records the compatibility contract; config unit tests cover the legacy shapes. |
 | R-026 | Setup writes a configuration with an unverified credential, so the first check fails. | Medium | Medium | Setup validates the configuration shape and reports the first check's account failure; token-file permissions are checked during setup. |
-| R-027 | The one-second refresh redraws over a pending key or a large table scroll loses the selection. | Low | Low | `event::poll` handles a key first and only reloads on timeout; the selected PR is restored by key and a 25-row snapshot test asserts the scrolled row is visible. |
+| R-027 | A redraw during a large table scroll loses the selection or a pending key. | Low | Low | Input runs on its own thread; the selected PR is restored by key and a 25-row snapshot test asserts the scrolled row is visible. |
+| R-028 | The inbox and the watch command both observe and write the whole state file. | Medium | Medium | Running both is documented as redundant; whole-file writes are atomic, but the last writer wins. A lock or a serialized store is deferred (TD-004). |
+| R-029 | A change burst exhausts the account allowance and stalls observation. | Low | Medium | The delay spends at most half the remaining points across the window and the full cycle is deferred below 100 points; a failed probe backs off. |
 
 ## Technical debt
 
@@ -38,5 +40,7 @@
 |---|---|---|---|
 | TD-001 | Real macOS notification delivery is not automated in CI. | A macOS-specific regression could go unnoticed until the manual smoke test. | Add a macOS CI runner with a scripted notification surface or a platform-specific fake; the Linux D-Bus fake is the model. |
 | TD-002 | The state uses a bounded seen-ID window rather than an unbounded high-water mark. | A very large burst between two checks can omit events. | Replace the window with a timestamp high-water mark plus ID overlap if a real omission is observed. |
+| TD-003 | The full check cycle fetches 100 pull requests in all states with deep comment, review, and CI connections, measured at 57 points. | Each detected change costs 57 points, limiting how often a busy account can be fully observed. | Reduce the query to the open pull requests plus known watched pull requests; the probe already carries identity and CI state. |
+| TD-004 | No cross-process lock serializes the inbox and the watch command's state writes. | A duplicate notification is possible in the overlap, and one writer can drop the other's baseline. | Add a store lock or a serialized writer if the overlap becomes common. |
 | TD-003 | Coverage merging uses a small project-owned Cobertura merger. | Extra code to maintain when the report format changes. | Replace with a maintained merger if the project grows or the format changes. |
 | TD-004 | The core has no public PR-list or activity-history query API yet. | Resolved by `InboxService` (`view`, `mark_read`, `mark_all_read`); the TUI is the remaining consumer. | Done in `passuff-activity-inbox`; the TUI change consumes the contract. |

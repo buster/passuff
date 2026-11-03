@@ -53,8 +53,10 @@ The developer lists the inbox or marks activity read.
 - T7: The screen contains no token, comment body, helper command text, or enum name.
 - T8: `Tab`/`Shift-Tab` cycles focus between the watched pull request pane and the activity pane; the footer names the focused pane.
 - T9: `j`/`k` and the arrow keys move the selected row in the focused pane; the watched table scrolls to keep the selection visible, including large stacks; the activity selection clamps.
-- T10: The terminal inbox refreshes automatically from the read model at a fixed interval, preserving the selected pull request and clamping a vanished selection.
+- T10: The terminal inbox observes the configured accounts while it is open and shows the result without a keypress or another command; it probes GitHub for a change and performs the full observation only when the probe reports one, preserving the selected pull request and clamping a vanished selection.
 - T11: A refresh never changes focus or replays a notification.
+- T12: The inbox paces observation against the account's remaining API allowance; it never spends the allowance faster than it is replenished.
+- T13: A failed observation keeps the last view and is retried without ending the program.
 
 ## Examples
 
@@ -87,6 +89,7 @@ The developer can review the retained activity and mark it read; the history and
 | activity-inbox | mark activity read | Developer marks activity read |
 | activity-inbox | open the inbox in the terminal UI | Developer opens the inbox TUI |
 | inbox-navigation | navigate the watched pull requests and activity, with automatic refresh | Developer navigates the inbox panes |
+| inbox-navigation | leave the inbox open while activity arrives | The inbox shows activity observed while it is open |
 
 ## Includes
 
