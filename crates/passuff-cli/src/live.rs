@@ -38,6 +38,7 @@ pub struct ObservationSession {
     config: AppConfig,
     config_path: PathBuf,
     backoff: Duration,
+    last_full: Option<std::time::Instant>,
 }
 
 impl ObservationSession {
@@ -56,6 +57,7 @@ impl ObservationSession {
             config,
             config_path,
             backoff: INITIAL_BACKOFF,
+            last_full: None,
         })
     }
 
@@ -85,15 +87,19 @@ impl ObservationSession {
         };
         self.backoff = INITIAL_BACKOFF;
 
+        let due = self
+            .last_full
+            .is_none_or(|last| last.elapsed() >= Duration::from_secs(300));
         let mut changed = false;
         let mut failure = None;
-        if signal.changed && allowance_allows_cycle(signal.allowance.as_ref()) {
+        if (signal.changed || due) && allowance_allows_cycle(signal.allowance.as_ref()) {
             match self.core.refresh().await {
                 Ok(refreshed) => {
                     self.runtime
                         .deliver_report(&self.config, &refreshed)
                         .await;
                     changed = true;
+                    self.last_full = Some(std::time::Instant::now());
                 }
                 Err(error) => {
                     failure = Some(error.to_string());

@@ -5,11 +5,12 @@
 [![Branch Coverage: 41%](https://img.shields.io/badge/branch%20coverage-41%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
 
-`passuff` watches the GitHub pull requests you authored across several
-accounts and notifies you only when something needs attention: comments and
-reviews by other people, failing or recovered CI, and merged or closed pull
-requests. Pushes, your own comments and reviews, and activity on other
-people's pull requests stay silent. It runs on Linux and macOS, prints a
+`passuff` watches the GitHub pull requests you authored, are assigned to, or
+are asked to review across several accounts and notifies you only when
+something needs attention: comments and reviews by other people, failing or
+recovered CI, and merged or closed pull requests. Pushes, your own comments
+and reviews, and activity on pull requests you are not involved in stay
+silent. It runs on Linux and macOS, prints a
 terminal transcript, raises a desktop notification, and plays a sound.
 
 ## Quick start

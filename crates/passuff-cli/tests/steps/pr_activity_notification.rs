@@ -61,6 +61,15 @@ async fn already_observed_two(world: &mut World, _a: String, _b: String) {
     }
 }
 
+#[given(regex = r#"^the pull request "([^"]+)" is assigned to me$"#)]
+async fn assigned_pull_request(world: &mut World, key: String) {
+    world
+        .involved_pull_requests
+        .lock()
+        .expect("involved")
+        .push(key);
+}
+
 #[given(regex = r#"^the pull request "([^"]+)" is ignored$"#)]
 async fn ignored_pull_request(world: &mut World, key: String) {
     world.ignored_pull_requests.push(key);
