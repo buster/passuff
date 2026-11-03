@@ -100,8 +100,56 @@ fn stack_groups(view: &InboxView) -> (Vec<StackGroup<'_>>, Vec<&PullRequestView>
             unread,
         });
     }
-    standalone.sort_by(|left, right| left.key.cmp(&right.key));
+    result.sort_by(|left, right| {
+        newest(left.members.iter().copied())
+            .cmp(&newest(right.members.iter().copied()))
+            .reverse()
+            .then_with(|| left.repository.cmp(&right.repository))
+            .then_with(|| left.number.cmp(&right.number))
+    });
+    standalone.sort_by(|left, right| {
+        right
+            .updated_at
+            .cmp(&left.updated_at)
+            .then_with(|| left.key.cmp(&right.key))
+    });
     (result, standalone)
+}
+
+fn ordered_units<'a>(
+    groups: &[StackGroup<'a>],
+    standalone: &[&'a PullRequestView],
+) -> Vec<Vec<&'a PullRequestView>> {
+    let mut units: Vec<(String, PullRequestKey, Vec<&PullRequestView>)> = groups
+        .iter()
+        .map(|group| {
+            (
+                newest(group.members.iter().copied()).to_string(),
+                group
+                    .members
+                    .first()
+                    .map(|pull_request| pull_request.key.clone())
+                    .unwrap_or_else(|| PullRequestKey::new(String::new(), 0)),
+                group.members.clone(),
+            )
+        })
+        .collect();
+    for pull_request in standalone {
+        units.push((
+            pull_request.updated_at.clone(),
+            pull_request.key.clone(),
+            vec![pull_request],
+        ));
+    }
+    units.sort_by(|left, right| right.0.cmp(&left.0).then_with(|| left.1.cmp(&right.1)));
+    units.into_iter().map(|(_, _, rows)| rows).collect()
+}
+
+fn newest<'a>(pull_requests: impl Iterator<Item = &'a PullRequestView>) -> &'a str {
+    pull_requests
+        .map(|pull_request| pull_request.updated_at.as_str())
+        .max()
+        .unwrap_or("")
 }
 
 fn activity_stack(view: &InboxView, key: &PullRequestKey) -> Option<u64> {
@@ -166,12 +214,10 @@ impl TuiApp {
 
     fn ordered_pull_requests(&self) -> Vec<&PullRequestView> {
         let (groups, standalone) = stack_groups(&self.view);
-        let mut ordered: Vec<&PullRequestView> = groups
-            .iter()
-            .flat_map(|group| group.members.iter().copied())
-            .collect();
-        ordered.extend(standalone);
-        ordered
+        ordered_units(&groups, &standalone)
+            .into_iter()
+            .flatten()
+            .collect()
     }
 
     fn clamp_pr_selection(&mut self, preserve: Option<PullRequestKey>) {
@@ -403,28 +449,27 @@ impl TuiApp {
                 frame.render_widget(Paragraph::new(summaries.join("\n")), watched_layout[0]);
             }
             let mut rows: Vec<Row> = Vec::new();
-            for group in &groups {
-                for pull_request in &group.members {
-                    let stack = pull_request.stack.as_ref().expect("stack member");
-                    rows.push(Row::new(vec![
-                        Cell::from(pull_request.key.to_string()),
-                        Cell::from(state_label(&pull_request.state)),
-                        Cell::from(ci_label(&pull_request.ci_state)),
-                        Cell::from(format!("position {}", stack.position)),
-                        Cell::from(format!("stack {}", stack.number)),
-                        Cell::from(pull_request.title.clone()),
-                    ]));
+            for unit in ordered_units(&groups, &standalone) {
+                for pull_request in unit {
+                    match pull_request.stack.as_ref() {
+                        Some(stack) => rows.push(Row::new(vec![
+                            Cell::from(pull_request.key.to_string()),
+                            Cell::from(state_label(&pull_request.state)),
+                            Cell::from(ci_label(&pull_request.ci_state)),
+                            Cell::from(format!("position {}", stack.position)),
+                            Cell::from(format!("stack {}", stack.number)),
+                            Cell::from(pull_request.title.clone()),
+                        ])),
+                        None => rows.push(Row::new(vec![
+                            Cell::from(pull_request.key.to_string()),
+                            Cell::from(state_label(&pull_request.state)),
+                            Cell::from(ci_label(&pull_request.ci_state)),
+                            Cell::from(""),
+                            Cell::from(""),
+                            Cell::from(pull_request.title.clone()),
+                        ])),
+                    }
                 }
-            }
-            for pull_request in &standalone {
-                rows.push(Row::new(vec![
-                    Cell::from(pull_request.key.to_string()),
-                    Cell::from(state_label(&pull_request.state)),
-                    Cell::from(ci_label(&pull_request.ci_state)),
-                    Cell::from(""),
-                    Cell::from(""),
-                    Cell::from(pull_request.title.clone()),
-                ]));
             }
             let table = Table::new(
                 rows,
@@ -793,6 +838,7 @@ mod tests {
             ci_state: CiState::Success,
             title: format!("Pull request {key}"),
             url: format!("https://github.com/{key}"),
+            updated_at: "2026-11-02T11:00:00Z".to_string(),
             stack: Some(PullRequestStack {
                 number,
                 size,
@@ -809,6 +855,7 @@ mod tests {
             ci_state: CiState::Success,
             title: format!("Pull request {key}"),
             url: format!("https://github.com/{key}"),
+            updated_at: "2026-11-02T11:00:00Z".to_string(),
             stack: None,
         }
     }
@@ -855,6 +902,26 @@ mod tests {
             })
         });
         assert!(green_frame, "the popup frame is not green");
+    }
+
+    #[test]
+    fn the_most_recently_updated_rows_come_first() {
+        let mut older = stacked("acme/api#1", 7, 2, 1, "main");
+        older.updated_at = "2026-11-02T10:00:00Z".to_string();
+        let mut older_sibling = stacked("acme/api#2", 7, 2, 2, "main");
+        older_sibling.updated_at = "2026-11-02T10:00:00Z".to_string();
+        let mut newest = standalone("acme/api#3");
+        newest.updated_at = "2026-11-03T12:00:00Z".to_string();
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.view.pull_requests = vec![older, older_sibling, newest];
+        let ordered = app.ordered_pull_requests();
+        assert_eq!(ordered[0].key.to_string(), "acme/api#3");
+        assert_eq!(ordered[1].key.to_string(), "acme/api#1");
+        let snapshot = app.snapshot();
+        assert!(
+            snapshot.find("acme/api#3").unwrap() < snapshot.find("acme/api#1").unwrap(),
+            "newest row is not first: {snapshot}"
+        );
     }
 
     fn record_on(key: &str, id: &str, read: bool) -> ActivityRecord {
