@@ -42,11 +42,14 @@ pub enum TuiAction {
     Continue,
     Quit,
     OpenUrl(String),
+    ToggleIgnoredView,
+    ToggleIgnore(PullRequestKey),
 }
 
 #[derive(Debug, Clone)]
 pub struct ActivityDetail {
     pub record: ActivityRecord,
+    pub changes: Vec<ActivityRecord>,
     pub pull_request: Option<PullRequestView>,
     pub url: Option<String>,
 }
@@ -190,6 +193,7 @@ pub struct TuiApp {
     selected_pr: Option<PullRequestKey>,
     status: Option<String>,
     popup: Option<ActivityDetail>,
+    show_ignored: bool,
 }
 
 impl TuiApp {
@@ -202,7 +206,16 @@ impl TuiApp {
             selected_pr: None,
             status: None,
             popup: None,
+            show_ignored: false,
         }
+    }
+
+    pub fn show_ignored(&self) -> bool {
+        self.show_ignored
+    }
+
+    pub fn set_show_ignored(&mut self, show_ignored: bool) {
+        self.show_ignored = show_ignored;
     }
 
     pub fn close_popup(&mut self) {
@@ -324,6 +337,53 @@ impl TuiApp {
                 }
                 Ok(TuiAction::Continue)
             }
+            KeyCode::Left | KeyCode::Right if self.focus == Pane::Watched => {
+                self.show_ignored = !self.show_ignored;
+                Ok(TuiAction::ToggleIgnoredView)
+            }
+            KeyCode::PageDown => {
+                match self.focus {
+                    Pane::Watched => {
+                        let (index, key) = {
+                            let ordered = self.ordered_pull_requests();
+                            let index =
+                                (self.pr_selected + 10).min(ordered.len().saturating_sub(1));
+                            (
+                                index,
+                                ordered
+                                    .get(index)
+                                    .map(|pull_request| pull_request.key.clone()),
+                            )
+                        };
+                        self.pr_selected = index;
+                        self.selected_pr = key;
+                    }
+                    Pane::Activity => {
+                        self.selected = (self.selected + 10).min(self.view.activity.len().saturating_sub(1));
+                    }
+                }
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::PageUp => {
+                match self.focus {
+                    Pane::Watched => {
+                        let index = self.pr_selected.saturating_sub(10);
+                        self.pr_selected = index;
+                        self.selected_pr = self
+                            .ordered_pull_requests()
+                            .get(index)
+                            .map(|pull_request| pull_request.key.clone());
+                    }
+                    Pane::Activity => {
+                        self.selected = self.selected.saturating_sub(10);
+                    }
+                }
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char('x') if self.focus == Pane::Watched => Ok(self
+                .selected_pull_request()
+                .map(|pull_request| TuiAction::ToggleIgnore(pull_request.key.clone()))
+                .unwrap_or(TuiAction::Continue)),
             KeyCode::Char('k') | KeyCode::Up => {
                 match self.focus {
                     Pane::Watched => {
@@ -352,8 +412,16 @@ impl TuiApp {
                     let url = pull_request
                         .as_ref()
                         .map(|pull_request| pull_request.url.clone());
+                    let changes = self
+                        .view
+                        .activity
+                        .iter()
+                        .filter(|change| change.key == record.key)
+                        .cloned()
+                        .collect();
                     self.popup = Some(ActivityDetail {
                         record,
+                        changes,
                         pull_request,
                         url,
                     });
@@ -378,7 +446,9 @@ impl TuiApp {
 
     fn footer_keys(&self) -> &'static str {
         match self.focus {
-            Pane::Watched => "Focus: PRs   Tab activity   j/k move   p scope   q quit",
+            Pane::Watched => {
+                "Focus: PRs   Tab activity   j/k move   x ignore   ◀/▶ all|filtered   p scope   q quit"
+            }
             Pane::Activity => {
                 "Focus: activity   Tab PRs   j/k move   enter detail   r read   a all   p scope   q quit"
             }
@@ -437,8 +507,9 @@ impl TuiApp {
             chunks[1],
         );
 
+        let watched_mode = if self.show_ignored { "all" } else { "filtered" };
         let watched_block = Block::bordered()
-            .title(" Watched pull requests ")
+            .title(format!(" Watched pull requests · {watched_mode} "))
             .border_style(Style::new().fg(Color::Gray));
         if self.view.pull_requests.is_empty() {
             frame.render_widget(
@@ -609,25 +680,13 @@ impl TuiApp {
         let width = (area.width * 90 / 100)
             .min(area.width.saturating_sub(2))
             .max(20);
-        let observed = detail
-            .record
-            .observed_at
-            .get(..19)
-            .unwrap_or(&detail.record.observed_at);
         let key_style = Style::new()
             .fg(Color::Green)
             .add_modifier(Modifier::BOLD);
-        let mut lines = vec![
-            Line::from(vec![
-                Span::styled("Activity ", key_style),
-                Span::raw(activity_label(&detail.record)),
-            ]),
-            Line::from(format!(
-                "{}   {}",
-                observed,
-                activity_summary(&detail.record.event)
-            )),
-        ];
+        let mut lines = vec![Line::from(vec![
+            Span::styled("Activity ", key_style),
+            Span::raw(activity_label(&detail.record)),
+        ])];
         match detail.pull_request.as_ref() {
             Some(pull_request) => {
                 lines.push(Line::from(format!(
@@ -655,13 +714,19 @@ impl TuiApp {
                 detail.record.key
             ))),
         }
-        lines.push(
-            Line::from(format!(
-                "Read: {}",
-                if detail.record.read { "read" } else { "unread" }
-            ))
-            .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-        );
+        lines.push(Line::from(format!(
+            "Changes on {}: {}",
+            detail.record.key,
+            detail.changes.len()
+        )));
+        for change in &detail.changes {
+            lines.push(Line::from(format!(
+                "{}   {}   {}",
+                short_time(&change.observed_at),
+                activity_summary(&change.event),
+                if change.read { "read" } else { "unread" }
+            )));
+        }
         let hint = Line::from(vec![
             Span::styled("Enter", key_style),
             Span::raw(" open in browser   "),
@@ -891,7 +956,8 @@ mod tests {
         let mut app = TuiApp::new(view(vec![record.clone()]));
         app.view.pull_requests.push(pull_request.clone());
         app.popup = Some(ActivityDetail {
-            record,
+            record: record.clone(),
+            changes: vec![record],
             pull_request: Some(pull_request),
             url: None,
         });
@@ -1017,6 +1083,84 @@ mod tests {
             .expect_err("reload failure");
         assert!(matches!(error, CoreError::State(_)));
         assert_eq!(inbox.reads.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn x_in_the_watched_pane_returns_the_ignore_action() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.view.pull_requests = vec![standalone("acme/api#42")];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        let action = app
+            .handle_key(key(KeyCode::Char('x')), &inbox, &core_config())
+            .await
+            .expect("x");
+        assert_eq!(
+            action,
+            TuiAction::ToggleIgnore(pr_key("acme/api#42"))
+        );
+    }
+
+    #[tokio::test]
+    async fn left_and_right_toggle_the_ignored_view() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.view.pull_requests = vec![standalone("acme/api#42")];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        let action = app
+            .handle_key(key(KeyCode::Right), &inbox, &core_config())
+            .await
+            .expect("right");
+        assert_eq!(action, TuiAction::ToggleIgnoredView);
+        assert!(app.show_ignored());
+        app.handle_key(key(KeyCode::Left), &inbox, &core_config())
+            .await
+            .expect("left");
+        assert!(!app.show_ignored());
+    }
+
+    #[tokio::test]
+    async fn page_keys_move_the_watched_selection_by_ten() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        for number in 1..=25 {
+            app.view
+                .pull_requests
+                .push(standalone(&format!("acme/api#{number}")));
+        }
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::PageDown), &inbox, &core_config())
+            .await
+            .expect("page down");
+        assert_eq!(app.pr_selected, 10);
+        app.handle_key(key(KeyCode::PageUp), &inbox, &core_config())
+            .await
+            .expect("page up");
+        assert_eq!(app.pr_selected, 0);
+    }
+
+    #[tokio::test]
+    async fn the_detail_lists_all_changes_for_the_pull_request() {
+        let first = record_on("acme/api#42", "a1", false);
+        let mut second = record_on("acme/api#42", "a2", false);
+        second.event = ActivityEvent::CiFailure {
+            failed_checks: vec!["build".to_string()],
+        };
+        let mut app = TuiApp::new(view(vec![first, second]));
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Enter), &inbox, &core_config())
+            .await
+            .expect("enter");
+        let frame = app.snapshot();
+        assert!(frame.contains("Changes on acme/api#42: 2"), "{frame}");
+        assert!(frame.contains("New comment from @alice"), "{frame}");
+        assert!(frame.contains("CI failing: build"), "{frame}");
     }
 
     #[tokio::test]

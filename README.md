@@ -123,9 +123,12 @@ an idle one. Running `passuff` (the watch command) at the same time is
 redundant: both observe and write the same state.
 
 `Tab` switches focus between the watched pull requests and the activity list;
-`j`/`k` and the arrow keys move in the focused pane and the watched table
-scrolls. With the activity list focused, `enter` opens a detail overlay for the
-selected activity; `esc` closes it, and `enter` in the overlay opens the pull
+`j`/`k`, the arrow keys, and `PgUp`/`PgDn` move in the focused pane and the
+watched table scrolls. In the pull request pane, `x` ignores the selected pull
+request and `←`/`→` switch between the filtered and all views, so an ignored
+row can be selected again and restored with `x`. With the activity list
+focused, `enter` opens a detail overlay listing every recorded change for that
+pull request; `esc` closes it, and `enter` in the overlay opens the pull
 request in your browser. Press `p` to open the
 watch-scope picker: `j`/`k` move,
 `space` toggles, `m` switches all/selected, type `owner/name` and press Enter to

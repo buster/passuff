@@ -162,7 +162,7 @@ async fn main() {
     }
 
     if let Some(keys) = args.keys.as_deref() {
-        let active = config.as_ref().expect("validated configuration").clone();
+        let mut active = config.as_ref().expect("validated configuration").clone();
         for key in keys.split(',').map(str::trim).filter(|key| !key.is_empty()) {
             let code = match key {
                 "tab" => KeyCode::Tab,
@@ -174,6 +174,11 @@ async fn main() {
                 "q" => KeyCode::Char('q'),
                 "enter" => KeyCode::Enter,
                 "esc" => KeyCode::Esc,
+                "left" => KeyCode::Left,
+                "right" => KeyCode::Right,
+                "pageup" => KeyCode::PageUp,
+                "pagedown" => KeyCode::PageDown,
+                "x" => KeyCode::Char('x'),
                 other => {
                     eprintln!("passuff-tui: unknown key {other}");
                     std::process::exit(2);
@@ -188,7 +193,19 @@ async fn main() {
                 .await
             {
                 Ok(action) => {
-                    apply_action(&mut app, action, &SystemBrowserOpener::default());
+                    if let Err(message) = apply_action(
+                        &mut app,
+                        action,
+                        &inbox,
+                        &mut active,
+                        &editor,
+                        &SystemBrowserOpener::default(),
+                    )
+                    .await
+                    {
+                        eprintln!("{message}");
+                        std::process::exit(3);
+                    }
                 }
                 Err(error) => {
                     eprintln!("passuff: state error: {error}");
@@ -257,7 +274,8 @@ async fn observe_for(
         }
         tokio::time::sleep(delay).await;
         let update = session.tick().await;
-        if app.reload(inbox, &update.config.core).await.is_err() {
+        let view_config = display_config(&update.config, app.show_ignored());
+        if app.reload(inbox, &view_config.core).await.is_err() {
             break;
         }
         app.set_status(update.failure);
@@ -265,16 +283,57 @@ async fn observe_for(
     }
 }
 
-fn apply_action(app: &mut TuiApp, action: TuiAction, opener: &dyn BrowserOpener) -> bool {
+fn display_config(config: &AppConfig, show_ignored: bool) -> AppConfig {
+    let mut adjusted = config.clone();
+    if show_ignored {
+        adjusted.core.watch.ignored_pull_requests.clear();
+    }
+    adjusted
+}
+
+async fn apply_action(
+    app: &mut TuiApp,
+    action: TuiAction,
+    inbox: &Inbox,
+    config: &mut AppConfig,
+    editor: &ScopeEditor,
+    opener: &dyn BrowserOpener,
+) -> Result<bool, String> {
     match action {
-        TuiAction::Continue => false,
-        TuiAction::Quit => true,
+        TuiAction::Continue => Ok(false),
+        TuiAction::Quit => Ok(true),
         TuiAction::OpenUrl(url) => {
             match opener.open(&url) {
                 Ok(()) => app.close_popup(),
                 Err(error) => app.set_status(Some(format!("could not open browser: {error}"))),
             }
-            false
+            Ok(false)
+        }
+        TuiAction::ToggleIgnoredView => {
+            let view_config = display_config(config, app.show_ignored());
+            app.reload(inbox, &view_config.core)
+                .await
+                .map_err(|error| format!("passuff: state error: {error}"))?;
+            Ok(false)
+        }
+        TuiAction::ToggleIgnore(key) => {
+            let ignored = config.core.watch.ignores(&key.repository, key.number);
+            let result = if ignored {
+                editor.unignore_pull_request(&key.repository, key.number)
+            } else {
+                editor.ignore_pull_request(&key.repository, key.number)
+            };
+            if let Err(error) = result {
+                app.set_status(Some(error.message));
+                return Ok(false);
+            }
+            *config = ConfigLoader::load(editor.config_path())
+                .map_err(|error| format!("passuff-tui: configuration error: {error}"))?;
+            let view_config = display_config(config, app.show_ignored());
+            app.reload(inbox, &view_config.core)
+                .await
+                .map_err(|error| format!("passuff: state error: {error}"))?;
+            Ok(false)
         }
     }
 }
@@ -383,7 +442,8 @@ async fn run_terminal(
                                 active.known = known.clone();
                                 active.reload(&config);
                             }
-                            if let Err(error) = app.reload(inbox, &config.core).await {
+                            let view_config = display_config(&config, app.show_ignored());
+                            if let Err(error) = app.reload(inbox, &view_config.core).await {
                                 break Err(format!("passuff: state error: {error}"));
                             }
                         }
@@ -397,8 +457,19 @@ async fn run_terminal(
                 }
                 match app.handle_key(key, inbox, &config.core).await {
                     Ok(action) => {
-                        if apply_action(app, action, &SystemBrowserOpener::default()) {
-                            break Ok(());
+                        match apply_action(
+                            app,
+                            action,
+                            inbox,
+                            &mut config,
+                            editor,
+                            &SystemBrowserOpener::default(),
+                        )
+                        .await
+                        {
+                            Ok(true) => break Ok(()),
+                            Ok(false) => {}
+                            Err(message) => break Err(message),
                         }
                     }
                     Err(error) => break Err(format!("passuff: state error: {error}")),
@@ -413,7 +484,8 @@ async fn run_terminal(
                         active.known = known.clone();
                         active.reload(&config);
                     }
-                    if let Err(error) = app.reload(inbox, &config.core).await {
+                    let view_config = display_config(&config, app.show_ignored());
+                    if let Err(error) = app.reload(inbox, &view_config.core).await {
                         break Err(format!("passuff: state error: {error}"));
                     }
                 }

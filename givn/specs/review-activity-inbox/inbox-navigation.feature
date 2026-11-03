@@ -38,6 +38,21 @@ Feature: Inbox navigation
     And  the TUI shows "Focus: PRs"
 
   @inbox-navigation
+  Scenario: The developer ignores and restores a pull request
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "x"
+    Then  the TUI does not show "acme/api#42"
+    When  the developer presses "right"
+    Then  the TUI shows "acme/api#42"
+    When  the developer presses "x"
+    And  the developer presses "left"
+    Then  the TUI shows "acme/api#42"
+
+  @inbox-navigation
   Scenario: A comment on a merged pull request reaches the inbox
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

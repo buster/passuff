@@ -104,6 +104,75 @@ impl ScopeEditor {
         known
     }
 
+    /// Add a pull request to the ignore list.
+    pub fn ignore_pull_request(&self, repository: &str, number: u64) -> Result<(), ScopeError> {
+        self.update_ignored(repository, number, true)
+    }
+
+    /// Remove a pull request from the ignore list.
+    pub fn unignore_pull_request(&self, repository: &str, number: u64) -> Result<(), ScopeError> {
+        self.update_ignored(repository, number, false)
+    }
+
+    fn update_ignored(
+        &self,
+        repository: &str,
+        number: u64,
+        add: bool,
+    ) -> Result<(), ScopeError> {
+        let entry = format!("{repository}#{number}");
+        let text = fs::read_to_string(&self.config_path)
+            .map_err(|error| ScopeError::new(format!("cannot read configuration: {error}")))?;
+        let mut document: toml_edit::DocumentMut = text
+            .parse()
+            .map_err(|error| ScopeError::new(format!("cannot read configuration: {error}")))?;
+        if document.get("watch").is_none() {
+            document["watch"] = toml_edit::Item::Table(toml_edit::Table::new());
+        }
+        let watch = document["watch"]
+            .as_table_mut()
+            .ok_or_else(|| ScopeError::new("cannot write configuration: [watch] is not a table"))?;
+        let mut entries: Vec<String> = watch
+            .get("ignored_pull_requests")
+            .and_then(toml_edit::Item::as_array)
+            .map(|array| {
+                array
+                    .iter()
+                    .filter_map(|value| value.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default();
+        if add {
+            if !entries
+                .iter()
+                .any(|existing| existing.eq_ignore_ascii_case(&entry))
+            {
+                entries.push(entry);
+            }
+        } else {
+            entries.retain(|existing| !existing.eq_ignore_ascii_case(&entry));
+        }
+        let mut array = toml_edit::Array::new();
+        for entry in entries {
+            array.push(entry);
+        }
+        watch["ignored_pull_requests"] = toml_edit::value(array);
+        self.write_document(document)
+    }
+
+    fn write_document(&self, document: toml_edit::DocumentMut) -> Result<(), ScopeError> {
+        let temporary = self.config_path.with_extension("toml.tmp");
+        fs::write(&temporary, document.to_string())
+            .map_err(|error| ScopeError::new(format!("cannot write configuration: {error}")))?;
+        if let Err(error) = fs::rename(&temporary, &self.config_path) {
+            let _ = fs::remove_file(&temporary);
+            return Err(ScopeError::new(format!(
+                "cannot write configuration: {error}"
+            )));
+        }
+        Ok(())
+    }
+
     fn write(&self, mode: WatchMode, repositories: &[String]) -> Result<ScopeSnapshot, ScopeError> {
         let text = fs::read_to_string(&self.config_path)
             .map_err(|error| ScopeError::new(format!("cannot read configuration: {error}")))?;
@@ -125,15 +194,7 @@ impl ScopeEditor {
             array.push(repository.clone());
         }
         watch["repositories"] = toml_edit::value(array);
-        let temporary = self.config_path.with_extension("toml.tmp");
-        fs::write(&temporary, document.to_string())
-            .map_err(|error| ScopeError::new(format!("cannot write configuration: {error}")))?;
-        if let Err(error) = fs::rename(&temporary, &self.config_path) {
-            let _ = fs::remove_file(&temporary);
-            return Err(ScopeError::new(format!(
-                "cannot write configuration: {error}"
-            )));
-        }
+        self.write_document(document)?;
         Ok(ScopeSnapshot {
             mode,
             repositories: repositories.to_vec(),
