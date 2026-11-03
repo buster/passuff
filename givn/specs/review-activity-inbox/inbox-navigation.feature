@@ -38,6 +38,19 @@ Feature: Inbox navigation
     And  the TUI shows "Focus: PRs"
 
   @inbox-navigation
+  Scenario: A comment on a merged pull request reaches the inbox
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the configured account "personal" merges "acme/api#42"
+    And  passuff runs one check
+    And  the developer opens the inbox TUI
+    And  the inbox observes the account
+    And  "alice" comments "Post-merge note" on "acme/api#42"
+    And  the inbox observes the account
+    Then  the TUI shows "New comment from @alice"
+
+  @inbox-navigation
   Scenario: A refresh preserves the selected pull request
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

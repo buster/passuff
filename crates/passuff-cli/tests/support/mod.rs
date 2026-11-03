@@ -748,7 +748,6 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             app.set_status(update.failure.clone());
             self.last_transcript = app.snapshot();
         }
-        self.observation_update = Some(update);
     }
 
     async fn start_observation(&mut self) {
@@ -1440,7 +1439,6 @@ impl GitHubGateway for FakeGateway {
             login: login.clone(),
             pull_requests: pull_requests
                 .iter()
-                .filter(|pull_request| pull_request.state == PrState::Open)
                 .map(|pull_request| ProbePullRequest {
                     repository: pull_request.key.repository.clone(),
                     node_id: pull_request.node_id.clone(),

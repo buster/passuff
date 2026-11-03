@@ -52,16 +52,17 @@ a useful rate.
 - Good, because the inbox no longer depends on a second process to be useful.
 - Bad, because a changed account pays the 57-point full cycle; a busy account
   observes more slowly than an idle one.
-- Bad, because the probe sees open pull requests; a change on a closed or merged
-  pull request is noticed by the next full cycle triggered by any other change,
-  not by the probe alone.
+- Bad, because the probe covers the 100 most recently updated pull requests in
+  any state; a comment on an older merged or closed pull request is noticed by
+  the next periodic full cycle rather than by the probe.
 - Bad, because the inbox and the watch command may both observe and write state;
   the overlap is documented and left uncoordinated.
 
 ### Confirmation
 
 `The inbox keeps observation cheap while nothing changes`,
-`The inbox paces observation against the account allowance`, and
+`The inbox paces observation against the account allowance`,
+`A comment on a merged pull request reaches the inbox`, and
 `The inbox shows activity observed while it is open` execute the probe, pacing,
 and update paths through the Gherkin harness; `PassuffCore::probe` and
 `ObservationSession::next_delay` carry unit tests for the fingerprint and the
