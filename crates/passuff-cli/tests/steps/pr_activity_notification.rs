@@ -41,6 +41,7 @@ async fn already_observed(world: &mut World, _key: String) {
     if world.e2e {
         world.e2e_pending_baseline = true;
     }
+    world.ensure_baseline().await;
 }
 
 #[given(regex = r#"^the watcher has already observed "([^"]+)" with a failing CI result$"#)]

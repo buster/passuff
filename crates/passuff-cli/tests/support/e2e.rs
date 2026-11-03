@@ -412,6 +412,51 @@ impl World {
         self.e2e_write_evidence();
     }
 
+    pub async fn e2e_run_scope(&mut self, action: &str, value: Option<&str>) {
+        let config = self
+            .e2e_config_dir
+            .as_ref()
+            .expect("e2e configured")
+            .path()
+            .join("config.toml");
+        let state = self.e2e_state_path.clone().expect("e2e state");
+        let mut command = Command::new(env!("CARGO_BIN_EXE_passuff-tui"));
+        command
+            .arg("--snapshot")
+            .arg("--picker")
+            .arg("--config")
+            .arg(config)
+            .arg("--state")
+            .arg(state);
+        match action {
+            "select" => {
+                command
+                    .arg("--scope-select")
+                    .arg(value.expect("repository"));
+            }
+            "deselect" => {
+                command
+                    .arg("--scope-deselect")
+                    .arg(value.expect("repository"));
+            }
+            "add" => {
+                command.arg("--scope-add").arg(value.expect("repository"));
+            }
+            "mode" => {
+                command.arg("--scope-mode").arg(value.expect("mode"));
+            }
+            "picker" => {}
+            other => panic!("unknown scope action {other}"),
+        }
+        self.configure_child(&mut command);
+        let output = command.output().expect("run passuff-tui scope");
+        self.last_status = output.status.code().unwrap_or(3);
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        self.last_transcript = if stdout.is_empty() { stderr } else { stdout };
+        self.e2e_write_evidence();
+    }
+
     pub async fn e2e_run_status(&mut self) {
         self.e2e_run_subcommand(&["status"]).await;
     }

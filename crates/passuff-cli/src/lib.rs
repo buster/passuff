@@ -1,6 +1,7 @@
 pub mod delivery;
 pub mod gh_login;
 pub mod inbox_cli;
+pub mod scope;
 pub mod sound;
 pub mod transcript;
 pub mod tui;
@@ -146,6 +147,7 @@ impl WatchControl for StopAfter {
 pub struct CliRuntime {
     pub ports: CliPorts,
     renderer: TranscriptRenderer,
+    config_path: Option<std::path::PathBuf>,
 }
 
 impl CliRuntime {
@@ -153,7 +155,29 @@ impl CliRuntime {
         Self {
             ports,
             renderer: TranscriptRenderer,
+            config_path: None,
         }
+    }
+
+    pub fn with_config_path(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.config_path = Some(path.into());
+        self
+    }
+
+    pub async fn run_watch_cycle(&self, path: &std::path::Path) -> RunOutcome {
+        let config = match passuff_config::ConfigLoader::load(path) {
+            Ok(config) => config,
+            Err(error) => {
+                return RunOutcome {
+                    exit: ExitCode::from(2),
+                    status: 2,
+                    report: None,
+                    transcript: self.renderer.render_config_error(&error.to_string()),
+                    emitted: false,
+                };
+            }
+        };
+        self.run_check(Ok(config)).await
     }
 
     pub async fn run_check(&self, config: Result<AppConfig, ConfigError>) -> RunOutcome {
@@ -218,22 +242,41 @@ impl CliRuntime {
                 };
             }
         };
-        let mut core = match PassuffCore::with_ports(
-            config.core.clone(),
-            self.ports.gateway.clone(),
-            self.ports.store.clone(),
-            self.ports.credentials.clone(),
-        )
-        .await
-        {
+        let mut config = config;
+        let mut core = match self.build_core(&config).await {
             Ok(core) => core,
-            Err(error) => return self.state_error(error),
+            Err(outcome) => return outcome,
         };
 
         let mut output: Vec<String> = Vec::new();
         let mut last_report = None;
         let mut first_success = false;
+        let mut first_cycle = true;
+        let mut last_reload_error: Option<String> = None;
         while control.should_continue() {
+            if !first_cycle {
+                if let Some(path) = self.config_path.as_ref() {
+                    match passuff_config::ConfigLoader::load(path) {
+                        Ok(reloaded) => {
+                            config = reloaded;
+                            if let Ok(rebuilt) = self.build_core(&config).await {
+                                core = rebuilt;
+                                last_reload_error = None;
+                            }
+                        }
+                        Err(error) => {
+                            let message = error.to_string();
+                            if last_reload_error.as_deref() != Some(message.as_str()) {
+                                let line = self.renderer.render_config_error(&message);
+                                output.push(line.clone());
+                                println!("{line}");
+                                last_reload_error = Some(message);
+                            }
+                        }
+                    }
+                }
+            }
+            first_cycle = false;
             let refresh = tokio::select! {
                 _ = control.interrupted() => break,
                 refresh = core.refresh() => refresh,
@@ -278,6 +321,17 @@ impl CliRuntime {
             transcript: output.join("\n"),
             emitted: true,
         }
+    }
+
+    async fn build_core(&self, config: &AppConfig) -> Result<PassuffCore, RunOutcome> {
+        PassuffCore::with_ports(
+            config.core.clone(),
+            self.ports.gateway.clone(),
+            self.ports.store.clone(),
+            self.ports.credentials.clone(),
+        )
+        .await
+        .map_err(|error| self.state_error(error))
     }
 
     async fn process_report(&self, config: &AppConfig, report: &RefreshReport) -> (String, i32) {
@@ -423,6 +477,7 @@ mod tests {
                 accounts: BTreeMap::new(),
                 activity: Vec::new(),
                 next_activity_id: 0,
+                last_scope: None,
             })
         }
 

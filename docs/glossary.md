@@ -6,10 +6,9 @@ behaviour lives in the governing use-case contract and specifications.
 
 Behavioural rules are owned by `watch-pull-requests` (`pr-activity-notification`),
 `inspect-watch-status` (`watch-status`), `review-activity-inbox`
-(`activity-inbox`), and `review-pull-request-stacks` (`stacked-inbox`). This
-glossary defines terms; it does not restate the rules. The watch-scope mode,
-known-repository, and catch-up terms are confirmed for the planned
-`change-watch-scope` use case; its behavioural rules arrive with that change.
+(`activity-inbox`), `review-pull-request-stacks` (`stacked-inbox`), and
+`change-watch-scope` (`watch-scope`). This glossary defines terms; it does not
+restate the rules.
 
 | Term | Definition | Code symbol | Anti-terms |
 |---|---|---|---|
@@ -47,7 +46,7 @@ known-repository, and catch-up terms are confirmed for the planned
 | Inbox | The read model of configured accounts, the watch scope, watched pull requests, and activity records. | `Inbox` | list, feed, tracked — the inbox includes the watch summary and reviewed history. |
 | Read state | Whether an activity record has been acknowledged by the developer. | `ActivityRecord.read` | seen — a record can be seen but unread, or read after review. |
 | Catch-up | The recording of activity that happened while a repository was outside the watch scope, delivered to the inbox without a notification. | none (check-cycle policy) | notification backlog, replay — catch-up is silent and records new gap activity. |
-| Terminal UI | The full-screen inbox adapter over `InboxService`; a second consumer of the read model. | `TuiApp` | dashboard, GUI — the terminal UI is a text interface. |
+| Terminal UI | The full-screen inbox adapter over `InboxService` and the watch-scope picker over `ScopeEditor`; a second consumer of the read model and a configuration editor. | `TuiApp`, `ScopeEditor` | dashboard, GUI — the terminal UI is a text interface. |
 | Known repository | A repository that passuff has observed in an authored pull request or that appears in the watch scope. | none (read model) | full catalog — the known set is only what passuff has seen or the scope contains. |
 | Watch scope | The set of repositories passuff observes: all repositories, or selected repositories, where an empty selected set observes none. | `WatchConfig` | filter, subscription — the scope is configuration, not a separate account. |
 | Watched pull request | An authored pull request with a persisted observation record and a known baseline. | `WatchedPullRequest` | subscription, monitored repo |

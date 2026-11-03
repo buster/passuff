@@ -10,8 +10,8 @@ Excluded: code review of diffs, GitHub mutations (commenting, approving,
 merging), delivery channels other than the local desktop surface, and
 organization-level policy.
 
-This model covers the implemented watch, status, activity-review, and
-stack-review capabilities through the `passuff-stacked-inbox` change. The core is UI-agnostic: a notification is a
+This model covers the implemented watch, status, activity-review, stack-review,
+and watch-scope capabilities through the `passuff-watch-scope` change. The core is UI-agnostic: a notification is a
 grouped report, and a UI adapter delivers it. Delivery is an external
 relationship, not part of the Notification value. An account's credential mode
 and expected login are configuration and validation attributes, not separate
@@ -107,6 +107,7 @@ flowchart TB
 |---|---|---|
 | Pull Request Watching | Observe authored pull requests, classify eligible activity, deduplicate it, and produce one grouped notification per pull request per check cycle. | Changing GitHub state, reviewing code, and delivering notifications beyond the local desktop surface. |
 | Activity Review | Retain activity records and expose the watch status and inbox read model with read state. | Changing GitHub state, delivery, and configuration editing. |
+| Watch Configuration | Edit the global repository scope atomically and expose the terminal picker. | Per-account scope, a full repository catalog, and changing GitHub state. |
 
 | Aggregate | Owning context | Consistency responsibility |
 |---|---|---|
@@ -128,11 +129,16 @@ flowchart TB
 | Watched Pull Request → Activity Record | Each retained event becomes one activity record with a read flag. | `review-activity-inbox` use case, R5 |
 | Activity Record → Inbox | The read model lists records newest first and counts unread. | `review-activity-inbox` use case, R1–R4 |
 | Inbox → Terminal UI | A UI adapter renders the read model and marks records read. | `review-activity-inbox` use case, T1–T7 |
+| Developer → Watch scope | The developer selects or deselects repositories and switches all/selected mode. | `change-watch-scope` use case, R1–R11 |
+| Watch scope → Watched Pull Request / Inbox / Watch status | The scope filters observation and the visible records; excluded records are hidden and retained. | `change-watch-scope` use case, R2, R9 |
+| Terminal UI → Watch scope | The picker edits the scope through `ScopeEditor`; it is a configuration-edit role separate from the read model. | `change-watch-scope` use case, Main flow |
 | Watched Pull Request → Watch status | Status lists watched pull requests with state and CI. | `inspect-watch-status` use case, S3 |
 
 ## Open modeling questions
 
 None. Pull request stack is a GitHub-reported value on the Watched Pull Request,
-not a separate aggregate, and the model is complete for the approved
-capabilities. Implementation may refine internal component names without
-changing these domain relationships.
+and the watch scope is configuration, not an aggregate. The Terminal UI has a
+read-model role and a configuration-edit role; the latter is not part of
+Activity Review. The model is complete for the approved capabilities.
+Implementation may refine internal component names without changing these
+domain relationships.

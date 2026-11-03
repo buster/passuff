@@ -6,7 +6,7 @@ use crate::classifier::classify;
 use crate::credential::CredentialSource;
 use crate::domain::{
     AccountFailure, AccountFailureKind, ActivityRecord, CoreError, LoginSet, Notification,
-    RefreshReport, WatchedPullRequest,
+    RefreshReport, ScopeSnapshot, WatchedPullRequest,
 };
 use crate::github::{AccountObservation, GitHubGateway};
 use crate::state::SnapshotStore;
@@ -130,6 +130,8 @@ impl PassuffCore {
                 .map(|(_, observation)| observation.login.clone()),
         );
         let login_set = LoginSet::new(logins);
+        let previous_scope = state.last_scope.clone();
+        let current_scope = ScopeSnapshot::from_watch(&self.config.watch);
 
         for (label, observation) in accepted {
             let entry = state.accounts.entry(label.clone()).or_default();
@@ -156,6 +158,10 @@ impl PassuffCore {
                 let key = pull_request.key.clone();
                 let key_string = key.to_string();
                 let previous = entry.pull_requests.get(&key_string);
+                let catch_up = previous_scope.as_ref().is_some_and(|scope| {
+                    !scope.allows_repository(&pull_request.key.repository)
+                        && current_scope.allows_repository(&pull_request.key.repository)
+                });
                 let classification = classify(
                     previous,
                     &pull_request,
@@ -205,15 +211,17 @@ impl PassuffCore {
                             read: false,
                         });
                     }
-                    report.notifications.push(notification);
+                    if !catch_up {
+                        report.notifications.push(notification);
+                    }
                 }
             }
-            entry
-                .pull_requests
-                .retain(|_, pr| self.config.watch.allows_repository(&pr.repository));
             entry.last_check_at = Some(observation.checked_at);
         }
 
+        if failures.is_empty() {
+            state.last_scope = Some(current_scope);
+        }
         report.account_failures = failures;
         if state.activity.len() > 500 {
             let excess = state.activity.len() - 500;

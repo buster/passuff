@@ -22,6 +22,7 @@ clap = { version = "4.6", features = ["derive"] }
 directories = "6"
 notify-rust = "4.18"
 ratatui = "0.30"
+toml_edit = "0.25"
 crossterm = "0.29"
 passuff-config = { path = "../passuff-config" }
 passuff-core = { path = "../passuff-core" }

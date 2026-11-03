@@ -12,6 +12,7 @@
 | Desktop notification through the platform surface | The notification must appear in the operating system's notification centre. |
 | Sound through a system player, no audio library | Keeps the build free of ALSA or CoreAudio development dependencies. |
 | Local configuration and state files | No database, no hosted state, no external account service. |
+| The terminal UI may write the configuration file atomically | The watcher reloads the configuration before each cycle so a scope change applies without a restart. |
 | GitHub rate limit of 5,000 GraphQL points per hour per token | Observation must remain cheap; normally one query per account per cycle. |
 | GitHub stacked-PRs metadata is preview-gated and read-only | The inbox shows standalone rows where the preview is unavailable; a rejected stack query retries once without the stack fields, adding at most one retry of the account observation per account per cycle. |
 | Tokens from a gh session, environment variable, helper command, or permission-checked token file | Secrets must not be stored in configuration or state; token files must be private to the operator. |

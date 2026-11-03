@@ -3,6 +3,8 @@ use std::fmt;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+
+use passuff_config::{WatchConfig, WatchMode};
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,6 +102,29 @@ pub struct ReviewComment {
     pub author: String,
     pub body: String,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScopeSnapshot {
+    pub mode: WatchMode,
+    pub repositories: Vec<String>,
+}
+
+impl ScopeSnapshot {
+    pub fn from_watch(watch: &WatchConfig) -> Self {
+        Self {
+            mode: watch.mode,
+            repositories: watch.repositories.clone(),
+        }
+    }
+
+    pub fn allows_repository(&self, repository: &str) -> bool {
+        self.mode == WatchMode::All
+            || self
+                .repositories
+                .iter()
+                .any(|allowed| allowed.eq_ignore_ascii_case(repository))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -290,6 +315,8 @@ pub struct WatcherState {
     pub activity: Vec<ActivityRecord>,
     #[serde(default)]
     pub next_activity_id: u64,
+    #[serde(default)]
+    pub last_scope: Option<ScopeSnapshot>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

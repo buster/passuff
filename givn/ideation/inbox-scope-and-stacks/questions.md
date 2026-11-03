@@ -141,7 +141,7 @@
 
 ## Q5 — Where does the repository picker get its candidates?
 
-- Status: open
+- Status: closed 2026-11-03 (operator)
 - Blocks: the read model behind the watch-scope edit and the TUI screen's contents.
 - Context: the watch scope is a global allowlist. passuff stores watched pull
   requests, not a repository index. The observation query returns authored pull

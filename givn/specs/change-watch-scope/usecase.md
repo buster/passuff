@@ -1,0 +1,115 @@
+# Use case: change-watch-scope
+
+## Level
+
+!
+
+## Actors
+
+- developer
+
+## Goal
+
+Change which repositories passuff observes.
+
+## Trigger
+
+The developer opens the repository picker in the terminal inbox and changes a selection or the scope mode.
+
+## Preconditions
+
+- A valid configuration exists.
+- The terminal UI can read the configuration and watcher state.
+- The current scope mode and selected set are loaded.
+
+## Main flow
+
+1. passuff shows the scope mode, the known repositories with their selected state, and the manual-entry field.
+2. The developer changes a repository's selection or switches the scope mode; passuff persists the new scope atomically. Selecting a repository while in all mode switches to selected mode with that repository selected.
+3. passuff hides a deselected repository's watched pull requests and activity from the inbox and status, or restores them on selection.
+4. If a selected repository has retained records, passuff marks catch-up pending for the next check cycle.
+5. A running watcher applies the persisted scope on its next check cycle; the picker shows the updated mode and selected repositories.
+
+## Extensions
+
+- 1a. No known repositories exist: passuff shows an empty list and the manual-entry field; protects the success guarantee.
+- 2a. The developer deselects the last selected repository: selected mode keeps an empty set and observes nothing; status says watching nothing.
+- 2b. The developer enters an unknown owner/name: passuff validates the format, records the repository as known, and selects it.
+- 2c. The entry is malformed: passuff rejects it, keeps the previous scope, and reports the error.
+- 2d. Persistence fails: passuff keeps the previous mode, set, and visibility and reports the error.
+- 4a. The selected repository has no retained records: no catch-up is marked; the next observation records a baseline.
+
+## Rules
+
+- R1: The watch scope has a mode: all repositories, or selected repositories. A selected set may be empty, meaning no repositories are observed.
+- R2: Deselecting a repository hides its watched pull requests and activity from the inbox and status but retains them in watcher state.
+- R3: Selecting a repository with retained records restores them and marks catch-up pending for the next check cycle.
+- R4: Catch-up records gap activity as unread records without a desktop notification or sound.
+- R5: The watch scope is global across configured accounts.
+- R6: Known repositories are those seen in an authored pull request or present in the watch scope; manual entry adds one.
+- R7: In all mode the list is informational; switching to selected restores the retained selected set, which may be empty. The selected set is retained while the mode is all.
+- R8: A repository entry is `owner/name`, case-insensitive. The format is validated; existence is not checked against GitHub.
+- R9: A scope change is persisted atomically and applies to the next check cycle of a running watcher. A failed write leaves the previous mode, set, and visibility.
+- R10: A configuration without an explicit scope mode keeps today's meaning: an empty allowlist observes all repositories. An explicit selected mode with an empty set observes none.
+- R11: While in all mode, selecting a repository switches to selected mode containing that repository.
+
+## Examples
+
+- The developer switches from all to selected with no retained set: the selected set is empty and the inbox is empty; selecting a repository adds it.
+- The developer deselects `acme/api`: its rows disappear from the inbox and status; its records remain in state.
+- The developer reselects `acme/api`: its rows return; the next check records a week of comments as unread without a notification or sound.
+- The developer deselects the last selected repository: selected mode is empty; status says watching nothing.
+- The developer enters `acme/new`: valid, known, and selected. Entering `acme` is rejected with an error.
+- A running watcher's next check cycle observes the new scope without a restart.
+
+## Minimal guarantee
+
+On a failed write or an invalid entry, the previous scope mode, selected set, and read-model visibility remain; no partial scope is persisted.
+
+## Success guarantee
+
+The watch scope has the chosen mode and selected set and is persisted; the inbox and status show exactly the in-scope records; a selected repository with retained records has catch-up pending for the next check cycle.
+
+## Personas
+
+- multi-account-developer — a developer with personal and work GitHub accounts who wants to change the watched repositories from the inbox and review catch-up activity.
+
+## Capabilities
+
+- watch-scope
+
+## Interactions
+
+| Capability | Consumer action | E2E scenario |
+|---|---|---|
+| watch-scope | toggle a repository in the watch scope; manual entry is a variant | Developer toggles a repository in the watch scope |
+| watch-scope | switch the watch scope mode | Developer switches the watch scope mode |
+
+## Includes
+
+- none
+
+## Extends
+
+- none
+
+## Out of scope
+
+- Per-account watch scope.
+- A full readable-repository catalog.
+- GitHub Projects boards.
+- Changing stack grouping or normal notification delivery.
+- Creating or modifying repositories on GitHub.
+
+## Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> All
+    All --> Selected: switch to selected
+    Selected --> Selected: select or deselect
+    Selected --> All: switch to all
+    note right of Selected
+        An empty selected set observes nothing.
+    end note
+```

@@ -10,6 +10,8 @@ mod e2e_steps;
 mod regular_steps;
 #[path = "steps/stacked_inbox.rs"]
 mod stacked_inbox_steps;
+#[path = "steps/watch_scope.rs"]
+mod watch_scope_steps;
 #[path = "steps/watch_status.rs"]
 mod watch_status_steps;
 

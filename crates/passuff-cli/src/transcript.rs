@@ -83,12 +83,7 @@ impl TranscriptRenderer {
             let last = account.last_check_at.as_deref().unwrap_or("never");
             lines.push(format!("  {} {} last check {}", account.label, login, last));
         }
-        let scope = if view.scope.is_empty() {
-            "all authored pull requests".to_string()
-        } else {
-            view.scope.join(", ")
-        };
-        lines.push(format!("passuff: watch scope: {scope}"));
+        lines.push(format!("passuff: watch scope: {}", view.scope_label));
         if view.pull_requests.is_empty() {
             lines.push("passuff: no watched pull requests".to_string());
         } else {

@@ -60,12 +60,15 @@ flowchart TB
 | `ActivityClassifier` | Pure classification of comments, reviews, review comments, CI transitions, state transitions, short-lived PRs, and reopen resets. |
 | `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for one account observation, including GitHub-reported stack membership. |
 | `PullRequestStack` | Value object carrying the stack number, size, position, and ultimate base on a watched pull request; absent means standalone. |
+| `WatchMode` / `WatchConfig` | Explicit all/selected scope; an empty selected set observes none. |
+| `ScopeEditor` | Edit the watch scope atomically and preserve unrelated configuration; the watcher derives catch-up from the previous scope and retained records. |
+| `ScopePicker` | Terminal screen for the scope mode, known repositories, manual entry, and errors. |
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
 | `CredentialSource` / `SystemCredentialSource` | Port and environment/command/file/gh credential resolution; tokens never persisted. |
 | `passuff-cli` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |
 | `InboxService` / `Inbox` | Build the status and activity read model over the state store and mark activity read. |
 | `InboxCli` | Render `status`, `inbox`, and `read` from `InboxService`; no GitHub calls. |
-| `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, handle keys, and mark records read through `InboxService`; `--snapshot` prints one frame. |
+| `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, open the scope picker, handle keys, and mark records read through `InboxService`; `--snapshot` prints one frame. |
 | `TranscriptRenderer` | Render notifications, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real `notify-rust` delivery; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |
@@ -154,7 +157,7 @@ persisted state and mark activity read.
 |---|---|
 | `InboxService` | View configured accounts, watched pull requests, and activity; mark one or all records read. |
 | State version 2 | Bounded activity history (`ActivityRecord`) and a monotonic record id counter. |
-| Watch scope | Global repository allowlist applied before observation; excluded pull requests are pruned. |
+| Watch scope | Global all/selected scope applied before observation and to the inbox/status read model; excluded records are hidden and retained in state. |
 
 ### CLI delivery
 

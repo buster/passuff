@@ -55,6 +55,7 @@ async fn main() {
             credentials,
             delivery,
         })
+        .with_config_path(config_path.clone())
     };
 
     let outcome = match args.command {

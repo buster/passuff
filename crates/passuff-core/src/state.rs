@@ -74,6 +74,7 @@ impl SnapshotStore for JsonStateStore {
                     accounts: Default::default(),
                     activity: Vec::new(),
                     next_activity_id: 0,
+                    last_scope: None,
                 });
             }
             Err(error) => {
@@ -104,6 +105,7 @@ impl SnapshotStore for JsonStateStore {
                     accounts: Default::default(),
                     activity: Vec::new(),
                     next_activity_id: 0,
+                    last_scope: None,
                 })
             }
         }
@@ -214,6 +216,7 @@ mod tests {
             accounts: Default::default(),
             activity: Vec::new(),
             next_activity_id: 0,
+            last_scope: None,
         };
         state.accounts.insert(
             "personal".to_string(),
@@ -265,6 +268,7 @@ mod tests {
             accounts: Default::default(),
             activity: Vec::new(),
             next_activity_id: 0,
+            last_scope: None,
         };
         state.accounts.insert(
             "work".to_string(),
@@ -302,6 +306,7 @@ mod tests {
                 read: false,
             }],
             next_activity_id: 3,
+            last_scope: None,
         };
         std::fs::write(&path, serde_json::to_string(&state).unwrap()).unwrap();
         let store = JsonStateStore::new(&path);
@@ -321,6 +326,7 @@ mod tests {
             accounts: Default::default(),
             activity: Vec::new(),
             next_activity_id: 0,
+            last_scope: None,
         };
         state.accounts.insert(
             "work".to_string(),
@@ -350,6 +356,7 @@ mod tests {
             accounts: Default::default(),
             activity: Vec::new(),
             next_activity_id: 0,
+            last_scope: None,
         };
         assert!(matches!(
             store.save(&state).await,

@@ -40,7 +40,7 @@ flowchart LR
 | Desktop notification on Linux | D-Bus `org.freedesktop.Notifications` | Outbound |
 | Desktop notification on macOS | macOS notification surface through `notify-rust` | Outbound |
 | Sound playback | Child process: `afplay`, `paplay`, `pw-play`, or `aplay` | Outbound |
-| Configuration | TOML file | Read |
+| Configuration | TOML file | Read and write |
 | Persisted observation | Versioned JSON file plus atomic replacement | Read and write |
 | Credentials | Environment variable, `/bin/sh -c` command output, permission-checked token file, or gh OAuth session | Read |
 | Interactive authentication | gh CLI browser login (`gh auth login --web`) | Outbound, interactive |
@@ -51,9 +51,10 @@ flowchart LR
 ## Scope boundaries
 
 Inside: authored pull request observation, activity classification, grouping,
-stack membership recording, stacked inbox grouping, desktop delivery, sound,
-configuration, state, and the CLI.
+stack membership recording, stacked inbox grouping, watch-scope editing,
+desktop delivery, sound, configuration, state, and the CLI.
 
-Outside: GitHub mutations, stack creation or modification, webhooks, a hosted
-service, review of code diffs, non-authored pull requests, remote push channels,
-Windows, and a graphical interface.
+Outside: GitHub mutations, stack creation or modification, per-account watch
+scope, a full repository catalog, webhooks, a hosted service, review of code
+diffs, non-authored pull requests, remote push channels, Windows, and a
+graphical interface.

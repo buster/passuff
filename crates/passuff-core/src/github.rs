@@ -1074,11 +1074,8 @@ mod tests {
 
     impl wiremock::Respond for NodesRetryResponder {
         fn respond(&self, request: &wiremock::Request) -> ResponseTemplate {
-            let call = self
-                .calls
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            let body: serde_json::Value =
-                serde_json::from_slice(&request.body).unwrap_or_default();
+            let call = self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let body: serde_json::Value = serde_json::from_slice(&request.body).unwrap_or_default();
             let is_nodes = body
                 .get("variables")
                 .and_then(|variables| variables.get("ids"))
@@ -1120,5 +1117,4 @@ mod tests {
         assert_eq!(observation.pull_requests.len(), 1);
         assert!(observation.pull_requests[0].stack.is_none());
     }
-
 }

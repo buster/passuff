@@ -202,13 +202,11 @@ impl TuiApp {
             })
             .collect::<Vec<_>>()
             .join("   |   ");
-        let scope = if self.view.scope.is_empty() {
-            "all authored pull requests".to_string()
-        } else {
-            self.view.scope.join(", ")
-        };
         frame.render_widget(
-            Paragraph::new(format!("{accounts}   |   watch scope: {scope}")),
+            Paragraph::new(format!(
+                "{accounts}   |   watch scope: {}",
+                self.view.scope_label
+            )),
             chunks[0],
         );
         frame.render_widget(
@@ -468,6 +466,7 @@ mod tests {
                 last_check_at: None,
             }],
             scope: Vec::new(),
+            scope_label: "all authored pull requests".to_string(),
             pull_requests: Vec::new(),
             unread: activity.iter().filter(|record| !record.read).count(),
             activity,
@@ -551,6 +550,7 @@ mod tests {
     fn snapshot_shows_the_configured_watch_scope() {
         let mut view = view(Vec::new());
         view.scope = vec!["acme/api".to_string(), "acme/web".to_string()];
+        view.scope_label = "acme/api, acme/web".to_string();
         let frame = TuiApp::new(view).snapshot();
         assert!(frame.contains("watch scope: acme/api, acme/web"), "{frame}");
     }

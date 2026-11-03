@@ -20,6 +20,10 @@
 - Record GitHub-reported stack membership read-only with the observation and
   project stack groups in the terminal inbox. The flat CLI inbox and status are
   unchanged. See [chapter 05](05-building-block-view.md).
+- Keep the watch scope explicit: all repositories or selected repositories,
+  where an empty selected set observes none. The terminal picker writes the
+  configuration atomically, and a running watcher reloads it before each
+  cycle. See [chapter 08](08-crosscutting-concepts.md).
 - Persist a bounded activity history in the watch state and expose a read model
   (`InboxService`) to the CLI and the TUI. Status, inbox, and read never
   contact GitHub. See [ADR-0005](adr/ADR-0005-state-version-2-migration.md).

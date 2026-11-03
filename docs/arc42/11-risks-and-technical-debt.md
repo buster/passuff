@@ -25,6 +25,10 @@
 | R-019 | The interactive TUI is not driven through a PTY in CI. | Medium | Low | `--snapshot` asserts the real renderer; key paths are unit/Gherkin tested; a manual terminal smoke covers raw mode and resize. |
 | R-020 | The TUI ships in the CLI package rather than a separate crate. | Low | Low | The core boundary is unchanged; a future split is a packaging change with the same `InboxService` contract. |
 | R-021 | The stacked-PRs preview is unavailable for a repository, or GitHub rejects the stack fields. | Medium | Low | Observation retries once without the stack fields; rows render standalone; the account's other observations and state remain. |
+| R-022 | Concurrent config writes or a failed atomic write leave a stale or partial scope. | Low | Medium | `ScopeEditor` writes a temporary file in the same directory and renames; a failure keeps the previous file and reports an error. |
+| R-023 | A large known-repository list clips in the 100x30 picker. | Medium | Low | The picker clips rather than wrapping; a future change may add scrolling or filtering. |
+| R-024 | The TUI's mark-read actions and the watcher both save the whole state file, so one can overwrite the other's recent change. | Low | Medium | Pre-existing width; the scope edit adds no state writer. A future change may add file locking or a merge-on-save store. |
+| R-025 | A configuration writer drops the `mode` field and silently changes the scope semantics. | Low | Medium | `ScopeEditor` writes both `mode` and `repositories`; ADR-0006 records the compatibility contract; config unit tests cover the legacy shapes. |
 
 ## Technical debt
 

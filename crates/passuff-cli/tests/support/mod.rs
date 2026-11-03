@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use passuff_cli::delivery::{FailingDelivery, NotificationDelivery, RecordingDelivery};
 use passuff_cli::inbox_cli::InboxCli;
+use passuff_cli::scope::ScopeEditor;
 use passuff_cli::sound::{RecordingSoundPlayer, SoundPlayer, UnavailableSoundPlayer};
 use passuff_cli::transcript::activity_summary;
 use passuff_cli::tui::{load_view, TuiAction, TuiApp};
@@ -169,6 +170,7 @@ pub struct World {
     pub fail_state_write: bool,
     pub tui_app: Option<TuiApp>,
     pub tui_closed: bool,
+    pub watcher_config_path: Option<PathBuf>,
 }
 
 impl Default for World {
@@ -219,6 +221,7 @@ impl Default for World {
             fail_state_write: false,
             tui_app: None,
             tui_closed: false,
+            watcher_config_path: None,
         }
     }
 }
@@ -559,6 +562,11 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                 accounts,
                 events: self.events.clone(),
                 watch: passuff_config::WatchConfig {
+                    mode: if self.watch_scope.is_empty() {
+                        passuff_config::WatchMode::All
+                    } else {
+                        passuff_config::WatchMode::Selected
+                    },
                     repositories: self.watch_scope.clone(),
                 },
             },
@@ -694,7 +702,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         self.last_status = outcome.status;
     }
 
-    fn state_store(&self) -> Arc<dyn SnapshotStore> {
+    pub fn state_store(&self) -> Arc<dyn SnapshotStore> {
         Arc::new(JsonStateStore::new(self.state_path()))
     }
 
@@ -897,6 +905,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             accounts: BTreeMap::new(),
             activity: Vec::new(),
             next_activity_id: 0,
+            last_scope: None,
         };
         state.accounts.insert(
             label,
@@ -931,6 +940,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             accounts: BTreeMap::new(),
             activity: Vec::new(),
             next_activity_id: 0,
+            last_scope: None,
         };
         state.accounts.insert(
             label,
@@ -960,6 +970,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             accounts: BTreeMap::new(),
             activity: Vec::new(),
             next_activity_id: count,
+            last_scope: None,
         };
         state.accounts.insert(
             label,
@@ -982,6 +993,81 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             });
         }
         self.write_state(&state);
+    }
+
+    pub fn scope_config_path(&self) -> PathBuf {
+        self.state_dir
+            .as_ref()
+            .expect("state dir")
+            .path()
+            .join("config.toml")
+    }
+
+    pub fn ensure_scope_config(&self) {
+        let path = self.scope_config_path();
+        let text = self
+            .config_text
+            .clone()
+            .unwrap_or_else(|| self.config_text_from_accounts());
+        std::fs::write(path, text).expect("scope config write");
+    }
+
+    pub fn scope_editor(&self) -> ScopeEditor {
+        self.ensure_scope_config();
+        ScopeEditor::new(self.scope_config_path())
+    }
+
+    pub fn sync_scope_config(&mut self) {
+        self.config_text =
+            Some(std::fs::read_to_string(self.scope_config_path()).expect("scope config read"));
+    }
+
+    pub fn scope_config(&self) -> AppConfig {
+        ConfigLoader::parse(
+            &std::fs::read_to_string(self.scope_config_path()).expect("scope config read"),
+        )
+        .expect("valid scope config")
+    }
+
+    pub fn e2e_config_text(&self) -> String {
+        let path = self
+            .e2e_config_dir
+            .as_ref()
+            .expect("e2e configured")
+            .path()
+            .join("config.toml");
+        std::fs::read_to_string(path).unwrap_or_default()
+    }
+
+    pub fn e2e_state_json(&self) -> serde_json::Value {
+        let path = self.e2e_state_path.as_ref().expect("e2e state");
+        let text = std::fs::read_to_string(path).unwrap_or_default();
+        serde_json::from_str(&text).unwrap_or(serde_json::Value::Null)
+    }
+
+    pub async fn run_watch_cycle_from_path(&mut self, path: PathBuf) {
+        self.apply_auth_env();
+        let gateway = Arc::new(FakeGateway::new(
+            self.gateway_snapshot(),
+            self.check_clock.clone(),
+        ));
+        let credentials = self.credentials(false);
+        let store: Arc<dyn SnapshotStore> = Arc::new(JsonStateStore::new(self.state_path()));
+        let sound: Arc<dyn SoundPlayer> =
+            Arc::new(RecordingSoundPlayer::new(self.sound_log.clone()));
+        let delivery: Arc<dyn NotificationDelivery> =
+            Arc::new(RecordingDelivery::new(sound, self.notification_log.clone()));
+        let runtime = CliRuntime::new(CliPorts {
+            gateway,
+            store,
+            credentials,
+            delivery,
+        })
+        .with_config_path(path.clone());
+        let outcome = runtime.run_watch_cycle(&path).await;
+        self.last_report = outcome.report;
+        self.last_transcript = outcome.transcript;
+        self.last_status = outcome.status;
     }
 
     pub fn state_json(&self) -> serde_json::Value {
@@ -1128,6 +1214,7 @@ impl SnapshotStore for FailingStore {
             accounts: BTreeMap::new(),
             activity: Vec::new(),
             next_activity_id: 0,
+            last_scope: None,
         })
     }
 

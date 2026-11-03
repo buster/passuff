@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 use serde::de::{self, Deserializer, Visitor};
 use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
 use url::Url;
 
@@ -30,23 +31,63 @@ pub struct CoreConfig {
     pub watch: WatchConfig,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WatchMode {
+    #[default]
+    All,
+    Selected,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct WatchConfig {
+    pub mode: WatchMode,
     pub repositories: Vec<String>,
 }
 
 impl WatchConfig {
     pub fn is_all(&self) -> bool {
-        self.repositories.is_empty()
+        self.mode == WatchMode::All
     }
 
     pub fn allows_repository(&self, repository: &str) -> bool {
-        self.repositories.is_empty()
+        self.is_all()
             || self
                 .repositories
                 .iter()
                 .any(|allowed| allowed.eq_ignore_ascii_case(repository))
+    }
+
+    pub fn label(&self) -> String {
+        match self.mode {
+            WatchMode::All => "all authored pull requests".to_string(),
+            WatchMode::Selected if self.repositories.is_empty() => "watching nothing".to_string(),
+            WatchMode::Selected => self.repositories.join(", "),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct FileWatchConfig {
+    mode: Option<WatchMode>,
+    repositories: Vec<String>,
+}
+
+impl FileWatchConfig {
+    fn resolve(self) -> WatchConfig {
+        let mode = self.mode.unwrap_or_else(|| {
+            if self.repositories.is_empty() {
+                WatchMode::All
+            } else {
+                WatchMode::Selected
+            }
+        });
+        WatchConfig {
+            mode,
+            repositories: self.repositories,
+        }
     }
 }
 
@@ -128,7 +169,7 @@ struct FileConfig {
     poll_interval_secs: u64,
     events: EventToggles,
     notifications: NotificationsConfig,
-    watch: WatchConfig,
+    watch: FileWatchConfig,
     accounts: BTreeMap<String, AccountToml>,
 }
 
@@ -138,7 +179,7 @@ impl Default for FileConfig {
             poll_interval_secs: DEFAULT_POLL_INTERVAL_SECS,
             events: EventToggles::default(),
             notifications: NotificationsConfig::default(),
-            watch: WatchConfig::default(),
+            watch: FileWatchConfig::default(),
             accounts: BTreeMap::new(),
         }
     }
@@ -215,7 +256,7 @@ impl FileConfig {
             }
         }
 
-        validate_watch_scope(&self.watch)?;
+        validate_watch_scope(&self.watch.repositories)?;
         let mut accounts = BTreeMap::new();
         for (label, account) in self.accounts {
             if label.trim().is_empty() {
@@ -323,16 +364,16 @@ impl FileConfig {
             core: CoreConfig {
                 accounts,
                 events: self.events,
-                watch: self.watch,
+                watch: self.watch.resolve(),
             },
             notifications: self.notifications,
         })
     }
 }
 
-fn validate_watch_scope(watch: &WatchConfig) -> Result<(), ConfigError> {
+fn validate_watch_scope(repositories: &[String]) -> Result<(), ConfigError> {
     let mut seen: Vec<String> = Vec::new();
-    for repository in &watch.repositories {
+    for repository in repositories {
         let repository = repository.trim();
         let valid = !repository.is_empty()
             && !repository.chars().any(char::is_whitespace)
@@ -753,13 +794,29 @@ mod tests {
             "#,
         )
         .unwrap();
+        assert_eq!(config.core.watch.mode, WatchMode::Selected);
+        assert_eq!(config.core.watch.label(), "Acme/API, acme/web");
         assert!(config.core.watch.allows_repository("acme/api"));
         assert!(config.core.watch.allows_repository("ACME/WEB"));
         assert!(!config.core.watch.allows_repository("acme/other"));
 
         let empty = parse("[accounts.personal]\ntoken_env = \"A\"\n").unwrap();
         assert!(empty.core.watch.is_all());
+        assert_eq!(empty.core.watch.label(), "all authored pull requests");
         assert!(empty.core.watch.allows_repository("anything/here"));
+
+        let none = parse("[watch]\nmode = \"selected\"\n[accounts.personal]\ntoken_env = \"A\"\n")
+            .unwrap();
+        assert_eq!(none.core.watch.mode, WatchMode::Selected);
+        assert!(!none.core.watch.allows_repository("anything/here"));
+        assert_eq!(none.core.watch.label(), "watching nothing");
+
+        let explicit_all = parse(
+            "[watch]\nmode = \"all\"\nrepositories = [\"acme/api\"]\n[accounts.personal]\ntoken_env = \"A\"\n",
+        )
+        .unwrap();
+        assert_eq!(explicit_all.core.watch.mode, WatchMode::All);
+        assert!(explicit_all.core.watch.allows_repository("acme/web"));
 
         assert!(parse(
             "[watch]\nrepositories = [\"bad\"]\n[accounts.personal]\ntoken_env = \"A\"\n"

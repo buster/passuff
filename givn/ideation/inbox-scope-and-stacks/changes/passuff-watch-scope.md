@@ -1,6 +1,6 @@
 # Change seed: passuff-watch-scope
 
-Status: ready
+Status: proposed by passuff-watch-scope
 
 - Use-case IDs: change-watch-scope
 - Topic: inbox-scope-and-stacks

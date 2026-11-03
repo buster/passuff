@@ -205,6 +205,24 @@ that belong to a stack.
    rejected, renders standalone; the observation retries once without the stack
    fields.
 
+## Scenario: Edit the watch scope
+
+**Trigger:** The developer opens the repository picker and toggles a
+repository or switches the mode.
+
+1. `ScopePicker` shows the mode, known repositories, selected state, and manual
+   entry.
+2. `ScopeEditor` updates `[watch].mode` and `[watch].repositories` with
+   `toml_edit`, writes a temporary file in the same directory, and renames it.
+3. The watcher compares the new scope with `WatcherState.last_scope`; a newly
+   selected repository with retained watched pull requests becomes a catch-up
+   repository for the next cycle.
+4. `InboxService::view` filters out records outside the selected scope; the
+   status view uses the same filter.
+5. A running watcher reloads the configuration before its next cycle. On a
+   catch-up cycle, activity is recorded as unread without a notification;
+   `last_scope` advances only after a cycle without account failures.
+
 ## Scenario: Mark activity read
 
 **Trigger:** The developer marks one record or all records read.

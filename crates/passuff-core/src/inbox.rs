@@ -28,6 +28,7 @@ pub struct PullRequestView {
 pub struct InboxView {
     pub accounts: Vec<AccountView>,
     pub scope: Vec<String>,
+    pub scope_label: String,
     pub pull_requests: Vec<PullRequestView>,
     pub activity: Vec<ActivityRecord>,
     pub unread: usize,
@@ -81,13 +82,22 @@ impl Inbox {
                 stack: pr.stack.clone(),
             })
             .collect();
+        pull_requests.retain(|pr| config.watch.allows_repository(&pr.key.repository));
         pull_requests.sort_by(|a, b| a.key.cmp(&b.key));
-        let unread = state.activity.iter().filter(|record| !record.read).count();
+        let activity: Vec<ActivityRecord> = state
+            .activity
+            .iter()
+            .rev()
+            .filter(|record| config.watch.allows_repository(&record.key.repository))
+            .cloned()
+            .collect();
+        let unread = activity.iter().filter(|record| !record.read).count();
         InboxView {
             accounts,
             scope: config.watch.repositories.clone(),
+            scope_label: config.watch.label(),
             pull_requests,
-            activity: state.activity.iter().rev().cloned().collect(),
+            activity,
             unread,
         }
     }
@@ -228,6 +238,7 @@ mod tests {
                 },
             ],
             next_activity_id: 2,
+            last_scope: None,
         };
         state.accounts.insert(
             "personal".to_string(),
@@ -288,5 +299,70 @@ mod tests {
         let outcome = inbox.mark_all_read().await.unwrap();
         assert_eq!(outcome.changed, 0);
         assert!(!path.exists());
+    }
+    #[tokio::test]
+    async fn view_hides_out_of_scope_records_and_counts_visible_unread() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = JsonStateStore::new(dir.path().join("state.json"));
+        let mut state = WatcherState::default();
+        state.version = 2;
+        let mut account = crate::domain::AccountState {
+            login: "octo".to_string(),
+            last_check_at: None,
+            pull_requests: Default::default(),
+        };
+        let mut watched =
+            WatchedPullRequest::from_baseline(&authored(), "2026-11-02T10:00:00Z".to_string());
+        watched.repository = "acme/api".to_string();
+        watched.number = 42;
+        account
+            .pull_requests
+            .insert("acme/api#42".to_string(), watched.clone());
+        let mut other = watched.clone();
+        other.repository = "acme/web".to_string();
+        other.number = 7;
+        account
+            .pull_requests
+            .insert("acme/web#7".to_string(), other);
+        state.accounts.insert("personal".to_string(), account);
+        state.activity = vec![
+            ActivityRecord {
+                id: "a1".to_string(),
+                key: PullRequestKey::new("acme/api".to_string(), 42),
+                observed_at: "2026-11-02T10:00:00Z".to_string(),
+                event: crate::domain::ActivityEvent::Comment {
+                    author: "alice".to_string(),
+                    body_excerpt: "hi".to_string(),
+                },
+                read: false,
+            },
+            ActivityRecord {
+                id: "a2".to_string(),
+                key: PullRequestKey::new("acme/web".to_string(), 7),
+                observed_at: "2026-11-02T10:00:00Z".to_string(),
+                event: crate::domain::ActivityEvent::Comment {
+                    author: "bob".to_string(),
+                    body_excerpt: "hi".to_string(),
+                },
+                read: false,
+            },
+        ];
+        store.save(&state).await.unwrap();
+        let config = CoreConfig {
+            accounts: Default::default(),
+            events: Default::default(),
+            watch: passuff_config::WatchConfig {
+                mode: passuff_config::WatchMode::Selected,
+                repositories: vec!["acme/api".to_string()],
+            },
+        };
+        let view = Inbox::new(Arc::new(store))
+            .view(&config)
+            .await
+            .expect("view");
+        assert_eq!(view.pull_requests.len(), 1);
+        assert_eq!(view.activity.len(), 1);
+        assert_eq!(view.unread, 1);
+        assert_eq!(view.scope_label, "acme/api");
     }
 }

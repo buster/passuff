@@ -24,8 +24,9 @@ stable `a<n>` id, the observation time, the pull request key, and a read flag.
 The oldest records are dropped on append. Version-1 files load with their
 watched pull requests and are rewritten as version 2; unknown versions are
 quarantined. Read state persists and is independent of delivery. The optional
-global repository allowlist filters observation before classification and prunes
-out-of-scope pull requests from the state after each account observation.
+global watch scope filters observation and the inbox/status read model. Excluded
+watched pull requests and activity are hidden but retained in state; reselecting
+them records a silent catch-up cycle.
 
 ## Persistence and deduplication
 
@@ -88,6 +89,18 @@ read commands and marks records through the same service. `--snapshot` uses
 ratatui's `TestBackend` and prints the frame for scripts and E2E; interactive mode
 uses crossterm raw mode and the alternate screen. No token, body, command text,
 or enum name is rendered.
+
+## Watch scope editing
+
+The watch scope is configuration with an explicit mode: all repositories or a
+selected set; an empty selected set observes none. The terminal picker edits the
+scope through `ScopeEditor`, which preserves unrelated configuration with
+`toml_edit` and writes atomically. Deselecting a repository stops observation
+and hides its records from the inbox and status while retaining them in state;
+reselecting restores them. Reselecting a repository with retained records marks
+a catch-up cycle: activity is recorded as unread without a desktop notification
+or sound. A running watcher reloads the configuration before each cycle; a
+failed reload keeps the previous configuration.
 
 ## Stack metadata
 
