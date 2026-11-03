@@ -10,7 +10,7 @@
 ││                                                                                                ││
 ││             ┌ Activity ──────────────────────────────────────────────────────────┐             ││
 │└─────────────│Activity a1                                                         │─────────────┘│
-│┌ Activity ───│2026-11-03T13:16:27.794588408+00:00   New comment from @alice       │─────────────┐│
+│┌ Activity ───│2026-11-03T13:17:10.276001971+00:00   New comment from @alice       │─────────────┐│
 ││  ID    Obser│acme/api#42   Pull request acme/api#42                              │             ││
 ││▶ a1    2026-│State: open   CI passing                                            │rom @alice   ││
 ││             │Read: unread                                                        │             ││
