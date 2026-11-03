@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "change": "passuff-tui-live",
+  "status": "passed",
+  "head": "ddb2c50d51463d0ecd4cb61b548f77985f03a25d",
+  "features_path": "givn/changes/passuff-tui-live/specs",
+  "features_digest": "3c01e109376e28e65d27f9ccb1bf78301d49c362739e2211116286185003df87",
+  "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+  "command": "./scripts/verify.sh",
+  "tested_content_digest": "7a9f31ecda169b38614a76f68c5b77dc3c968a54e08d243d45af38841eba63af",
+  "content_scope": "change-proof/v1",
+  "runner_exit": 0,
+  "result": {
+    "scope": null,
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finished_at_unix": 1793711113
+}
