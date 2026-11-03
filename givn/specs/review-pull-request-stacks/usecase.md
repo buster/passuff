@@ -52,6 +52,7 @@ The developer opens the inbox and reviews the activity of a stack.
 - R6: Standalone pull requests keep the existing inbox presentation and read behaviour.
 - R7: A GitHub rejection of stack metadata degrades to standalone and never fails the account observation.
 - R8: Stack grouping is read-only; passuff never creates, extends, or dissolves a stack.
+- R9: This use case extends `review-activity-inbox` only when watched pull requests carry stack metadata; otherwise the base inbox behavior applies.
 
 ## Examples
 
@@ -83,7 +84,6 @@ The developer sees each stack as one group with its base, size, watched members 
 |---|---|---|
 | stacked-inbox | review a stack and its activity | Developer reviews a stacked inbox |
 
-Marking an activity record read is inherited from `review-activity-inbox` and is covered by that use case's inventory.
 
 ## Includes
 
@@ -91,7 +91,7 @@ Marking an activity record read is inherited from `review-activity-inbox` and is
 
 ## Extends
 
-- `usecase:review-activity-inbox` — when watched pull requests carry stack metadata, group their rows and activity into stack groups.
+- usecase:review-activity-inbox
 
 ## Out of scope
 
