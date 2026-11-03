@@ -952,6 +952,11 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             "a" => crossterm::event::KeyCode::Char('a'),
             "tab" => crossterm::event::KeyCode::Tab,
             "enter" => crossterm::event::KeyCode::Enter,
+            "left" => crossterm::event::KeyCode::Left,
+            "right" => crossterm::event::KeyCode::Right,
+            "pageup" => crossterm::event::KeyCode::PageUp,
+            "pagedown" => crossterm::event::KeyCode::PageDown,
+            "x" => crossterm::event::KeyCode::Char('x'),
             other => panic!("unknown key {other}"),
         };
         let event = crossterm::event::KeyEvent::new(code, crossterm::event::KeyModifiers::NONE);
@@ -967,12 +972,50 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                 }
                 self.last_transcript = app.snapshot();
             }
+            Ok(TuiAction::ToggleIgnoredView) => {
+                self.tui_app = Some(app);
+                self.reload_tui_with_view().await;
+                return;
+            }
+            Ok(TuiAction::ToggleIgnore(key)) => {
+                let entry = key.to_string();
+                if self
+                    .ignored_pull_requests
+                    .iter()
+                    .any(|existing| existing.eq_ignore_ascii_case(&entry))
+                {
+                    self.ignored_pull_requests.retain(|existing| !existing.eq_ignore_ascii_case(&entry));
+                } else {
+                    self.ignored_pull_requests.push(entry);
+                }
+                self.tui_app = Some(app);
+                self.reload_tui_with_view().await;
+                return;
+            }
             Err(error) => {
                 self.last_status = 3;
                 self.last_transcript = format!("passuff: state error: {error}");
             }
         }
         self.tui_app = Some(app);
+    }
+
+    async fn reload_tui_with_view(&mut self) {
+        let show_ignored = self
+            .tui_app
+            .as_ref()
+            .map(TuiApp::show_ignored)
+            .unwrap_or(false);
+        let mut config = self.build_config();
+        if show_ignored {
+            config.core.watch.ignored_pull_requests.clear();
+        }
+        let inbox = Inbox::new(self.state_store());
+        let app = self.tui_app.as_mut().expect("tui opened");
+        app.reload(&inbox, &config.core)
+            .await
+            .expect("reload tui view");
+        self.last_transcript = app.snapshot();
     }
 
     pub fn run_tui_binary(&mut self) {
