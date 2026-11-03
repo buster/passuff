@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "change": "passuff-watch-scope",
+  "status": "pending",
+  "candidate_revision": null,
+  "tested_revision": null,
+  "scopes": {},
+  "coverage": null,
+  "scope_evidence": {},
+  "coverage_inputs": null,
+  "merge_completed": true,
+  "merged_deltas": [
+    "change-watch-scope/watch-scope.feature"
+  ],
+  "merge_in_progress": null,
+  "merge_plan": [
+    "change-watch-scope/watch-scope.feature"
+  ],
+  "merge_targets": {
+    "change-watch-scope/watch-scope.feature": "givn/specs/change-watch-scope/watch-scope.feature"
+  },
+  "started_at_unix": 1793707311,
+  "finished_at_unix": null
+}
