@@ -50,5 +50,5 @@ While the terminal inbox is open, it observes the configured accounts itself ins
 
 | Capability | Decision | Rationale |
 |---|---|---|
-| activity-inbox | Modify the existing "Developer opens the inbox TUI" scenario so opening observes the account | Opening the inbox now performs the first observation; the scenario no longer needs an external check to populate the view. |
-| inbox-navigation | Add the live update, the cheap-probe behaviour, the allowance pacing, and the failure fallback to this capability | These behaviours keep the terminal inbox's panes current after opening; they advance the same developer goal as navigation and need no second capability. |
+| activity-inbox | EXTEND activity-inbox | The existing "Developer opens the inbox TUI" scenario is modified so opening observes the account; it no longer needs an external check to populate the view. |
+| inbox-navigation | EXTEND inbox-navigation | The live update, the cheap probe, the allowance pacing, and the failure fallback keep the terminal inbox's panes current after opening; they advance the same developer goal as navigation and need no second capability. |
