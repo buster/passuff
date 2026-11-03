@@ -3,7 +3,9 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use passuff_config::CoreConfig;
 
-use crate::domain::{ActivityRecord, CiState, CoreError, PrState, PullRequestKey, WatcherState};
+use crate::domain::{
+    ActivityRecord, CiState, CoreError, PrState, PullRequestKey, PullRequestStack, WatcherState,
+};
 use crate::state::SnapshotStore;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,6 +21,7 @@ pub struct PullRequestView {
     pub state: PrState,
     pub ci_state: CiState,
     pub title: String,
+    pub stack: Option<PullRequestStack>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +78,7 @@ impl Inbox {
                 state: pr.current.state.clone(),
                 ci_state: pr.current.ci_state.clone(),
                 title: pr.title.clone(),
+                stack: pr.stack.clone(),
             })
             .collect();
         pull_requests.sort_by(|a, b| a.key.cmp(&b.key));
@@ -187,6 +191,7 @@ mod tests {
             labels: Vec::new(),
             milestone: None,
             base_ref: "main".to_string(),
+            stack: None,
             head_oid: "abc123".to_string(),
             ci: CiResult {
                 state: CiState::Success,

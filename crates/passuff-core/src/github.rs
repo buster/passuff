@@ -7,7 +7,7 @@ use url::Url;
 
 use crate::domain::{
     AccountFailureKind, AuthoredPullRequest, CiResult, CiState, Comment, PrState, PullRequestKey,
-    Review, ReviewComment,
+    PullRequestStack, Review, ReviewComment,
 };
 
 #[derive(Debug, Clone)]
@@ -126,6 +126,35 @@ impl GitHubGateway for GitHubApiAdapter {
         graphql_url: &Url,
         known_node_ids: &[String],
     ) -> Result<AccountObservation, GitHubError> {
+        match self
+            .observe_with(token, graphql_url, known_node_ids, MAIN_QUERY, NODES_QUERY)
+            .await
+        {
+            Err(GitHubError::GraphQl(message)) if mentions_stack(&message) => {
+                tracing::debug!("stack metadata unavailable; retrying without stack fields");
+                self.observe_with(
+                    token,
+                    graphql_url,
+                    known_node_ids,
+                    &without_stack_fields(MAIN_QUERY),
+                    &without_stack_fields(NODES_QUERY),
+                )
+                .await
+            }
+            result => result,
+        }
+    }
+}
+
+impl GitHubApiAdapter {
+    async fn observe_with(
+        &self,
+        token: &str,
+        graphql_url: &Url,
+        known_node_ids: &[String],
+        main_query: &str,
+        nodes_query: &str,
+    ) -> Result<AccountObservation, GitHubError> {
         tracing::debug!(
             host = graphql_url.host_str().unwrap_or("unknown"),
             "querying GitHub"
@@ -140,7 +169,7 @@ impl GitHubGateway for GitHubApiAdapter {
                 .post(
                     token,
                     graphql_url,
-                    MAIN_QUERY,
+                    main_query,
                     serde_json::json!({ "after": after }),
                 )
                 .await?;
@@ -185,12 +214,24 @@ impl GitHubGateway for GitHubApiAdapter {
                 .post(
                     token,
                     graphql_url,
-                    NODES_QUERY,
+                    nodes_query,
                     serde_json::json!({ "ids": known_node_ids }),
                 )
                 .await
             {
                 if let Ok(response) = serde_json::from_str::<GqlNodesResponse>(&body) {
+                    if let Some(errors) =
+                        response.errors.as_ref().filter(|errors| !errors.is_empty())
+                    {
+                        let message = errors
+                            .iter()
+                            .map(|error| error.message.clone())
+                            .collect::<Vec<_>>()
+                            .join("; ");
+                        if response.data.is_none() && mentions_stack(&message) {
+                            return Err(GitHubError::GraphQl(message));
+                        }
+                    }
                     if let Some(data) = response.data {
                         for node in data.nodes.into_iter().flatten() {
                             if seen_nodes.insert(node.id.clone()) {
@@ -214,6 +255,22 @@ impl GitHubGateway for GitHubApiAdapter {
             checked_at: Utc::now().to_rfc3339(),
         })
     }
+}
+
+fn mentions_stack(message: &str) -> bool {
+    message.contains("stack") || message.contains("stackEntry")
+}
+
+fn without_stack_fields(query: &str) -> String {
+    query
+        .replace(
+            "        stack { number size baseRefName }\n        stackEntry { position }\n",
+            "",
+        )
+        .replace(
+            "      stack { number size baseRefName }\n      stackEntry { position }\n",
+            "",
+        )
 }
 
 fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
@@ -251,6 +308,7 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             });
         }
     }
+    let stack = map_stack(node.stack, node.stack_entry);
     AuthoredPullRequest {
         key: PullRequestKey::new(node.repository.name_with_owner, node.number),
         node_id: node.id,
@@ -279,6 +337,7 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             .collect(),
         milestone: node.milestone.and_then(|milestone| milestone.title),
         base_ref: node.base_ref_name,
+        stack,
         head_oid,
         ci,
         comments: node
@@ -311,6 +370,25 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             })
             .collect(),
         review_comments,
+    }
+}
+
+fn map_stack(stack: Option<GqlStack>, entry: Option<GqlStackEntry>) -> Option<PullRequestStack> {
+    let stack = stack?;
+    let entry = entry?;
+    let number = stack.number?;
+    let size = stack.size?;
+    let base = stack.base_ref_name?;
+    let position = entry.position?;
+    if size >= 1 && position >= 1 && position <= size {
+        Some(PullRequestStack {
+            number,
+            size,
+            position,
+            base,
+        })
+    } else {
+        None
     }
 }
 
@@ -360,6 +438,8 @@ query($after: String) {
         createdAt
         updatedAt
         baseRefName
+        stack { number size baseRefName }
+        stackEntry { position }
         author { login }
         repository { nameWithOwner }
         assignees(first: 20) { nodes { login } }
@@ -389,6 +469,8 @@ query($ids: [ID!]!) {
       createdAt
       updatedAt
       baseRefName
+      stack { number size baseRefName }
+      stackEntry { position }
       author { login }
       repository { nameWithOwner }
       assignees(first: 20) { nodes { login } }
@@ -444,6 +526,7 @@ struct GqlError {
 #[derive(Debug, Deserialize)]
 struct GqlNodesResponse {
     data: Option<GqlNodesData>,
+    errors: Option<Vec<GqlError>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -467,6 +550,8 @@ struct GqlPr {
     created_at: String,
     updated_at: String,
     base_ref_name: String,
+    stack: Option<GqlStack>,
+    stack_entry: Option<GqlStackEntry>,
     author: Option<GqlActor>,
     repository: GqlRepo,
     #[serde(default)]
@@ -515,6 +600,19 @@ struct GqlMilestone {
 struct GqlRepo {
     #[serde(rename = "nameWithOwner")]
     name_with_owner: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GqlStack {
+    number: Option<u64>,
+    size: Option<u64>,
+    base_ref_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlStackEntry {
+    position: Option<u64>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -843,5 +941,131 @@ mod tests {
             .expect("observation");
         assert_eq!(observation.login, "octo");
         assert!(observation.pull_requests.is_empty());
+    }
+    #[tokio::test]
+    async fn maps_stack_membership() {
+        let server = MockServer::start().await;
+        let mut stacked = node();
+        stacked["stack"] = serde_json::json!({
+            "number": 7, "size": 2, "baseRefName": "main"
+        });
+        stacked["stackEntry"] = serde_json::json!({ "position": 1 });
+        mount(
+            &server,
+            200,
+            serde_json::json!({
+                "data": { "viewer": { "login": "octo", "pullRequests": {
+                    "pageInfo": { "hasNextPage": false, "endCursor": null },
+                    "nodes": [stacked]
+                } } }
+            }),
+        )
+        .await;
+        let observation = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect("observation");
+        assert_eq!(
+            observation.pull_requests[0].stack,
+            Some(PullRequestStack {
+                number: 7,
+                size: 2,
+                position: 1,
+                base: "main".to_string(),
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn incomplete_stack_membership_is_standalone() {
+        for (stack, entry) in [
+            (
+                Some(serde_json::json!({ "number": 7, "size": 2, "baseRefName": "main" })),
+                None,
+            ),
+            (
+                Some(serde_json::json!({ "number": 7, "size": 2, "baseRefName": "main" })),
+                Some(serde_json::json!({ "position": 0 })),
+            ),
+            (
+                Some(serde_json::json!({ "number": 7, "size": 2, "baseRefName": "main" })),
+                Some(serde_json::json!({ "position": 3 })),
+            ),
+            (None, Some(serde_json::json!({ "position": 1 }))),
+        ] {
+            let server = MockServer::start().await;
+            let mut incomplete = node();
+            if let Some(stack) = stack {
+                incomplete["stack"] = stack;
+            }
+            if let Some(entry) = entry {
+                incomplete["stackEntry"] = entry;
+            }
+            mount(
+                &server,
+                200,
+                serde_json::json!({
+                    "data": { "viewer": { "login": "octo", "pullRequests": {
+                        "pageInfo": { "hasNextPage": false, "endCursor": null },
+                        "nodes": [incomplete]
+                    } } }
+                }),
+            )
+            .await;
+            let observation = GitHubApiAdapter::new()
+                .observe("token", &endpoint(&server), &[])
+                .await
+                .expect("observation");
+            assert!(observation.pull_requests[0].stack.is_none());
+        }
+    }
+
+    struct RetryResponder {
+        calls: std::sync::atomic::AtomicUsize,
+    }
+
+    impl wiremock::Respond for RetryResponder {
+        fn respond(&self, _request: &wiremock::Request) -> ResponseTemplate {
+            let call = self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if call == 0 {
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "errors": [{ "message": "Field 'stack' doesn't exist on type 'PullRequest'" }]
+                }))
+            } else {
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "data": { "viewer": { "login": "octo", "pullRequests": {
+                        "pageInfo": { "hasNextPage": false, "endCursor": null },
+                        "nodes": [node()]
+                    } } }
+                }))
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_stack_fields_and_retries_without_them() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/graphql"))
+            .respond_with(RetryResponder {
+                calls: std::sync::atomic::AtomicUsize::new(0),
+            })
+            .mount(&server)
+            .await;
+        let observation = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect("retry observation");
+        assert_eq!(observation.login, "octo");
+        assert_eq!(observation.pull_requests.len(), 1);
+        assert!(observation.pull_requests[0].stack.is_none());
+    }
+
+    #[test]
+    fn queries_are_read_only() {
+        assert!(!MAIN_QUERY.to_ascii_lowercase().contains("mutation"));
+        assert!(!NODES_QUERY.to_ascii_lowercase().contains("mutation"));
+        assert!(!without_stack_fields(MAIN_QUERY).contains("stackEntry"));
+        assert!(!without_stack_fields(NODES_QUERY).contains("stack {"));
     }
 }

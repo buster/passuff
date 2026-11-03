@@ -184,6 +184,7 @@ impl PassuffCore {
                         watched.url = pull_request.url.clone();
                         watched.created_at = pull_request.created_at.clone();
                         watched.updated_at = pull_request.updated_at.clone();
+                        watched.stack = pull_request.stack.clone();
                         watched.current = classification.current;
                         watched
                     }

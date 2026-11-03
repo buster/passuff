@@ -102,6 +102,14 @@ pub struct ReviewComment {
     pub created_at: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PullRequestStack {
+    pub number: u64,
+    pub size: u64,
+    pub position: u64,
+    pub base: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct AuthoredPullRequest {
     pub key: PullRequestKey,
@@ -118,6 +126,7 @@ pub struct AuthoredPullRequest {
     pub labels: Vec<String>,
     pub milestone: Option<String>,
     pub base_ref: String,
+    pub stack: Option<PullRequestStack>,
     pub head_oid: String,
     pub ci: CiResult,
     pub comments: Vec<Comment>,
@@ -160,6 +169,8 @@ pub struct WatchedPullRequest {
     pub updated_at: String,
     pub baseline: Baseline,
     pub current: CurrentObservation,
+    #[serde(default)]
+    pub stack: Option<PullRequestStack>,
 }
 
 impl WatchedPullRequest {
@@ -186,6 +197,7 @@ impl WatchedPullRequest {
                 ci_state: pr.ci.state.clone(),
                 state: pr.state.clone(),
             },
+            stack: pr.stack.clone(),
             current: CurrentObservation {
                 seen_comment_ids: pr.comments.iter().map(|c| c.id.clone()).collect(),
                 seen_review_ids: pr.reviews.iter().map(|r| r.id.clone()).collect(),

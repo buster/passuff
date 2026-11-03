@@ -186,6 +186,7 @@ mod tests {
             labels: Vec::new(),
             milestone: None,
             base_ref: "main".to_string(),
+            stack: None,
             head_oid: "abc123".to_string(),
             ci: CiResult::default(),
             comments: Vec::new(),

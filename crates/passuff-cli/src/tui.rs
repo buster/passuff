@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
+
 use crossterm::event::{KeyCode, KeyEvent};
 use passuff_config::{AppConfig, ConfigError, CoreConfig};
-use passuff_core::{CoreError, InboxService, InboxView};
+use passuff_core::{CoreError, InboxService, InboxView, PullRequestKey, PullRequestView};
 use ratatui::backend::TestBackend;
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::{Color, Modifier, Style};
@@ -37,6 +39,66 @@ pub async fn load_view(
 pub enum TuiAction {
     Continue,
     Quit,
+}
+
+#[derive(Debug)]
+struct StackGroup<'a> {
+    repository: String,
+    number: u64,
+    base: String,
+    size: u64,
+    members: Vec<&'a PullRequestView>,
+    unread: usize,
+}
+
+fn stack_groups(view: &InboxView) -> (Vec<StackGroup<'_>>, Vec<&PullRequestView>) {
+    let mut groups: BTreeMap<(String, u64), Vec<&PullRequestView>> = BTreeMap::new();
+    let mut standalone = Vec::new();
+    for pull_request in &view.pull_requests {
+        match pull_request.stack.as_ref() {
+            Some(stack) => groups
+                .entry((pull_request.key.repository.clone(), stack.number))
+                .or_default()
+                .push(pull_request),
+            None => standalone.push(pull_request),
+        }
+    }
+    let mut result = Vec::new();
+    for ((repository, number), mut members) in groups {
+        members.sort_by_key(|pull_request| {
+            pull_request
+                .stack
+                .as_ref()
+                .map(|stack| stack.position)
+                .unwrap_or(0)
+        });
+        let first = members
+            .first()
+            .and_then(|pull_request| pull_request.stack.as_ref())
+            .expect("stack member");
+        let unread = view
+            .activity
+            .iter()
+            .filter(|record| !record.read && members.iter().any(|member| member.key == record.key))
+            .count();
+        result.push(StackGroup {
+            repository,
+            number,
+            base: first.base.clone(),
+            size: first.size,
+            members,
+            unread,
+        });
+    }
+    standalone.sort_by(|left, right| left.key.cmp(&right.key));
+    (result, standalone)
+}
+
+fn activity_stack(view: &InboxView, key: &PullRequestKey) -> Option<u64> {
+    view.pull_requests
+        .iter()
+        .find(|pull_request| &pull_request.key == key)
+        .and_then(|pull_request| pull_request.stack.as_ref().map(|stack| stack.number))
 }
 
 pub struct TuiApp {
@@ -168,34 +230,65 @@ impl TuiApp {
                 chunks[2],
             );
         } else {
-            let rows: Vec<Row> = self
-                .view
-                .pull_requests
+            let (groups, standalone) = stack_groups(&self.view);
+            let summaries: Vec<String> = groups
                 .iter()
-                .map(|pull_request| {
-                    Row::new(vec![
+                .map(|group| {
+                    format!(
+                        "{} stack {} | base {} | size {} | {} unread in stack",
+                        group.repository, group.number, group.base, group.size, group.unread
+                    )
+                })
+                .collect();
+            let inner = watched_block.inner(chunks[2]);
+            frame.render_widget(watched_block, chunks[2]);
+            let summary_height = (summaries.len() as u16).min(inner.height.saturating_sub(1));
+            let watched_layout =
+                Layout::vertical([Constraint::Length(summary_height), Constraint::Min(1)])
+                    .split(inner);
+            if summary_height > 0 {
+                frame.render_widget(Paragraph::new(summaries.join("\n")), watched_layout[0]);
+            }
+            let mut rows: Vec<Row> = Vec::new();
+            for group in &groups {
+                for pull_request in &group.members {
+                    let stack = pull_request.stack.as_ref().expect("stack member");
+                    rows.push(Row::new(vec![
                         Cell::from(pull_request.key.to_string()),
                         Cell::from(state_label(&pull_request.state)),
                         Cell::from(ci_label(&pull_request.ci_state)),
+                        Cell::from(format!("position {}", stack.position)),
+                        Cell::from(format!("stack {}", stack.number)),
                         Cell::from(pull_request.title.clone()),
-                    ])
-                })
-                .collect();
+                    ]));
+                }
+            }
+            for pull_request in &standalone {
+                rows.push(Row::new(vec![
+                    Cell::from(pull_request.key.to_string()),
+                    Cell::from(state_label(&pull_request.state)),
+                    Cell::from(ci_label(&pull_request.ci_state)),
+                    Cell::from(""),
+                    Cell::from(""),
+                    Cell::from(pull_request.title.clone()),
+                ]));
+            }
             let table = Table::new(
                 rows,
                 [
                     Constraint::Length(18),
                     Constraint::Length(8),
                     Constraint::Length(12),
+                    Constraint::Length(11),
+                    Constraint::Length(10),
                     Constraint::Min(10),
                 ],
             )
             .header(
-                Row::new(["Pull request", "State", "CI", "Title"])
+                Row::new(["Pull request", "State", "CI", "Position", "Stack", "Title"])
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            )
-            .block(watched_block);
-            frame.render_widget(table, chunks[2]);
+            );
+            frame.render_widget(table, watched_layout[1]);
         }
 
         let activity_block = Block::bordered()
@@ -220,6 +313,11 @@ impl TuiApp {
                         Cell::from(record.observed_at.clone()),
                         Cell::from(record.key.to_string()),
                         Cell::from(if record.read { "read" } else { "unread" }),
+                        Cell::from(
+                            activity_stack(&self.view, &record.key)
+                                .map(|number| format!("stack {number}"))
+                                .unwrap_or_default(),
+                        ),
                         Cell::from(activity_summary(&record.event)),
                     ])
                 })
@@ -231,11 +329,12 @@ impl TuiApp {
                     Constraint::Length(27),
                     Constraint::Length(14),
                     Constraint::Length(7),
+                    Constraint::Length(10),
                     Constraint::Min(20),
                 ],
             )
             .header(
-                Row::new(["ID", "Observed", "Pull request", "State", "Event"])
+                Row::new(["ID", "Observed", "Pull request", "State", "Stack", "Event"])
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
             .block(activity_block)
@@ -283,7 +382,8 @@ mod tests {
     use crossterm::event::KeyModifiers;
     use passuff_config::ConfigLoader;
     use passuff_core::{
-        AccountView, ActivityEvent, ActivityRecord, PullRequestKey, ReadOutcome, StateError,
+        AccountView, ActivityEvent, ActivityRecord, CiState, PrState, PullRequestKey,
+        PullRequestStack, PullRequestView, ReadOutcome, StateError,
     };
 
     use super::*;
@@ -387,6 +487,49 @@ mod tests {
         }
     }
 
+    fn pr_key(key: &str) -> PullRequestKey {
+        let (repository, number) = key.split_once('#').expect("repository#number");
+        PullRequestKey::new(repository.to_string(), number.parse().expect("number"))
+    }
+
+    fn stacked(key: &str, number: u64, size: u64, position: u64, base: &str) -> PullRequestView {
+        PullRequestView {
+            key: pr_key(key),
+            state: PrState::Open,
+            ci_state: CiState::Success,
+            title: format!("Pull request {key}"),
+            stack: Some(PullRequestStack {
+                number,
+                size,
+                position,
+                base: base.to_string(),
+            }),
+        }
+    }
+
+    fn standalone(key: &str) -> PullRequestView {
+        PullRequestView {
+            key: pr_key(key),
+            state: PrState::Open,
+            ci_state: CiState::Success,
+            title: format!("Pull request {key}"),
+            stack: None,
+        }
+    }
+
+    fn record_on(key: &str, id: &str, read: bool) -> ActivityRecord {
+        ActivityRecord {
+            id: id.to_string(),
+            key: pr_key(key),
+            observed_at: "2026-11-02T10:00:00Z".to_string(),
+            event: ActivityEvent::Comment {
+                author: "alice".to_string(),
+                body_excerpt: "hi".to_string(),
+            },
+            read,
+        }
+    }
+
     #[test]
     fn snapshot_shows_the_empty_inbox() {
         let app = TuiApp::new(view(Vec::new()));
@@ -468,5 +611,86 @@ mod tests {
             .expect_err("state error");
         assert_eq!(error.exit, 3);
         assert!(error.message.contains("state error"), "{error:?}");
+    }
+    #[test]
+    fn snapshot_groups_stack_members_in_position_order() {
+        let mut view = view(Vec::new());
+        view.pull_requests = vec![
+            stacked("acme/api#42", 7, 2, 2, "main"),
+            stacked("acme/api#43", 7, 2, 1, "main"),
+        ];
+        let frame = TuiApp::new(view).snapshot();
+        assert!(
+            frame.contains("acme/api stack 7 | base main | size 2 | 0 unread in stack"),
+            "{frame}"
+        );
+        let first = frame.find("position 1").expect("position 1");
+        let second = frame.find("position 2").expect("position 2");
+        assert!(first < second, "{frame}");
+    }
+
+    #[test]
+    fn snapshot_keeps_a_position_gap() {
+        let mut view = view(Vec::new());
+        view.pull_requests = vec![
+            stacked("acme/api#42", 7, 3, 1, "main"),
+            stacked("acme/api#44", 7, 3, 3, "main"),
+        ];
+        let frame = TuiApp::new(view).snapshot();
+        assert!(frame.contains("size 3"), "{frame}");
+        assert!(frame.contains("position 1"), "{frame}");
+        assert!(frame.contains("position 3"), "{frame}");
+        assert!(!frame.contains("position 2"), "{frame}");
+    }
+
+    #[test]
+    fn snapshot_renders_a_standalone_row_without_a_stack_summary() {
+        let mut view = view(Vec::new());
+        view.pull_requests = vec![standalone("acme/api#42")];
+        let frame = TuiApp::new(view).snapshot();
+        assert!(frame.contains("acme/api#42"), "{frame}");
+        assert!(!frame.contains("stack 7"), "{frame}");
+        assert!(!frame.contains("base main"), "{frame}");
+    }
+
+    #[test]
+    fn snapshot_counts_unread_per_stack() {
+        let mut view = view(vec![
+            record_on("acme/api#40", "a1", false),
+            record_on("acme/api#42", "a2", false),
+            record_on("acme/api#43", "a3", true),
+        ]);
+        view.pull_requests = vec![
+            stacked("acme/api#42", 7, 2, 1, "main"),
+            stacked("acme/api#43", 7, 2, 2, "main"),
+            standalone("acme/api#40"),
+        ];
+        let frame = TuiApp::new(view).snapshot();
+        assert!(frame.contains("2 unread of 3"), "{frame}");
+        assert!(frame.contains("1 unread in stack"), "{frame}");
+    }
+
+    #[test]
+    fn snapshot_labels_activity_with_its_stack() {
+        let mut view = view(vec![record_on("acme/api#43", "a1", false)]);
+        view.pull_requests = vec![stacked("acme/api#43", 7, 2, 2, "main")];
+        let frame = TuiApp::new(view).snapshot();
+        let activity = frame
+            .lines()
+            .find(|line| line.contains("New comment from @alice"))
+            .expect("activity row");
+        assert!(activity.contains("stack 7"), "{frame}");
+    }
+
+    #[test]
+    fn snapshot_separates_the_same_stack_number_across_repositories() {
+        let mut view = view(Vec::new());
+        view.pull_requests = vec![
+            stacked("acme/api#42", 7, 1, 1, "main"),
+            stacked("acme/web#40", 7, 1, 1, "main"),
+        ];
+        let frame = TuiApp::new(view).snapshot();
+        assert!(frame.contains("acme/api stack 7"), "{frame}");
+        assert!(frame.contains("acme/web stack 7"), "{frame}");
     }
 }

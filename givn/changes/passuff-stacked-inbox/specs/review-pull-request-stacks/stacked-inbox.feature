@@ -2,7 +2,7 @@
 
 Feature: Stacked inbox
 
-  @givn.added @e2e @wip
+  @givn.added @e2e
   Scenario: Developer reviews a stacked inbox
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -22,7 +22,7 @@ Feature: Stacked inbox
     And the TUI shows "New comment from @alice"
     And the exit status is 0
 
-  @givn.added @wip
+  @givn.added
   Scenario: The stack orders members by position
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -35,7 +35,7 @@ Feature: Stacked inbox
     And the developer opens the inbox TUI
     Then the TUI shows "position 1" before "position 2"
 
-  @givn.added @wip
+  @givn.added
   Scenario: An unwatched stack member leaves a position gap
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -51,7 +51,7 @@ Feature: Stacked inbox
     And the TUI shows "position 3"
     And the TUI does not show "position 2"
 
-  @givn.added @wip
+  @givn.added
   Scenario: A merged stack member remains in the group
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -67,7 +67,7 @@ Feature: Stacked inbox
     And the TUI shows "merged"
     And the TUI shows "position 1"
 
-  @givn.added @wip
+  @givn.added
   Scenario: A pull request without stack metadata stays standalone
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -78,7 +78,7 @@ Feature: Stacked inbox
     And the TUI does not show "stack 7"
     And the TUI does not show "base main"
 
-  @givn.added @wip
+  @givn.added
   Scenario: Stack membership updates after a change
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"
@@ -92,7 +92,7 @@ Feature: Stacked inbox
     And the TUI shows "base release"
     And the TUI does not show "stack 7"
 
-  @givn.added @wip
+  @givn.added
   Scenario: The stack unread count aggregates its members
     Given a configured account "personal" with login "octo-personal"
     And an authored pull request "acme/api#42" by "octo-personal"

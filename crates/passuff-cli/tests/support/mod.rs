@@ -18,8 +18,9 @@ use passuff_config::{
 use passuff_core::{
     AccountObservation, ActivityEvent, ActivityRecord, AuthoredPullRequest, CiResult, CiState,
     Comment, CredentialError, CredentialSource, GhLogin, GitHubError, GitHubGateway, Inbox,
-    JsonStateStore, PrState, PullRequestKey, RefreshReport, Review, ReviewComment, SnapshotStore,
-    StateError, SystemCredentialSource, WatchedPullRequest, WatcherState,
+    JsonStateStore, PrState, PullRequestKey, PullRequestStack, RefreshReport, Review,
+    ReviewComment, SnapshotStore, StateError, SystemCredentialSource, WatchedPullRequest,
+    WatcherState,
 };
 use serde_json::Value;
 use tempfile::TempDir;
@@ -63,6 +64,7 @@ pub struct PullRequestFixture {
     pub labels: Vec<String>,
     pub milestone: Option<String>,
     pub base_ref: String,
+    pub stack: Option<PullRequestStack>,
 }
 
 impl PullRequestFixture {
@@ -90,6 +92,7 @@ impl PullRequestFixture {
             labels: Vec::new(),
             milestone: None,
             base_ref: "main".to_string(),
+            stack: None,
         }
     }
 
@@ -109,6 +112,7 @@ impl PullRequestFixture {
             labels: self.labels.clone(),
             milestone: self.milestone.clone(),
             base_ref: self.base_ref.clone(),
+            stack: self.stack.clone(),
             head_oid: self.head_oid.clone(),
             ci: self.ci.clone(),
             comments: self.comments.clone(),

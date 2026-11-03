@@ -278,6 +278,20 @@ impl World {
         self.e2e_refresh_mock().await;
     }
 
+    pub async fn e2e_set_stack(
+        &mut self,
+        key: &str,
+        number: u64,
+        position: u64,
+        size: u64,
+        base: &str,
+    ) {
+        let node = self.e2e_node_mut(key);
+        node["stack"] = json!({ "number": number, "size": size, "baseRefName": base });
+        node["stackEntry"] = json!({ "position": position });
+        self.e2e_refresh_mock().await;
+    }
+
     pub async fn e2e_set_comment(&mut self, key: &str, id: &str, author: &str, body: &str) {
         let node = self.e2e_node_mut(key);
         node["comments"]["nodes"]

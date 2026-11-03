@@ -8,6 +8,8 @@ mod activity_inbox_tui_steps;
 mod e2e_steps;
 #[path = "steps/pr_activity_notification.rs"]
 mod regular_steps;
+#[path = "steps/stacked_inbox.rs"]
+mod stacked_inbox_steps;
 #[path = "steps/watch_status.rs"]
 mod watch_status_steps;
 
