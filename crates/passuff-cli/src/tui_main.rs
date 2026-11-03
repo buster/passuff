@@ -188,7 +188,7 @@ async fn main() {
                 .await
             {
                 Ok(action) => {
-                    apply_action(&mut app, action, &SystemBrowserOpener);
+                    apply_action(&mut app, action, &SystemBrowserOpener::new());
                 }
                 Err(error) => {
                     eprintln!("passuff: state error: {error}");
@@ -397,7 +397,7 @@ async fn run_terminal(
                 }
                 match app.handle_key(key, inbox, &config.core).await {
                     Ok(action) => {
-                        if apply_action(app, action, &SystemBrowserOpener) {
+                        if apply_action(app, action, &SystemBrowserOpener::new()) {
                             break Ok(());
                         }
                     }
