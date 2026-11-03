@@ -76,7 +76,8 @@ Legend: an unchecked box means pending; a checked box is done only when the comm
   - [x] Unit tests: `maps_stack_membership`,
         `incomplete_stack_membership_is_standalone`,
         `rejects_stack_fields_and_retries_without_them`,
-        `queries_are_read_only`; `tui.rs` projection tests.
+        `nodes_stack_error_triggers_retry`, `queries_are_read_only`;
+        `tui.rs` projection tests.
   - [x] COMMIT: `57c4652` -- Batch: `stack-grouping`
 
 - [x] E2e setup: the mock GitHub response branch for `stack`/`stackEntry`
@@ -102,4 +103,4 @@ Evidence:
 - Delta e2e: 1/1 passed.
 - Permanent regular: 123/123 passed.
 - Permanent e2e: 8/8 passed.
-- Unit: `passuff-core` 23 + `passuff-cli` 20.
+- Unit: `passuff-core` 28 + `passuff-cli` 20.

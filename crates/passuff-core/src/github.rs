@@ -1068,4 +1068,57 @@ mod tests {
         assert!(!without_stack_fields(MAIN_QUERY).contains("stackEntry"));
         assert!(!without_stack_fields(NODES_QUERY).contains("stack {"));
     }
+    struct NodesRetryResponder {
+        calls: std::sync::atomic::AtomicUsize,
+    }
+
+    impl wiremock::Respond for NodesRetryResponder {
+        fn respond(&self, request: &wiremock::Request) -> ResponseTemplate {
+            let call = self
+                .calls
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let body: serde_json::Value =
+                serde_json::from_slice(&request.body).unwrap_or_default();
+            let is_nodes = body
+                .get("variables")
+                .and_then(|variables| variables.get("ids"))
+                .is_some();
+            if is_nodes && call == 1 {
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "errors": [{ "message": "Field 'stackEntry' doesn't exist on type 'PullRequest'" }]
+                }))
+            } else if is_nodes {
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "data": { "nodes": [node()] }
+                }))
+            } else {
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "data": { "viewer": { "login": "octo", "pullRequests": {
+                        "pageInfo": { "hasNextPage": false, "endCursor": null },
+                        "nodes": [node()]
+                    } } }
+                }))
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn nodes_stack_error_triggers_retry() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/graphql"))
+            .respond_with(NodesRetryResponder {
+                calls: std::sync::atomic::AtomicUsize::new(0),
+            })
+            .mount(&server)
+            .await;
+        let observation = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &["node-1".to_string()])
+            .await
+            .expect("retry observation");
+        assert_eq!(observation.login, "octo");
+        assert_eq!(observation.pull_requests.len(), 1);
+        assert!(observation.pull_requests[0].stack.is_none());
+    }
+
 }
