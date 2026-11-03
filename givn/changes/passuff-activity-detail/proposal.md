@@ -36,7 +36,7 @@ The terminal inbox shows each activity as a single summary line: an id, an obser
 - Capability: `activity-inbox`.
 - Source topic: none; no ideation seed.
 - Personas: `multi-account-developer`.
-- Review kind: self-review.
+- Review kind: self-review
 - Interface: terminal.
 
 ## Capability Routing
