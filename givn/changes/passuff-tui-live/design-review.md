@@ -1,6 +1,6 @@
 Review kind: self-review
 Author: passuff maintainer (operator)
-Reviewer context: passuff maintainer (operator), same context
+Reviewer context: passuff maintainer (operator)
 
 # Design review: passuff-tui-live
 
