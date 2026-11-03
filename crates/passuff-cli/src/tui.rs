@@ -165,7 +165,7 @@ impl TuiApp {
     }
 
     fn footer_keys(&self) -> &'static str {
-        "j/k move   r read   a read all   q quit"
+        "j/k move   r read   a read all   p scope   q quit"
     }
 
     pub fn render(&self, frame: &mut Frame) {

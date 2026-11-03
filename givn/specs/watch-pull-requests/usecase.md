@@ -83,7 +83,7 @@ The developer starts the watcher, or runs a single check pass.
 - R36: When an account declares its expected login, a credential belonging to a different login, compared case-insensitively, is an account failure that names both logins, and no pull requests are processed for that account.
 - R37: An account configured with only an environment variable or a helper command, with no declared mode, remains a personal access token account.
 - R38: A failed or abandoned browser login is reported as an account failure and is attempted at most once per gh login per process; the remaining accounts are still observed.
-- R39: When a repository allowlist is configured, an authored pull request outside it is not observed, notified, or retained; a watched pull request that falls outside the scope is removed from the state on the next successful observation of its account.
+- R39: When a repository scope excludes a repository, an authored pull request outside it is not observed or notified; already watched pull requests and activity are hidden from the inbox and status but retained in state.
 
 ## Examples
 

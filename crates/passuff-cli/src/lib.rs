@@ -570,4 +570,80 @@ mod tests {
         .expect("watch stopped while a cycle was in flight");
         assert_eq!(outcome.status, 0);
     }
+    struct OnePrGateway;
+
+    #[async_trait::async_trait]
+    impl GitHubGateway for OnePrGateway {
+        async fn observe(
+            &self,
+            _token: &str,
+            _graphql_url: &url::Url,
+            _known_node_ids: &[String],
+        ) -> Result<AccountObservation, GitHubError> {
+            Ok(AccountObservation {
+                login: "octo".to_string(),
+                pull_requests: vec![passuff_core::AuthoredPullRequest {
+                    key: passuff_core::PullRequestKey::new("acme/web".to_string(), 1),
+                    node_id: "node-1".to_string(),
+                    author: "octo".to_string(),
+                    title: "One".to_string(),
+                    url: "https://github.com/acme/web/pull/1".to_string(),
+                    created_at: "2026-11-03T09:00:00Z".to_string(),
+                    updated_at: "2026-11-03T09:00:00Z".to_string(),
+                    state: passuff_core::PrState::Open,
+                    merged: false,
+                    is_draft: false,
+                    assignees: Vec::new(),
+                    labels: Vec::new(),
+                    milestone: None,
+                    base_ref: "main".to_string(),
+                    stack: None,
+                    head_oid: "abc".to_string(),
+                    ci: passuff_core::CiResult::default(),
+                    comments: Vec::new(),
+                    reviews: Vec::new(),
+                    review_comments: Vec::new(),
+                }],
+                checked_at: "2026-11-03T09:00:00Z".to_string(),
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn runtime_reloads_scope_between_cycles() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_path = dir.path().join("config.toml");
+        let state_path = dir.path().join("state.json");
+        let config = |repositories: &str| {
+            format!(
+                "[accounts.personal]\ntoken_env = \"TOKEN\"\n[watch]\nmode = \"selected\"\nrepositories = [{repositories}]\n"
+            )
+        };
+        std::fs::write(&config_path, config("\"acme/api\"")).unwrap();
+        let runtime = CliRuntime::new(CliPorts {
+            gateway: Arc::new(OnePrGateway),
+            store: Arc::new(passuff_core::JsonStateStore::new(state_path.clone())),
+            credentials: Arc::new(FixedCredentials),
+            delivery: Arc::new(NoopDelivery),
+        });
+        let first = runtime.run_watch_cycle(&config_path).await;
+        assert!(!first
+            .report
+            .as_ref()
+            .unwrap()
+            .baselines_recorded
+            .iter()
+            .any(|key| key.to_string() == "acme/web#1"));
+        std::fs::write(&config_path, config("\"acme/web\"")).unwrap();
+        let second = runtime.run_watch_cycle(&config_path).await;
+        assert!(second
+            .report
+            .as_ref()
+            .unwrap()
+            .baselines_recorded
+            .iter()
+            .any(|key| key.to_string() == "acme/web#1"));
+    }
+
 }
+

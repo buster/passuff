@@ -176,6 +176,7 @@ pub struct ScopePicker {
     pub known: Vec<String>,
     pub cursor: usize,
     pub input: String,
+    pub insert: bool,
     pub error: Option<String>,
 }
 
@@ -194,6 +195,7 @@ impl ScopePicker {
             known,
             cursor: 0,
             input: String::new(),
+            insert: false,
             error: None,
         }
     }
@@ -260,7 +262,7 @@ impl ScopePicker {
             lines.push(format!("{cursor} {marker} {repository}"));
         }
         lines.push(String::new());
-        lines.push(format!("Add: {}", self.input));
+        lines.push(format!("Add{}: {}", if self.insert { " (insert)" } else { "" }, self.input));
         if let Some(error) = &self.error {
             lines.push(format!("Error: {error}"));
         }
@@ -299,8 +301,34 @@ impl ScopePicker {
         editor: &ScopeEditor,
     ) -> Result<PickerOutcome, ScopeError> {
         self.error = None;
+        if self.insert {
+            match key.code {
+                KeyCode::Esc => self.insert = false,
+                KeyCode::Enter => {
+                    let repository = self.input.trim().to_string();
+                    if !repository.is_empty() {
+                        match editor.add(&repository) {
+                            Ok(snapshot) => {
+                                self.apply(snapshot);
+                                self.input.clear();
+                                self.insert = false;
+                                self.reload_known(editor);
+                            }
+                            Err(error) => self.error = Some(error.message),
+                        }
+                    }
+                }
+                KeyCode::Backspace => {
+                    self.input.pop();
+                }
+                KeyCode::Char(character) => self.input.push(character),
+                _ => {}
+            }
+            return Ok(PickerOutcome::Continue);
+        }
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => return Ok(PickerOutcome::Close),
+            KeyCode::Char('i') => self.insert = true,
             KeyCode::Down | KeyCode::Char('j') => {
                 if self.cursor + 1 < self.known.len() {
                     self.cursor += 1;
@@ -320,37 +348,20 @@ impl ScopePicker {
                 }
             }
             KeyCode::Char(' ') => {
-                if self.mode == WatchMode::Selected {
-                    if let Some(repository) = self.known.get(self.cursor).cloned() {
-                        let result = if self.selected.contains(&repository.to_ascii_lowercase()) {
-                            editor.deselect(&repository)
-                        } else {
-                            editor.select(&repository)
-                        };
-                        match result {
-                            Ok(snapshot) => self.apply(snapshot),
-                            Err(error) => self.error = Some(error.message),
-                        }
-                    }
-                }
-            }
-            KeyCode::Enter => {
-                let repository = self.input.trim().to_string();
-                if !repository.is_empty() {
-                    match editor.add(&repository) {
-                        Ok(snapshot) => {
-                            self.apply(snapshot);
-                            self.input.clear();
-                            self.reload_known(editor);
-                        }
+                if let Some(repository) = self.known.get(self.cursor).cloned() {
+                    let result = if self.mode == WatchMode::All {
+                        editor.select(&repository)
+                    } else if self.selected.contains(&repository.to_ascii_lowercase()) {
+                        editor.deselect(&repository)
+                    } else {
+                        editor.select(&repository)
+                    };
+                    match result {
+                        Ok(snapshot) => self.apply(snapshot),
                         Err(error) => self.error = Some(error.message),
                     }
                 }
             }
-            KeyCode::Backspace => {
-                self.input.pop();
-            }
-            KeyCode::Char(character) => self.input.push(character),
             _ => {}
         }
         Ok(PickerOutcome::Continue)
@@ -441,4 +452,40 @@ mod tests {
             vec!["acme/api"]
         );
     }
+    fn key(code: KeyCode) -> KeyEvent {
+        KeyEvent::new(code, crossterm::event::KeyModifiers::NONE)
+    }
+
+    #[test]
+    fn picker_switches_mode_toggles_and_accepts_inserted_names() {
+        let dir = tempfile::tempdir().expect("dir");
+        let editor = editor(dir.path());
+        let config = editor.config().expect("config");
+        let mut picker = ScopePicker::new(&config, vec!["acme/api".to_string()]);
+        picker.handle_key(key(KeyCode::Char('m')), &editor).expect("mode");
+        assert_eq!(picker.mode, WatchMode::Selected);
+        picker.handle_key(key(KeyCode::Char(' ')), &editor).expect("toggle");
+        assert!(picker.selected.contains("acme/api"));
+        picker.handle_key(key(KeyCode::Char('i')), &editor).expect("insert");
+        for character in "acme/j".chars() {
+            picker
+                .handle_key(key(KeyCode::Char(character)), &editor)
+                .expect("type");
+        }
+        picker.handle_key(key(KeyCode::Enter), &editor).expect("add");
+        assert!(
+            editor
+                .snapshot()
+                .expect("snapshot")
+                .repositories
+                .iter()
+                .any(|repository| repository == "acme/j")
+        );
+        assert_eq!(
+            picker.handle_key(key(KeyCode::Esc), &editor).expect("esc"),
+            PickerOutcome::Close
+        );
+    }
+
 }
+

@@ -38,7 +38,7 @@ The developer asks passuff for status.
 ## Rules
 
 - S1: Status lists every configured account with its resolved login, or "not resolved" when the account has not been observed, and its last observation time, or "never".
-- S2: Status states the watch scope: "all authored pull requests" or the configured repository allowlist.
+- S2: Status states the watch scope: "all authored pull requests", "watching nothing" for an empty selected scope, or the configured repository list.
 - S3: Status lists every watched pull request with repository and number, human state (open, merged, closed), CI result (passing, failing, pending, not started), and title.
 - S4: Status reports unread and total activity records.
 - S5: Status never contacts GitHub and never changes the watch state, except the version-1 to version-2 rewrite.

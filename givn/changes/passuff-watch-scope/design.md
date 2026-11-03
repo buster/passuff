@@ -133,11 +133,10 @@ pub struct ScopeSnapshot {
 ### Terminal picker and scripted flags
 
 - `ScopePicker` renders the mode, known repositories (`[x]`/`[ ]`), a manual
-  entry buffer, and an error line. Keys: `j`/`k` move, printable characters and
-  backspace edit the buffer, `space` toggles, `m` switches mode, `enter` adds the
-  buffer, `esc`/`q` closes. In all mode every known repository shows `[x]` and
-  `space` is disabled; selecting a repository with `m`/`space` switches to
-  selected mode with that repository.
+  entry buffer, and an error line. Keys: `j`/`k` move, `i` enters insert mode (printable characters and backspace
+  edit the buffer, `esc` leaves insert mode, `enter` adds), `space` toggles in
+  selected mode and selects the highlighted repository in all mode, `m` switches
+  all/selected, `esc`/`q` closes. In all mode every known repository shows `[x]`.
 - `passuff-tui` adds `--scope-select`, `--scope-deselect`, `--scope-mode`,
   `--scope-add`, and `--picker`. Actions apply through `ScopeEditor` before the
   view loads; `--picker` renders the picker screen, otherwise the inbox.

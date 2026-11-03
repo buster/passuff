@@ -40,7 +40,8 @@ state_changes = true
 bot_comments = false
 
 [watch]
-repositories = []          # empty = every authored pull request
+mode = "all"               # all | selected
+repositories = []          # retained selected set; empty selected = watch nothing
 
 [accounts.personal]
 auth = "gh_oauth"
@@ -107,6 +108,11 @@ passuff-tui --snapshot      print one TUI frame and exit
 The terminal inbox groups pull requests that GitHub reports as one stack,
 showing the stack base and size and each member's position; repositories where
 the stacked-PRs preview is unavailable show standalone rows.
+
+Press `p` in the terminal inbox to open the watch-scope picker: `j`/`k` move,
+`space` toggles, `m` switches all/selected, type `owner/name` and press Enter to
+add, and `esc` closes. Scripted snapshots accept `--picker`,
+`--scope-select`, `--scope-deselect`, `--scope-mode`, and `--scope-add`.
 passuff --config PATH       use a specific configuration file
 passuff --state PATH        use a specific state file
 passuff --verbose           enable diagnostic logs on stderr
