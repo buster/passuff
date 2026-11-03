@@ -24,6 +24,7 @@
 | R-018 | The global watch scope cannot express per-account exceptions. | Medium | Low | Deferred; the allowlist is one operator-level list and status states it explicitly. |
 | R-019 | The interactive TUI is not driven through a PTY in CI. | Medium | Low | `--snapshot` asserts the real renderer; key paths are unit/Gherkin tested; a manual terminal smoke covers raw mode and resize. |
 | R-020 | The TUI ships in the CLI package rather than a separate crate. | Low | Low | The core boundary is unchanged; a future split is a packaging change with the same `InboxService` contract. |
+| R-021 | The stacked-PRs preview is unavailable for a repository, or GitHub rejects the stack fields. | Medium | Low | Observation retries once without the stack fields; rows render standalone; the account's other observations and state remain. |
 
 ## Technical debt
 

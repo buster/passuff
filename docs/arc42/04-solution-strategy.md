@@ -3,8 +3,9 @@
 ## Key decisions
 
 - Poll the pull requests authored by each configured account through one
-  GraphQL query per account per cycle. This removes the need for a public
-  endpoint and makes the "only my pull requests" filter deterministic. See
+  GraphQL query per account per cycle; a rejected stack-field query retries
+  once without the stack fields. This removes the need for a public endpoint
+  and makes the "only my pull requests" filter deterministic. See
   [ADR-0001](adr/ADR-0001-poll-authored-pull-requests.md).
 - Keep classification pure and separate from I/O. The classifier receives the
   previous observation and the current snapshot and returns activity events;
@@ -16,6 +17,9 @@
   played by a system player. No hosted push channel, audio library, or
   third-party account is involved. See
   [ADR-0002](adr/ADR-0002-local-desktop-notifications.md).
+- Record GitHub-reported stack membership read-only with the observation and
+  project stack groups in the terminal inbox. The flat CLI inbox and status are
+  unchanged. See [chapter 05](05-building-block-view.md).
 - Persist a bounded activity history in the watch state and expose a read model
   (`InboxService`) to the CLI and the TUI. Status, inbox, and read never
   contact GitHub. See [ADR-0005](adr/ADR-0005-state-version-2-migration.md).

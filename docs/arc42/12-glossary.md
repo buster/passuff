@@ -7,4 +7,4 @@ The domain model, including the relationships between accounts, authored pull
 requests, watched pull requests, notifications, and activity events, lives in
 [the domain model](../domain-model.md).
 
-The project glossary is the vocabulary authority: [docs/glossary.md](../glossary.md). Activity record, inbox, read state, and watch scope are defined there.
+The project glossary is the vocabulary authority: [docs/glossary.md](../glossary.md). All project terms, including activity record, inbox, read state, watch scope, and the stack terms, are defined there.

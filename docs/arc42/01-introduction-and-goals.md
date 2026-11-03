@@ -23,13 +23,15 @@ The essential requirements are:
   recorded activity is unread.
 - Retain a bounded activity history and let the developer mark it read.
 - Provide a full-screen terminal UI over the same inbox for browsing and acknowledging activity.
+- Show stacked pull requests together with their stack position, size, base, and grouped activity.
 - Run on macOS and Linux with desktop notifications and configurable sound.
 - Keep credentials out of configuration and persisted state.
 
-The authoritative behaviour is in three use cases:
+The authoritative behaviour is in four use cases:
 [`watch-pull-requests`](../../givn/specs/watch-pull-requests/usecase.md),
-[`inspect-watch-status`](../../givn/specs/inspect-watch-status/usecase.md), and
-[`review-activity-inbox`](../../givn/specs/review-activity-inbox/usecase.md),
+[`inspect-watch-status`](../../givn/specs/inspect-watch-status/usecase.md),
+[`review-activity-inbox`](../../givn/specs/review-activity-inbox/usecase.md), and
+[`review-pull-request-stacks`](../../givn/specs/review-pull-request-stacks/usecase.md),
 with their feature files under `givn/specs/`.
 
 ## Quality goals

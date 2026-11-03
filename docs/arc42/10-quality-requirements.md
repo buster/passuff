@@ -50,3 +50,4 @@ flowchart LR
 | QS-018 | Bounded state | The 501st activity record is recorded. | Exactly 500 records remain and the oldest is gone. |
 | QS-019 | Scope | A watched PR falls outside a newly configured repository allowlist. | It is not notified, is pruned from the state, and status does not list it. |
 | QS-020 | Usability | The developer opens the inbox TUI with two events. | The snapshot shows counts, accounts, scope, the PR, and both events; `r` marks the selected one, `a` all, `q` quits. |
+| QS-021 | Reviewability | The developer opens the inbox for a stack of two pull requests. | The snapshot shows one stack group with base, size, positions, and aggregated unread; a standalone pull request stays flat. |

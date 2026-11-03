@@ -23,3 +23,8 @@ that needs attention.
 - Is not interrupted by their own comments or reviews, code pushes, metadata
   churn, bot comments (unless enabled), or other people's pull requests.
 - Can stop the watcher and still read what happened.
+
+## Running record
+
+- 2026-11-03 — inbox-scope-and-stacks: adopted the frame; wants the watch scope
+  edited from the inbox and stacked pull requests reviewed as one unit.

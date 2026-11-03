@@ -45,13 +45,15 @@ flowchart LR
 | Credentials | Environment variable, `/bin/sh -c` command output, permission-checked token file, or gh OAuth session | Read |
 | Interactive authentication | gh CLI browser login (`gh auth login --web`) | Outbound, interactive |
 | Terminal transcript | Standard output and standard error | Write |
+| GitHub stack metadata | GraphQL `stack` and `stackEntry` fields on authored pull requests | Read-only, preview-gated |
 | Status, inbox, read, and TUI | Terminal output over the local configuration and state; no GitHub call | Read and write state |
 
 ## Scope boundaries
 
 Inside: authored pull request observation, activity classification, grouping,
-desktop delivery, sound, configuration, state, and the CLI.
+stack membership recording, stacked inbox grouping, desktop delivery, sound,
+configuration, state, and the CLI.
 
-Outside: GitHub mutations, webhooks, a hosted service, review of code diffs,
-non-authored pull requests, remote push channels, Windows, and a graphical
-interface.
+Outside: GitHub mutations, stack creation or modification, webhooks, a hosted
+service, review of code diffs, non-authored pull requests, remote push channels,
+Windows, and a graphical interface.

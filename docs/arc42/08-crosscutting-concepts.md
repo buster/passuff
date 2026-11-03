@@ -89,6 +89,15 @@ ratatui's `TestBackend` and prints the frame for scripts and E2E; interactive mo
 uses crossterm raw mode and the alternate screen. No token, body, command text,
 or enum name is rendered.
 
+## Stack metadata
+
+GitHub reports stack number, size, base, and position on pull requests where
+the stacked-PRs preview is enabled. The observation records the membership with
+the watched pull request; incomplete or rejected metadata degrades to a
+standalone row. A GraphQL error naming the stack fields retries the account
+observation once without them. Grouping is a read-only terminal projection over
+`InboxView`; the CLI's flat inbox is unchanged.
+
 ## Security
 
 The watcher performs read-only GraphQL requests with the minimum scopes needed

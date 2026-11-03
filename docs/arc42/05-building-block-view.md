@@ -58,13 +58,14 @@ flowchart TB
 | `passuff-core` | UI-agnostic observation, classification, credential resolution, state, `InboxService`, and the `RefreshReport` contract. |
 | `PassuffCore` | Expose `with_ports` and `refresh`; run one cycle over all accounts; validate expected logins; return notifications, account failures, and baselines. |
 | `ActivityClassifier` | Pure classification of comments, reviews, review comments, CI transitions, state transitions, short-lived PRs, and reopen resets. |
-| `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for one account observation. |
+| `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for one account observation, including GitHub-reported stack membership. |
+| `PullRequestStack` | Value object carrying the stack number, size, position, and ultimate base on a watched pull request; absent means standalone. |
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
 | `CredentialSource` / `SystemCredentialSource` | Port and environment/command/file/gh credential resolution; tokens never persisted. |
 | `passuff-cli` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |
 | `InboxService` / `Inbox` | Build the status and activity read model over the state store and mark activity read. |
 | `InboxCli` | Render `status`, `inbox`, and `read` from `InboxService`; no GitHub calls. |
-| `TuiApp` / `passuff-tui` | Render the inbox with ratatui, handle keys, and mark records read through `InboxService`; `--snapshot` prints one frame. |
+| `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, handle keys, and mark records read through `InboxService`; `--snapshot` prints one frame. |
 | `TranscriptRenderer` | Render notifications, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real `notify-rust` delivery; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |

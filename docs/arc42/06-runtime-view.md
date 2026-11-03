@@ -189,6 +189,22 @@ sequenceDiagram
     CLI->>CLI: render accounts, scope, watched PRs, unread/total
 ```
 
+## Scenario: Stacked inbox
+
+**Trigger:** The developer opens the terminal inbox with watched pull requests
+that belong to a stack.
+
+1. The observation records the stack number, size, base, and the pull request's
+   position on each watched pull request.
+2. `InboxService::view` returns the membership with the pull request view.
+3. `TuiApp` groups members by repository and stack number, sorts by position,
+   and renders one summary line per stack with base, size, and unread count.
+4. Activity records stay newest first and carry the stack label; the group
+   unread count sums its members.
+5. A pull request without metadata, or an account whose GraphQL stack field is
+   rejected, renders standalone; the observation retries once without the stack
+   fields.
+
 ## Scenario: Mark activity read
 
 **Trigger:** The developer marks one record or all records read.
