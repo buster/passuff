@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::Parser;
-use passuff_cli::delivery::DesktopDelivery;
 use passuff_cli::inbox_cli::InboxCli;
 use passuff_cli::sound::SystemSoundPlayer;
 use passuff_cli::{system_credentials, CliPorts, CliRuntime};
@@ -88,14 +87,5 @@ async fn main() {
 fn build_delivery(
     sound: Arc<SystemSoundPlayer>,
 ) -> Arc<dyn passuff_cli::delivery::NotificationDelivery> {
-    #[cfg(feature = "test-support")]
-    {
-        if let Ok(sink) = std::env::var("PASSUFF_NOTIFICATION_SINK") {
-            return Arc::new(passuff_cli::delivery::RecordingDelivery::with_sink(
-                sound,
-                PathBuf::from(sink),
-            ));
-        }
-    }
-    Arc::new(DesktopDelivery::new(sound))
+    passuff_cli::delivery::build_delivery(sound)
 }

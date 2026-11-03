@@ -108,14 +108,22 @@ passuff read <id>           mark one activity record read
 passuff read --all          mark every activity record read
 passuff-tui                 open the inbox in a full-screen terminal UI
 passuff-tui --snapshot      print one TUI frame and exit
+passuff-tui --snapshot --observe  observe once, then print one frame
 
 The terminal inbox groups pull requests that GitHub reports as one stack,
 showing the stack base and size and each member's position; repositories where
 the stacked-PRs preview is unavailable show standalone rows.
 
+The open inbox observes the configured accounts itself: it asks GitHub for a
+cheap change signal, runs a full check only when something changed, and shows
+the result without a keypress or a second process. The delay follows the
+account's remaining API allowance, so a busy account updates more slowly than
+an idle one. Running `passuff` (the watch command) at the same time is
+redundant: both observe and write the same state.
+
 `Tab` switches focus between the watched pull requests and the activity list;
-`j`/`k` and the arrow keys move in the focused pane, the watched table scrolls,
-and the inbox refreshes automatically every second. Press `p` to open the
+`j`/`k` and the arrow keys move in the focused pane and the watched table
+scrolls. Press `p` to open the
 watch-scope picker: `j`/`k` move,
 `space` toggles, `m` switches all/selected, type `owner/name` and press Enter to
 add, and `esc` closes. Scripted snapshots accept `--picker`,

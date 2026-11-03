@@ -6,8 +6,8 @@ use thiserror::Error;
 use url::Url;
 
 use crate::domain::{
-    AccountFailureKind, AuthoredPullRequest, CiResult, CiState, Comment, PrState, PullRequestKey,
-    PullRequestStack, Review, ReviewComment,
+    AccountFailureKind, ApiAllowance, AuthoredPullRequest, CiResult, CiState, Comment, PrState,
+    ProbePullRequest, PullRequestKey, PullRequestStack, Review, ReviewComment,
 };
 
 #[derive(Debug, Clone)]
@@ -15,6 +15,14 @@ pub struct AccountObservation {
     pub login: String,
     pub pull_requests: Vec<AuthoredPullRequest>,
     pub checked_at: String,
+}
+
+/// One account's cheap change probe: open pull requests without observations.
+#[derive(Debug, Clone)]
+pub struct AccountProbe {
+    pub login: String,
+    pub pull_requests: Vec<ProbePullRequest>,
+    pub allowance: Option<ApiAllowance>,
 }
 
 #[derive(Debug, Error, Clone)]
@@ -57,6 +65,10 @@ pub trait GitHubGateway: Send + Sync {
         graphql_url: &Url,
         known_node_ids: &[String],
     ) -> Result<AccountObservation, GitHubError>;
+
+    /// Query the open authored pull requests and the GraphQL allowance without
+    /// building observations.
+    async fn probe(&self, token: &str, graphql_url: &Url) -> Result<AccountProbe, GitHubError>;
 }
 
 #[derive(Debug, Clone)]
@@ -143,6 +155,10 @@ impl GitHubGateway for GitHubApiAdapter {
             }
             result => result,
         }
+    }
+
+    async fn probe(&self, token: &str, graphql_url: &Url) -> Result<AccountProbe, GitHubError> {
+        self.probe_with(token, graphql_url).await
     }
 }
 
@@ -253,6 +269,109 @@ impl GitHubApiAdapter {
             login,
             pull_requests,
             checked_at: Utc::now().to_rfc3339(),
+        })
+    }
+
+    async fn probe_with(
+        &self,
+        token: &str,
+        graphql_url: &Url,
+    ) -> Result<AccountProbe, GitHubError> {
+        let mut login: Option<String> = None;
+        let mut pull_requests = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        let mut allowance: Option<ApiAllowance> = None;
+        let mut after: Option<String> = None;
+
+        for _ in 0..10 {
+            let body = self
+                .post(
+                    token,
+                    graphql_url,
+                    PROBE_QUERY,
+                    serde_json::json!({ "after": after }),
+                )
+                .await?;
+            let response: GqlProbeResponse = serde_json::from_str(&body)
+                .map_err(|error| GitHubError::Malformed(error.to_string()))?;
+            if let Some(errors) = response.errors.as_ref().filter(|errors| !errors.is_empty()) {
+                if response.data.is_none() {
+                    return Err(GitHubError::GraphQl(
+                        errors
+                            .iter()
+                            .map(|error| error.message.clone())
+                            .collect::<Vec<_>>()
+                            .join("; "),
+                    ));
+                }
+            }
+            let data = response
+                .data
+                .ok_or_else(|| GitHubError::Malformed("missing data".to_string()))?;
+            if let Some(rate) = data.rate_limit {
+                let cost = rate.cost.min(u64::from(u32::MAX)) as u32;
+                let remaining = rate.remaining.min(u64::from(u32::MAX)) as u32;
+                allowance = Some(match allowance {
+                    Some(previous) => ApiAllowance {
+                        cost: previous.cost.saturating_add(cost),
+                        remaining,
+                        reset_at: rate.reset_at,
+                    },
+                    None => ApiAllowance {
+                        cost,
+                        remaining,
+                        reset_at: rate.reset_at,
+                    },
+                });
+            }
+            login.get_or_insert_with(|| data.viewer.login.clone());
+            let Some(connection) = data.viewer.pull_requests else {
+                break;
+            };
+            for node in connection.nodes {
+                if !seen.insert(node.id.clone()) {
+                    continue;
+                }
+                let ci_state = node
+                    .commits
+                    .nodes
+                    .first()
+                    .and_then(|commit| commit.commit.status_check_rollup.as_ref())
+                    .map(|rollup| map_ci(rollup).state);
+                pull_requests.push(ProbePullRequest {
+                    repository: node.repository.name_with_owner,
+                    node_id: node.id,
+                    updated_at: node.updated_at,
+                    head_oid: node
+                        .commits
+                        .nodes
+                        .first()
+                        .map(|commit| commit.commit.oid.clone())
+                        .unwrap_or_default(),
+                    ci_state,
+                });
+            }
+            let page_info = connection.page_info.unwrap_or_default();
+            if page_info.has_next_page {
+                match page_info.end_cursor {
+                    Some(cursor) if !cursor.is_empty() => after = Some(cursor),
+                    _ => break,
+                }
+            } else {
+                break;
+            }
+        }
+
+        let login =
+            login.ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
+        tracing::debug!(
+            pull_requests = pull_requests.len(),
+            "GitHub change probe parsed"
+        );
+        Ok(AccountProbe {
+            login,
+            pull_requests,
+            allowance,
         })
     }
 }
@@ -485,6 +604,24 @@ query($ids: [ID!]!) {
 }
 "#;
 
+const PROBE_QUERY: &str = r#"
+query($after: String) {
+  rateLimit { cost remaining resetAt }
+  viewer {
+    login
+    pullRequests(first: 100, after: $after, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id
+        updatedAt
+        repository { nameWithOwner }
+        commits(last: 1) { nodes { commit { oid statusCheckRollup { state } } } }
+      }
+    }
+  }
+}
+"#;
+
 #[derive(Debug, Deserialize)]
 struct GqlResponse {
     data: Option<GqlData>,
@@ -686,6 +823,50 @@ struct GqlRollup {
 struct GqlContexts {
     #[serde(default)]
     nodes: Vec<GqlContext>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlProbeResponse {
+    data: Option<GqlProbeData>,
+    errors: Option<Vec<GqlError>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlProbeData {
+    #[serde(rename = "rateLimit")]
+    rate_limit: Option<GqlRateLimit>,
+    viewer: GqlProbeViewer,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlRateLimit {
+    cost: u64,
+    remaining: u64,
+    #[serde(rename = "resetAt")]
+    reset_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlProbeViewer {
+    login: String,
+    #[serde(rename = "pullRequests")]
+    pull_requests: Option<GqlProbeConnection>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlProbeConnection {
+    nodes: Vec<GqlProbePr>,
+    #[serde(rename = "pageInfo")]
+    page_info: Option<GqlPageInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlProbePr {
+    id: String,
+    #[serde(rename = "updatedAt")]
+    updated_at: String,
+    repository: GqlRepo,
+    commits: GqlCommits,
 }
 
 #[derive(Debug, Deserialize)]

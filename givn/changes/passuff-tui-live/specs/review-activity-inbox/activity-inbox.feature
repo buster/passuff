@@ -2,7 +2,7 @@
 
 Feature: Activity inbox
 
-  @givn.modified @e2e @wip
+  @givn.modified @e2e
   Scenario: Developer opens the inbox TUI
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

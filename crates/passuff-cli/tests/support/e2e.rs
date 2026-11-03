@@ -224,8 +224,11 @@ impl World {
         let Some(server) = self.e2e_server.as_ref() else {
             return;
         };
+        let reset_at =
+            (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
         let body = json!({
             "data": {
+                "rateLimit": { "cost": 1, "remaining": 5000, "resetAt": reset_at },
                 "viewer": {
                     "login": self.e2e_login,
                     "pullRequests": {
@@ -294,6 +297,7 @@ impl World {
 
     pub async fn e2e_set_comment(&mut self, key: &str, id: &str, author: &str, body: &str) {
         let node = self.e2e_node_mut(key);
+        node["updatedAt"] = json!("2026-11-02T12:00:01Z");
         node["comments"]["nodes"]
             .as_array_mut()
             .expect("comments")
@@ -479,6 +483,64 @@ impl World {
         self.last_status = output.status.code().unwrap_or(3);
         self.last_transcript = String::from_utf8_lossy(&output.stdout).to_string();
         self.e2e_write_evidence();
+    }
+
+    pub async fn e2e_run_tui_observe(&mut self) {
+        let config = self
+            .e2e_config_dir
+            .as_ref()
+            .expect("e2e configured")
+            .path()
+            .join("config.toml");
+        let state = self.e2e_state_path.clone().expect("e2e state");
+        let mut command = Command::new(env!("CARGO_BIN_EXE_passuff-tui"));
+        command
+            .arg("--snapshot")
+            .arg("--observe")
+            .arg("--config")
+            .arg(config)
+            .arg("--state")
+            .arg(state);
+        self.configure_child(&mut command);
+        let output = command.output().expect("run passuff-tui observe");
+        self.last_status = output.status.code().unwrap_or(3);
+        self.last_transcript = String::from_utf8_lossy(&output.stdout).to_string();
+        self.e2e_write_evidence();
+    }
+
+    pub async fn e2e_run_tui_observe_for(&mut self, millis: u64) {
+        let config = self
+            .e2e_config_dir
+            .as_ref()
+            .expect("e2e configured")
+            .path()
+            .join("config.toml");
+        let state = self.e2e_state_path.clone().expect("e2e state");
+        let mut command = Command::new(env!("CARGO_BIN_EXE_passuff-tui"));
+        command
+            .arg("--snapshot")
+            .arg("--observe-for")
+            .arg(millis.to_string())
+            .arg("--config")
+            .arg(config)
+            .arg("--state")
+            .arg(state)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        self.configure_child(&mut command);
+        let child = command.spawn().expect("spawn passuff-tui observe-for");
+        tokio::time::sleep(Duration::from_millis(1500)).await;
+        self.e2e_apply_pending_comment().await;
+        let output = child.wait_with_output().expect("wait passuff-tui observe-for");
+        self.last_status = output.status.code().unwrap_or(3);
+        self.last_transcript = String::from_utf8_lossy(&output.stdout).to_string();
+        self.e2e_write_evidence();
+    }
+
+    async fn e2e_apply_pending_comment(&mut self) {
+        if let Some((key, id, author, body)) = self.e2e_pending_comment.take() {
+            self.e2e_set_comment(&key, &id, &author, &body).await;
+        }
     }
 
     pub async fn e2e_run_status(&mut self) {

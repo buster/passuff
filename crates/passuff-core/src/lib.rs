@@ -13,10 +13,11 @@ pub use credential::{CredentialError, CredentialSource, GhLogin, SystemCredentia
 pub use cycle::PassuffCore;
 pub use domain::{
     Account, AccountFailure, AccountFailureKind, AccountState, ActivityEvent, ActivityRecord,
-    AuthoredPullRequest, Baseline, CiResult, CiState, Comment, CoreError, CurrentObservation,
+    ApiAllowance, AuthoredPullRequest, Baseline, ChangeProbe, ChangeSignal, CiResult, CiState,
+    Comment, CoreError, CurrentObservation, ProbePullRequest,
     LoginSet, Notification, PrState, PullRequestKey, PullRequestStack, RefreshReport, Review,
     ReviewComment, ScopeSnapshot, StateError, WatchedPullRequest, WatcherState,
 };
-pub use github::{AccountObservation, GitHubApiAdapter, GitHubError, GitHubGateway};
+pub use github::{AccountObservation, AccountProbe, GitHubApiAdapter, GitHubError, GitHubGateway};
 pub use inbox::{AccountView, Inbox, InboxService, InboxView, PullRequestView, ReadOutcome};
 pub use state::{JsonStateStore, SnapshotStore};

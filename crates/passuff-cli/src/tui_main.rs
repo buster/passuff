@@ -1,18 +1,22 @@
 use std::io::IsTerminal;
-use std::time::Duration;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 
 use clap::Parser;
-use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{read, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use passuff_cli::delivery::build_delivery;
+use passuff_cli::live::{ObservationSession, ObservationUpdate};
 use passuff_cli::scope::{ScopeEditor, ScopePicker};
+use passuff_cli::sound::SystemSoundPlayer;
 use passuff_cli::tui::{load_view, TuiAction, TuiApp};
+use passuff_cli::{system_credentials, CliPorts, CliRuntime};
 use passuff_config::{AppConfig, ConfigLoader, WatchMode};
-use passuff_core::{Inbox, JsonStateStore, SnapshotStore};
+use passuff_core::{GitHubApiAdapter, Inbox, JsonStateStore, SnapshotStore};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
@@ -29,6 +33,10 @@ struct Args {
     state: Option<PathBuf>,
     #[arg(long)]
     snapshot: bool,
+    #[arg(long)]
+    observe: bool,
+    #[arg(long, value_name = "MILLIS")]
+    observe_for: Option<u64>,
     #[arg(long, value_name = "OWNER/REPO")]
     scope_select: Option<String>,
     #[arg(long, value_name = "OWNER/REPO")]
@@ -114,7 +122,7 @@ async fn main() {
             std::process::exit(2);
         }
     }
-    let config = ConfigLoader::load(&config_path);
+    let mut config = ConfigLoader::load(&config_path);
     let inbox = Inbox::new(Arc::new(JsonStateStore::new(state_path.clone())));
     let view = match load_view(&config, &inbox).await {
         Ok(view) => view,
@@ -124,8 +132,36 @@ async fn main() {
         }
     };
     let mut app = TuiApp::new(view);
+
+    if args.observe || args.observe_for.is_some() {
+        let active = config.as_ref().expect("validated configuration").clone();
+        let mut session = match ObservationSession::open(
+            runtime_for(&config_path, &state_path),
+            active.clone(),
+            config_path.clone(),
+        )
+        .await
+        {
+            Ok(session) => session,
+            Err(message) => {
+                eprintln!("{message}");
+                std::process::exit(3);
+            }
+        };
+        let first = session.tick().await;
+        config = Ok(first.config.clone());
+        if let Err(error) = app.reload(&inbox, &first.config.core).await {
+            eprintln!("passuff: state error: {error}");
+            std::process::exit(3);
+        }
+        app.set_status(first.failure);
+        if let Some(millis) = args.observe_for {
+            observe_for(&mut app, &inbox, &mut session, first.next_delay, millis).await;
+        }
+    }
+
     if let Some(keys) = args.keys.as_deref() {
-        let config = config.as_ref().expect("validated configuration").clone();
+        let active = config.as_ref().expect("validated configuration").clone();
         for key in keys.split(',').map(str::trim).filter(|key| !key.is_empty()) {
             let code = match key {
                 "tab" => KeyCode::Tab,
@@ -141,7 +177,11 @@ async fn main() {
                 }
             };
             if let Err(error) = app
-                .handle_key(KeyEvent::new(code, KeyModifiers::NONE), &inbox, &config.core)
+                .handle_key(
+                    KeyEvent::new(code, KeyModifiers::NONE),
+                    &inbox,
+                    &active.core,
+                )
                 .await
             {
                 eprintln!("passuff: state error: {error}");
@@ -166,11 +206,54 @@ async fn main() {
         std::process::exit(3);
     }
     let config = config.expect("validated configuration");
-    if let Err(message) =
-        run_terminal(&mut app, &inbox, config, &editor, &state_store, args.picker).await
+    if let Err(message) = run_terminal(
+        &mut app,
+        &inbox,
+        config,
+        &editor,
+        &state_store,
+        args.picker,
+        runtime_for(&config_path, &state_path),
+        config_path,
+    )
+    .await
     {
         eprintln!("{message}");
         std::process::exit(3);
+    }
+}
+
+fn runtime_for(config_path: &Path, state_path: &Path) -> CliRuntime {
+    let sound = Arc::new(SystemSoundPlayer::new());
+    CliRuntime::new(CliPorts {
+        gateway: Arc::new(GitHubApiAdapter::new()),
+        store: Arc::new(JsonStateStore::new(state_path.to_path_buf())),
+        credentials: system_credentials(false),
+        delivery: build_delivery(sound),
+    })
+    .with_config_path(config_path.to_path_buf())
+}
+
+async fn observe_for(
+    app: &mut TuiApp,
+    inbox: &Inbox,
+    session: &mut ObservationSession,
+    mut delay: Duration,
+    millis: u64,
+) {
+    let deadline = std::time::Instant::now() + Duration::from_millis(millis);
+    loop {
+        let now = std::time::Instant::now();
+        if now + delay > deadline {
+            break;
+        }
+        tokio::time::sleep(delay).await;
+        let update = session.tick().await;
+        if app.reload(inbox, &update.config.core).await.is_err() {
+            break;
+        }
+        app.set_status(update.failure);
+        delay = update.next_delay;
     }
 }
 
@@ -183,30 +266,37 @@ async fn known_repositories(
     editor.known_repositories(config, &state)
 }
 
-async fn reload_view(
-    app: &mut TuiApp,
-    inbox: &Inbox,
-    config_path: &std::path::Path,
-) -> Result<AppConfig, String> {
-    let config = ConfigLoader::load(config_path)
-        .map_err(|error| format!("passuff-tui: configuration error: {error}"))?;
-    let view = load_view(&Ok(config.clone()), inbox)
-        .await
-        .map_err(|error| error.message)?;
-    *app = TuiApp::new(view);
-    Ok(config)
+fn spawn_input() -> tokio::sync::mpsc::UnboundedReceiver<Event> {
+    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+    std::thread::spawn(move || loop {
+        match read() {
+            Ok(event) => {
+                if sender.send(event).is_err() {
+                    break;
+                }
+            }
+            Err(_) => break,
+        }
+    });
+    receiver
 }
 
-async fn next_event(timeout: Duration) -> Result<Option<Event>, String> {
-    tokio::task::spawn_blocking(move || {
-        if poll(timeout).map_err(|error| format!("passuff-tui: event: {error}"))? {
-            Ok(Some(read().map_err(|error| format!("passuff-tui: event: {error}"))?))
-        } else {
-            Ok(None)
+fn spawn_observation(
+    mut session: ObservationSession,
+) -> tokio::sync::mpsc::UnboundedReceiver<ObservationUpdate> {
+    let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+    tokio::spawn(async move {
+        let mut delay = Duration::ZERO;
+        loop {
+            tokio::time::sleep(delay).await;
+            let update = session.tick().await;
+            delay = update.next_delay;
+            if sender.send(update).is_err() {
+                break;
+            }
         }
-    })
-    .await
-    .map_err(|error| format!("passuff-tui: event task: {error}"))?
+    });
+    receiver
 }
 
 async fn run_terminal(
@@ -216,6 +306,8 @@ async fn run_terminal(
     editor: &ScopeEditor,
     store: &JsonStateStore,
     start_picker: bool,
+    runtime: CliRuntime,
+    config_path: PathBuf,
 ) -> Result<(), String> {
     enable_raw_mode().map_err(|error| format!("passuff-tui: raw mode: {error}"))?;
     let mut stdout = std::io::stdout();
@@ -230,56 +322,53 @@ async fn run_terminal(
             return Err(format!("passuff-tui: terminal: {error}"));
         }
     };
+    let session = ObservationSession::open(runtime, config.clone(), config_path)
+        .await
+        .map_err(|message| {
+            restore(&mut terminal);
+            message
+        })?;
+    let mut input = spawn_input();
+    let mut observation = spawn_observation(session);
     let mut known = known_repositories(editor, &config, store).await;
     let mut picker = start_picker.then(|| ScopePicker::new(&config, known.clone()));
     let outcome = loop {
-        if let Some(active) = picker.as_mut() {
-            if let Err(error) = terminal.draw(|frame| active.render(frame)) {
-                break Err(format!("passuff-tui: draw: {error}"));
-            }
-            let event = match next_event(Duration::from_millis(1000)).await {
-                Ok(event) => event,
-                Err(error) => break Err(error),
-            };
-            let Some(Event::Key(key)) = event else { continue };
-            match active.handle_key(key, editor) {
-                Ok(passuff_cli::scope::PickerOutcome::Close) => {
-                    picker = None;
-                }
-                Ok(passuff_cli::scope::PickerOutcome::Continue) => {}
-                Err(error) => {
-                    eprintln!("passuff-tui: {}", error.message);
-                }
-            }
-            match reload_view(app, inbox, editor.config_path()).await {
-                Ok(reloaded) => {
-                    config = reloaded;
-                    known = known_repositories(editor, &config, store).await;
-                    if let Some(active) = picker.as_mut() {
-                        active.known = known.clone();
-                        active.reload(&config);
-                    }
-                }
-                Err(message) => break Err(message),
-            }
-            continue;
-        }
-
-        if let Err(error) = terminal.draw(|frame| app.render(frame)) {
+        let drawn = match picker.as_mut() {
+            Some(active) => terminal.draw(|frame| active.render(frame)),
+            None => terminal.draw(|frame| app.render(frame)),
+        };
+        if let Err(error) = drawn {
             break Err(format!("passuff-tui: draw: {error}"));
         }
-        let event = match next_event(Duration::from_millis(1000)).await {
-            Ok(event) => event,
-            Err(error) => break Err(error),
-        };
-        match event {
-            None => {
-                if let Err(error) = app.reload(inbox, &config.core).await {
-                    break Err(format!("passuff: state error: {error}"));
+        tokio::select! {
+            maybe_event = input.recv() => {
+                let Some(Event::Key(key)) = maybe_event else { continue };
+                if let Some(active) = picker.as_mut() {
+                    match active.handle_key(key, editor) {
+                        Ok(passuff_cli::scope::PickerOutcome::Close) => {
+                            picker = None;
+                        }
+                        Ok(passuff_cli::scope::PickerOutcome::Continue) => {}
+                        Err(error) => {
+                            eprintln!("passuff-tui: {}", error.message);
+                        }
+                    }
+                    match ConfigLoader::load(editor.config_path()) {
+                        Ok(reloaded) => {
+                            config = reloaded;
+                            known = known_repositories(editor, &config, store).await;
+                            if let Some(active) = picker.as_mut() {
+                                active.known = known.clone();
+                                active.reload(&config);
+                            }
+                            if let Err(error) = app.reload(inbox, &config.core).await {
+                                break Err(format!("passuff: state error: {error}"));
+                            }
+                        }
+                        Err(error) => break Err(format!("passuff-tui: configuration error: {error}")),
+                    }
+                    continue;
                 }
-                continue;
-            }
-            Some(Event::Key(key)) => {
                 if matches!(key.code, KeyCode::Char('p')) {
                     picker = Some(ScopePicker::new(&config, known.clone()));
                     continue;
@@ -290,7 +379,19 @@ async fn run_terminal(
                     Err(error) => break Err(format!("passuff: state error: {error}")),
                 }
             }
-            Some(_) => continue,
+            maybe_update = observation.recv() => {
+                let Some(update) = maybe_update else { continue };
+                config = update.config;
+                known = known_repositories(editor, &config, store).await;
+                if let Some(active) = picker.as_mut() {
+                    active.known = known.clone();
+                    active.reload(&config);
+                }
+                if let Err(error) = app.reload(inbox, &config.core).await {
+                    break Err(format!("passuff: state error: {error}"));
+                }
+                app.set_status(update.failure);
+            }
         }
     };
     restore(&mut terminal);

@@ -7,6 +7,11 @@ async fn opens(world: &mut World) {
     world.run_tui_snapshot().await;
 }
 
+#[when(regex = r#"^the developer opens the inbox TUI observing the account$"#)]
+async fn opens_observing(world: &mut World) {
+    world.e2e_run_tui_observe().await;
+}
+
 #[when(regex = r#"^the developer starts the inbox TUI binary$"#)]
 async fn starts_binary(world: &mut World) {
     world.run_tui_binary();

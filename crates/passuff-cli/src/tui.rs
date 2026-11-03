@@ -113,6 +113,7 @@ pub struct TuiApp {
     focus: Pane,
     pr_selected: usize,
     selected_pr: Option<PullRequestKey>,
+    status: Option<String>,
 }
 
 impl TuiApp {
@@ -123,7 +124,13 @@ impl TuiApp {
             focus: Pane::Activity,
             pr_selected: 0,
             selected_pr: None,
+            status: None,
         }
+    }
+
+    /// Show a failure line in the footer until the next successful update.
+    pub fn set_status(&mut self, status: Option<String>) {
+        self.status = status;
     }
 
     pub fn focus(&self) -> Pane {
@@ -276,12 +283,13 @@ impl TuiApp {
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
 
+        let controls_height = if self.status.is_some() { 4 } else { 3 };
         let chunks = Layout::vertical([
             Constraint::Length(2),
             Constraint::Length(1),
             Constraint::Percentage(30),
             Constraint::Min(5),
-            Constraint::Length(3),
+            Constraint::Length(controls_height),
         ])
         .split(inner);
 
@@ -455,10 +463,22 @@ impl TuiApp {
         let controls = Block::bordered()
             .title(" Controls ")
             .border_style(Style::new().fg(Color::Gray));
-        frame.render_widget(
-            Paragraph::new(self.footer_keys()).block(controls),
-            chunks[4],
-        );
+        let controls_inner = controls.inner(chunks[4]);
+        frame.render_widget(controls, chunks[4]);
+        match self.status.as_deref() {
+            Some(status) => {
+                let lines = Layout::vertical([Constraint::Length(1), Constraint::Length(1)])
+                    .split(controls_inner);
+                frame.render_widget(Paragraph::new(self.footer_keys()), lines[0]);
+                frame.render_widget(
+                    Paragraph::new(status).style(Style::new().fg(Color::Yellow)),
+                    lines[1],
+                );
+            }
+            None => {
+                frame.render_widget(Paragraph::new(self.footer_keys()), controls_inner);
+            }
+        }
     }
 
     pub fn snapshot(&self) -> String {

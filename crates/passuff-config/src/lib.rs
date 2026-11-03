@@ -17,14 +17,14 @@ use url::Url;
 pub const DEFAULT_GRAPHQL_URL: &str = "https://api.github.com/graphql";
 pub const DEFAULT_POLL_INTERVAL_SECS: u64 = 60;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppConfig {
     pub poll_interval_secs: u64,
     pub core: CoreConfig,
     pub notifications: NotificationsConfig,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoreConfig {
     pub accounts: BTreeMap<String, AccountConfig>,
     pub events: EventToggles,
@@ -91,7 +91,7 @@ impl FileWatchConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountConfig {
     pub credential: CredentialSpec,
     pub graphql_url: Url,

@@ -266,6 +266,39 @@ pub struct Notification {
     pub events: Vec<ActivityEvent>,
 }
 
+/// The GitHub GraphQL allowance reported by a probe response.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ApiAllowance {
+    pub cost: u32,
+    pub remaining: u32,
+    pub reset_at: String,
+}
+
+/// One open authored pull request as seen by a change probe.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProbePullRequest {
+    pub repository: String,
+    pub node_id: String,
+    pub updated_at: String,
+    pub head_oid: String,
+    pub ci_state: Option<CiState>,
+}
+
+/// One account's change probe result, without observations.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChangeProbe {
+    pub login: String,
+    pub pull_requests: Vec<ProbePullRequest>,
+    pub allowance: Option<ApiAllowance>,
+}
+
+/// The outcome of comparing a probe with the last successful cycle.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChangeSignal {
+    pub changed: bool,
+    pub allowance: Option<ApiAllowance>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct RefreshReport {
     pub notifications: Vec<Notification>,
@@ -305,6 +338,8 @@ pub enum StateError {
 pub enum CoreError {
     #[error("state error: {0}")]
     State(#[from] StateError),
+    #[error("probe failed: {0}")]
+    Probe(String),
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

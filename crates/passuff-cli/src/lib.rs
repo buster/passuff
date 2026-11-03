@@ -1,6 +1,7 @@
 pub mod delivery;
 pub mod gh_login;
 pub mod inbox_cli;
+pub mod live;
 pub mod scope;
 pub mod setup;
 pub mod sound;
@@ -324,7 +325,7 @@ impl CliRuntime {
         }
     }
 
-    async fn build_core(&self, config: &AppConfig) -> Result<PassuffCore, RunOutcome> {
+    pub(crate) async fn build_core(&self, config: &AppConfig) -> Result<PassuffCore, RunOutcome> {
         PassuffCore::with_ports(
             config.core.clone(),
             self.ports.gateway.clone(),
@@ -333,6 +334,11 @@ impl CliRuntime {
         )
         .await
         .map_err(|error| self.state_error(error))
+    }
+
+    /// Deliver a refresh report's notifications and return its transcript.
+    pub async fn deliver_report(&self, config: &AppConfig, report: &RefreshReport) -> String {
+        self.process_report(config, report).await.0
     }
 
     async fn process_report(&self, config: &AppConfig, report: &RefreshReport) -> (String, i32) {
@@ -454,6 +460,15 @@ mod tests {
             _graphql_url: &url::Url,
             _known_node_ids: &[String],
         ) -> Result<AccountObservation, GitHubError> {
+            tokio::time::sleep(Duration::from_secs(30)).await;
+            Err(GitHubError::Timeout)
+        }
+
+        async fn probe(
+            &self,
+            _token: &str,
+            _graphql_url: &url::Url,
+        ) -> Result<passuff_core::AccountProbe, GitHubError> {
             tokio::time::sleep(Duration::from_secs(30)).await;
             Err(GitHubError::Timeout)
         }
@@ -606,6 +621,18 @@ mod tests {
                     review_comments: Vec::new(),
                 }],
                 checked_at: "2026-11-03T09:00:00Z".to_string(),
+            })
+        }
+
+        async fn probe(
+            &self,
+            _token: &str,
+            _graphql_url: &url::Url,
+        ) -> Result<passuff_core::AccountProbe, GitHubError> {
+            Ok(passuff_core::AccountProbe {
+                login: "octo".to_string(),
+                pull_requests: Vec::new(),
+                allowance: None,
             })
         }
     }

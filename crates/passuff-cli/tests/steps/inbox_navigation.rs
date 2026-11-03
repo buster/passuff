@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use cucumber::{given, then, when};
 
 use crate::support::World;
@@ -50,4 +52,86 @@ async fn appears(world: &mut World, key: String, author: String) {
 #[when(regex = r#"^the developer refreshes the inbox$"#)]
 async fn refreshes(world: &mut World) {
     world.refresh_tui().await;
+}
+
+#[when(regex = r#"^the developer opens the inbox TUI and lets it observe for "(\d+)" seconds$"#)]
+async fn opens_observing(world: &mut World, seconds: u64) {
+    if world.e2e {
+        world.e2e_run_tui_observe_for(seconds * 1000).await;
+    } else {
+        world.run_tui_snapshot().await;
+    }
+}
+
+#[given(regex = r#"^"([^"]+)" comments "(.*)" on "([^"]+)" after the first observation$"#)]
+async fn delayed_comment(world: &mut World, author: String, body: String, key: String) {
+    world.e2e_pending_comment = Some((
+        key,
+        "comment-delayed".to_string(),
+        author,
+        body,
+    ));
+}
+
+#[when(regex = r#"^the inbox observes the account three times with no change$"#)]
+async fn observes_three(world: &mut World) {
+    for _ in 0..3 {
+        world.observe_account().await;
+    }
+}
+
+#[when(regex = r#"^the inbox observes the account$"#)]
+async fn observes(world: &mut World) {
+    world.observe_account().await;
+}
+
+#[then(regex = r#"^the inbox has asked GitHub for the full account history "(\d+)" times?$"#)]
+async fn full_history(world: &mut World, count: usize) {
+    assert_eq!(
+        world.observation_observe_calls(),
+        count,
+        "full observation count differs"
+    );
+}
+
+#[then(regex = r#"^the inbox has asked GitHub for a change signal "(\d+)" times$"#)]
+async fn change_signals(world: &mut World, count: usize) {
+    assert_eq!(
+        world.observation_probe_calls(),
+        count,
+        "change probe count differs"
+    );
+}
+
+#[given(regex = r#"^the account has "(\d+)" API points left until the allowance resets in "(\d+)" seconds$"#)]
+async fn allowance(world: &mut World, remaining: u32, reset: i64) {
+    world.set_observation_allowance(remaining, reset);
+}
+
+#[when(regex = r#"^the inbox plans its next observation$"#)]
+async fn plans(world: &mut World) {
+    world.plan_observation_delay();
+}
+
+#[then(regex = r#"^the inbox waits at least "(\d+)" seconds before observing again$"#)]
+async fn waits(world: &mut World, seconds: u64) {
+    let delay = world.planned_delay().expect("planned delay");
+    assert!(
+        delay >= Duration::from_secs(seconds),
+        "planned delay {delay:?} is shorter than {seconds}s"
+    );
+}
+
+#[when(regex = r#"^GitHub becomes unavailable for the next observation$"#)]
+async fn unavailable(world: &mut World) {
+    world.fail_next_observation();
+}
+
+#[then(regex = r#"^the TUI still shows "([^"]+)"$"#)]
+async fn still_shows(world: &mut World, expected: String) {
+    assert!(
+        world.last_transcript.contains(&expected),
+        "expected TUI to still contain {expected:?}: {:?}",
+        world.last_transcript
+    );
 }

@@ -2,11 +2,14 @@
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use passuff_cli::delivery::{FailingDelivery, NotificationDelivery, RecordingDelivery};
 use passuff_cli::inbox_cli::InboxCli;
+use passuff_cli::live::{next_delay, ObservationSession, ObservationUpdate};
 use passuff_cli::scope::ScopeEditor;
 use passuff_cli::sound::{RecordingSoundPlayer, SoundPlayer, UnavailableSoundPlayer};
 use passuff_cli::transcript::activity_summary;
@@ -17,11 +20,11 @@ use passuff_config::{
     NotificationsConfig, SoundFile,
 };
 use passuff_core::{
-    AccountObservation, ActivityEvent, ActivityRecord, AuthoredPullRequest, CiResult, CiState,
-    Comment, CredentialError, CredentialSource, GhLogin, GitHubError, GitHubGateway, Inbox,
-    JsonStateStore, PrState, PullRequestKey, PullRequestStack, RefreshReport, Review,
-    ReviewComment, SnapshotStore, StateError, SystemCredentialSource, WatchedPullRequest,
-    WatcherState,
+    AccountObservation, AccountProbe, ActivityEvent, ActivityRecord, ApiAllowance,
+    AuthoredPullRequest, CiResult, CiState, Comment, CredentialError, CredentialSource, GhLogin,
+    GitHubError, GitHubGateway, Inbox, JsonStateStore, PrState, ProbePullRequest, PullRequestKey,
+    PullRequestStack, RefreshReport, Review, ReviewComment, SnapshotStore, StateError,
+    SystemCredentialSource, WatchedPullRequest, WatcherState,
 };
 use serde_json::Value;
 use tempfile::TempDir;
@@ -170,6 +173,12 @@ pub struct World {
     pub fail_state_write: bool,
     pub tui_app: Option<TuiApp>,
     pub tui_closed: bool,
+    pub observation: Option<ObservationSession>,
+    observation_gateway: Option<FakeGateway>,
+    observation_allowance: Option<ApiAllowance>,
+    pub observation_update: Option<ObservationUpdate>,
+    pub planned_delay: Option<Duration>,
+    pub e2e_pending_comment: Option<(String, String, String, String)>,
     pub watcher_config_path: Option<PathBuf>,
     pub setup_original: Option<String>,
     pub setup_token_file: Option<PathBuf>,
@@ -223,6 +232,12 @@ impl Default for World {
             fail_state_write: false,
             tui_app: None,
             tui_closed: false,
+            observation: None,
+            observation_gateway: None,
+            observation_allowance: None,
+            observation_update: None,
+            planned_delay: None,
+            e2e_pending_comment: None,
             watcher_config_path: None,
             setup_original: None,
             setup_token_file: None,
@@ -708,6 +723,95 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
 
     pub fn state_store(&self) -> Arc<dyn SnapshotStore> {
         Arc::new(JsonStateStore::new(self.state_path()))
+    }
+
+    pub async fn observe_account(&mut self) {
+        if self.observation.is_none() {
+            self.start_observation().await;
+        }
+        if let Some(gateway) = self.observation_gateway.clone() {
+            gateway.replace(self.gateway_snapshot());
+        }
+        let session = self.observation.as_mut().expect("observation session");
+        let update = session.tick().await;
+        let inbox = Inbox::new(self.state_store());
+        if let Some(app) = self.tui_app.as_mut() {
+            app.reload(&inbox, &update.config.core)
+                .await
+                .expect("reload after observation");
+            app.set_status(update.failure.clone());
+            self.last_transcript = app.snapshot();
+        }
+        self.observation_update = Some(update);
+    }
+
+    async fn start_observation(&mut self) {
+        self.apply_auth_env();
+        let text = self
+            .config_text
+            .clone()
+            .unwrap_or_else(|| self.config_text_from_accounts());
+        let config = ConfigLoader::parse(&text).expect("observation configuration");
+        let path = self.scope_config_path();
+        std::fs::write(&path, &text).expect("observation configuration file");
+        let gateway = FakeGateway::new(self.gateway_snapshot(), self.check_clock.clone());
+        let credentials = self.credentials(false);
+        let store: Arc<dyn SnapshotStore> = Arc::new(JsonStateStore::new(self.state_path()));
+        let sound: Arc<dyn SoundPlayer> =
+            Arc::new(RecordingSoundPlayer::new(self.sound_log.clone()));
+        let delivery: Arc<dyn NotificationDelivery> =
+            Arc::new(RecordingDelivery::new(sound, self.notification_log.clone()));
+        let runtime = CliRuntime::new(CliPorts {
+            gateway: Arc::new(gateway.clone()),
+            store,
+            credentials,
+            delivery,
+        });
+        let session = ObservationSession::open(runtime, config, path)
+            .await
+            .expect("observation session");
+        self.observation = Some(session);
+        self.observation_gateway = Some(gateway);
+    }
+
+    pub fn observation_probe_calls(&self) -> usize {
+        self.observation_gateway
+            .as_ref()
+            .map(FakeGateway::probe_calls)
+            .unwrap_or(0)
+    }
+
+    pub fn observation_observe_calls(&self) -> usize {
+        self.observation_gateway
+            .as_ref()
+            .map(FakeGateway::observe_calls)
+            .unwrap_or(0)
+    }
+
+    pub fn fail_next_observation(&self) {
+        if let Some(gateway) = self.observation_gateway.as_ref() {
+            gateway.fail_next_probe();
+        }
+    }
+
+    pub fn set_observation_allowance(&mut self, remaining: u32, reset_in_secs: i64) {
+        self.observation_allowance = Some(ApiAllowance {
+            cost: 1,
+            remaining,
+            reset_at: (chrono::Utc::now() + chrono::Duration::seconds(reset_in_secs))
+                .to_rfc3339(),
+        });
+    }
+
+    pub fn plan_observation_delay(&mut self) {
+        self.planned_delay = Some(next_delay(
+            self.observation_allowance.as_ref(),
+            chrono::Utc::now(),
+        ));
+    }
+
+    pub fn planned_delay(&self) -> Option<Duration> {
+        self.planned_delay
     }
 
     async fn with_state_write_guard<F, T>(&self, future: F) -> T
@@ -1214,8 +1318,12 @@ mod e2e;
 
 #[derive(Debug, Clone)]
 struct FakeGateway {
-    by_token: BTreeMap<String, (String, Vec<AuthoredPullRequest>)>,
+    live: Arc<Mutex<BTreeMap<String, (String, Vec<AuthoredPullRequest>)>>>,
     clock: Arc<Mutex<u64>>,
+    probe_calls: Arc<AtomicUsize>,
+    observe_calls: Arc<AtomicUsize>,
+    fail_probe: Arc<AtomicBool>,
+    allowance: Arc<Mutex<Option<ApiAllowance>>>,
 }
 
 impl FakeGateway {
@@ -1223,11 +1331,42 @@ impl FakeGateway {
         snapshot: Vec<(String, String, Vec<AuthoredPullRequest>)>,
         clock: Arc<Mutex<u64>>,
     ) -> Self {
-        let by_token = snapshot
+        let live = snapshot
             .into_iter()
             .map(|(token, login, pull_requests)| (token, (login, pull_requests)))
             .collect();
-        Self { by_token, clock }
+        Self {
+            live: Arc::new(Mutex::new(live)),
+            clock,
+            probe_calls: Arc::new(AtomicUsize::new(0)),
+            observe_calls: Arc::new(AtomicUsize::new(0)),
+            fail_probe: Arc::new(AtomicBool::new(false)),
+            allowance: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    fn replace(&self, snapshot: Vec<(String, String, Vec<AuthoredPullRequest>)>) {
+        let live = snapshot
+            .into_iter()
+            .map(|(token, login, pull_requests)| (token, (login, pull_requests)))
+            .collect();
+        *self.live.lock().expect("live gateway") = live;
+    }
+
+    fn set_allowance(&self, allowance: Option<ApiAllowance>) {
+        *self.allowance.lock().expect("allowance") = allowance;
+    }
+
+    fn fail_next_probe(&self) {
+        self.fail_probe.store(true, Ordering::SeqCst);
+    }
+
+    fn probe_calls(&self) -> usize {
+        self.probe_calls.load(Ordering::SeqCst)
+    }
+
+    fn observe_calls(&self) -> usize {
+        self.observe_calls.load(Ordering::SeqCst)
     }
 }
 
@@ -1239,7 +1378,9 @@ impl GitHubGateway for FakeGateway {
         _graphql_url: &Url,
         _known_node_ids: &[String],
     ) -> Result<AccountObservation, GitHubError> {
-        let Some((login, pull_requests)) = self.by_token.get(token) else {
+        self.observe_calls.fetch_add(1, Ordering::SeqCst);
+        let live = self.live.lock().expect("live gateway");
+        let Some((login, pull_requests)) = live.get(token) else {
             return Err(GitHubError::Authentication);
         };
         let mut clock = self.clock.lock().expect("check clock");
@@ -1249,6 +1390,33 @@ impl GitHubGateway for FakeGateway {
             login: login.clone(),
             pull_requests: pull_requests.clone(),
             checked_at,
+        })
+    }
+
+    async fn probe(&self, token: &str, _graphql_url: &Url) -> Result<AccountProbe, GitHubError> {
+        self.probe_calls.fetch_add(1, Ordering::SeqCst);
+        if self.fail_probe.swap(false, Ordering::SeqCst) {
+            return Err(GitHubError::Transport("unavailable".to_string()));
+        }
+        let live = self.live.lock().expect("live gateway");
+        let Some((login, pull_requests)) = live.get(token) else {
+            return Err(GitHubError::Authentication);
+        };
+        let allowance = self.allowance.lock().expect("allowance").clone();
+        Ok(AccountProbe {
+            login: login.clone(),
+            pull_requests: pull_requests
+                .iter()
+                .filter(|pull_request| pull_request.state == PrState::Open)
+                .map(|pull_request| ProbePullRequest {
+                    repository: pull_request.key.repository.clone(),
+                    node_id: pull_request.node_id.clone(),
+                    updated_at: pull_request.updated_at.clone(),
+                    head_oid: pull_request.head_oid.clone(),
+                    ci_state: Some(pull_request.ci.state.clone()),
+                })
+                .collect(),
+            allowance,
         })
     }
 }

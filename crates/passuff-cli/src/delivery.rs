@@ -166,3 +166,18 @@ impl NotificationDelivery for FailingDelivery {
         }
     }
 }
+
+
+/// Build the delivery adapter shared by the watch command and the terminal inbox.
+pub fn build_delivery(sound: Arc<crate::sound::SystemSoundPlayer>) -> Arc<dyn NotificationDelivery> {
+    #[cfg(feature = "test-support")]
+    {
+        if let Ok(sink) = std::env::var("PASSUFF_NOTIFICATION_SINK") {
+            return Arc::new(RecordingDelivery::with_sink(
+                sound,
+                std::path::PathBuf::from(sink),
+            ));
+        }
+    }
+    Arc::new(DesktopDelivery::new(sound))
+}
