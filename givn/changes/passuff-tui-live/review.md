@@ -1,6 +1,6 @@
 Review kind: self-review
 Author: passuff maintainer (operator)
-Reviewer context: passuff maintainer (operator), same context
+Reviewer context: passuff maintainer (operator)
 PERSONAS: multi-account-developer
 README-IMPACT: updated - terminal inbox section and the scripted snapshot command list
 
