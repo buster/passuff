@@ -5,7 +5,8 @@
 - [ ] Setup: confirm the runner and strict mode.
   - `verify.command`/`verify.e2e_command` unchanged.
   - `GIVN_FEATURES=$PWD/givn/changes/passuff-activity-detail/specs GIVN_RESULT_SCOPE=change ./scripts/verify.sh`
-    must exit 1 with the `@wip` scenarios failing on undefined steps.
+    exited 1 with `givn test-result: total 5, passed 0, failed 5, skipped 0`
+    before the steps existed.
   - Step file: `crates/passuff-cli/tests/steps/activity_inbox_tui.rs`.
 
 - [ ] Core: expose the pull request URL.
@@ -43,25 +44,25 @@
   - [ ] **Design constraints:** `--keys "enter"`; popup shows `Activity a1`,
         `New comment from @alice`, `acme/api#42`, `Pull request acme/api#42`,
         `unread`, `Enter open in browser`; exit 0.
-  - [ ] COMMIT: `PENDING` -- Batch: `activity-detail`
+  - [ ] COMMIT: `21aa389` -- Batch: `activity-detail`
 
 - [ ] Scenario: `Developer opens the pull request from an activity` (e2e)
   - [ ] **Design constraints:** `--keys "enter,enter"`; fake opener records the
         URL; popup closes; exit 0.
-  - [ ] COMMIT: `PENDING` -- Batch: `activity-detail`
+  - [ ] COMMIT: `21aa389` -- Batch: `activity-detail`
 
 - [ ] Scenario: `Escape closes the activity detail`
   - [ ] **Design constraints:** Enter opens, Escape closes, focus stays activity.
-  - [ ] COMMIT: `PENDING` -- Batch: `activity-detail`
+  - [ ] COMMIT: `21aa389` -- Batch: `activity-detail`
 
 - [ ] Scenario: `Enter with no activity shows no detail`
   - [ ] **Design constraints:** empty inbox; no detail; `no activity yet` remains.
-  - [ ] COMMIT: `PENDING` -- Batch: `activity-detail`
+  - [ ] COMMIT: `21aa389` -- Batch: `activity-detail`
 
 - [ ] Scenario: `A failed browser launch keeps the activity detail open`
   - [ ] **Design constraints:** failing opener; popup stays; `could not open
         browser` in the frame.
-  - [ ] COMMIT: `PENDING` -- Batch: `activity-detail`
+  - [ ] COMMIT: `21aa389` -- Batch: `activity-detail`
 
 **Done when:** every box checked with the commit; delta 5/5, delta e2e 2/2;
 permanent 167/167 and permanent e2e 16/16.
