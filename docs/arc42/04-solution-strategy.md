@@ -27,6 +27,9 @@
 - Provide a line-based first-run setup shared by `passuff setup` and the
   terminal UI; it validates the configuration, never stores a token, and writes
   atomically. See [chapter 06](06-runtime-view.md).
+- Give the terminal inbox pane focus, watched-PR scrolling, and a poll-based
+  automatic refresh that preserves the selected pull request. See
+  [chapter 06](06-runtime-view.md).
 - Persist a bounded activity history in the watch state and expose a read model
   (`InboxService`) to the CLI and the TUI. Status, inbox, and read never
   contact GitHub. See [ADR-0005](adr/ADR-0005-state-version-2-migration.md).

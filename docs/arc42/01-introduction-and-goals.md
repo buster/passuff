@@ -26,6 +26,7 @@ The essential requirements are:
 - Show stacked pull requests together with their stack position, size, base, and grouped activity.
 - Change the watch scope from the terminal inbox, hiding and restoring records and catching up silently on reselect.
 - Set up the first account and watch scope interactively when no configuration exists.
+- Navigate the watched pull requests and activity in the terminal inbox, with automatic refresh.
 - Run on macOS and Linux with desktop notifications and configurable sound.
 - Keep credentials out of configuration and persisted state.
 

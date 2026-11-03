@@ -812,6 +812,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             "up" => crossterm::event::KeyCode::Up,
             "r" => crossterm::event::KeyCode::Char('r'),
             "a" => crossterm::event::KeyCode::Char('a'),
+            "tab" => crossterm::event::KeyCode::Tab,
             other => panic!("unknown key {other}"),
         };
         let event = crossterm::event::KeyEvent::new(code, crossterm::event::KeyModifiers::NONE);
@@ -857,6 +858,44 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             .expect("run passuff-tui");
         self.last_status = output.status.code().unwrap_or(-1);
         self.last_transcript = String::from_utf8_lossy(&output.stderr).to_string();
+    }
+
+    pub fn assert_focus(&self, expected: &str) {
+        let app = self.tui_app.as_ref().expect("tui opened");
+        let actual = match app.focus() {
+            passuff_cli::tui::Pane::Watched => "PRs",
+            passuff_cli::tui::Pane::Activity => "activity",
+        };
+        assert_eq!(actual, expected, "focus");
+    }
+
+    pub fn assert_selected_pull_request(&self, key: &str) {
+        let app = self.tui_app.as_ref().expect("tui opened");
+        let actual = app
+            .selected_pull_request()
+            .map(|pull_request| pull_request.key.to_string());
+        assert_eq!(actual.as_deref(), Some(key), "selected pull request");
+    }
+
+    pub async fn press_many(&mut self, key: &str, count: usize) {
+        for _ in 0..count {
+            self.run_tui_press(key).await;
+        }
+    }
+
+    pub async fn refresh_tui(&mut self) {
+        let inbox = Inbox::new(self.state_store());
+        let config = self.build_config();
+        let mut app = self.tui_app.take().expect("tui opened");
+        app.reload(&inbox, &config.core).await.expect("tui refresh");
+        self.last_transcript = app.snapshot();
+        self.tui_app = Some(app);
+    }
+
+    pub fn add_many_pull_requests(&mut self, repository: &str, author: &str, count: u64) {
+        for number in 1..=count {
+            self.add_pr(&format!("{repository}#{number}"), author);
+        }
     }
 
     pub fn assert_selected_activity(&self, summary: &str) {

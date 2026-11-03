@@ -30,6 +30,7 @@
 | R-024 | The TUI's mark-read actions and the watcher both save the whole state file, so one can overwrite the other's recent change. | Low | Medium | Pre-existing width; the scope edit adds no state writer. A future change may add file locking or a merge-on-save store. |
 | R-025 | A configuration writer drops the `mode` field and silently changes the scope semantics. | Low | Medium | `ScopeEditor` writes both `mode` and `repositories`; ADR-0006 records the compatibility contract; config unit tests cover the legacy shapes. |
 | R-026 | Setup writes a configuration with an unverified credential, so the first check fails. | Medium | Medium | Setup validates the configuration shape and reports the first check's account failure; token-file permissions are checked during setup. |
+| R-027 | The one-second refresh redraws over a pending key or a large table scroll loses the selection. | Low | Low | `event::poll` handles a key first and only reloads on timeout; the selected PR is restored by key and a 25-row snapshot test asserts the scrolled row is visible. |
 
 ## Technical debt
 

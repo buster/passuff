@@ -113,7 +113,10 @@ The terminal inbox groups pull requests that GitHub reports as one stack,
 showing the stack base and size and each member's position; repositories where
 the stacked-PRs preview is unavailable show standalone rows.
 
-Press `p` in the terminal inbox to open the watch-scope picker: `j`/`k` move,
+`Tab` switches focus between the watched pull requests and the activity list;
+`j`/`k` and the arrow keys move in the focused pane, the watched table scrolls,
+and the inbox refreshes automatically every second. Press `p` to open the
+watch-scope picker: `j`/`k` move,
 `space` toggles, `m` switches all/selected, type `owner/name` and press Enter to
 add, and `esc` closes. Scripted snapshots accept `--picker`,
 `--scope-select`, `--scope-deselect`, `--scope-mode`, and `--scope-add`.

@@ -102,6 +102,14 @@ a catch-up cycle: activity is recorded as unread without a desktop notification
 or sound. A running watcher reloads the configuration before each cycle; a
 failed reload keeps the previous configuration.
 
+## Inbox navigation and refresh
+
+The terminal inbox has one focus state (`watched` or `activity`). Movement keys
+apply to the focused pane; the watched table uses a `TableState` and scrolls
+to the selected PR, while activity keeps its clamp. A one-second `event::poll`
+timeout reloads the read model; the selected PR key is preserved and focus is
+not changed. The `--keys` snapshot surface drives the same handler for E2E.
+
 ## First-run setup
 
 Setup is line-based and shared by `passuff setup` and the first-run terminal

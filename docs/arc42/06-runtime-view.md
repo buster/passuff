@@ -235,6 +235,18 @@ repository or switches the mode.
 4. `passuff setup` exits 0; the terminal UI continues to the inbox. A
    non-interactive start prints the `passuff setup` hint and exits 2.
 
+## Scenario: Navigate and refresh the inbox
+
+**Trigger:** The developer presses `Tab` or a movement key, or the refresh tick fires.
+
+1. `Tab`/`Shift-Tab` switches focus between the watched-PR pane and activity.
+2. `j`/`k` or the arrows move the selected row in the focused pane; the watched
+   table scrolls and the activity selection clamps.
+3. The footer names the focused pane and its keys; `▶ ` marks the selected row.
+4. A one-second poll timeout reloads `InboxService::view`; the selected PR is
+   restored by key (or clamped) and focus is unchanged. A key wakes the poll
+   immediately.
+
 ## Scenario: Mark activity read
 
 **Trigger:** The developer marks one record or all records read.

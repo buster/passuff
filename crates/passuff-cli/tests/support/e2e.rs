@@ -457,6 +457,30 @@ impl World {
         self.e2e_write_evidence();
     }
 
+    pub async fn e2e_run_tui_snapshot_keys(&mut self, keys: &str) {
+        let config = self
+            .e2e_config_dir
+            .as_ref()
+            .expect("e2e configured")
+            .path()
+            .join("config.toml");
+        let state = self.e2e_state_path.clone().expect("e2e state");
+        let mut command = Command::new(env!("CARGO_BIN_EXE_passuff-tui"));
+        command
+            .arg("--snapshot")
+            .arg("--keys")
+            .arg(keys)
+            .arg("--config")
+            .arg(config)
+            .arg("--state")
+            .arg(state);
+        self.configure_child(&mut command);
+        let output = command.output().expect("run passuff-tui keys");
+        self.last_status = output.status.code().unwrap_or(3);
+        self.last_transcript = String::from_utf8_lossy(&output.stdout).to_string();
+        self.e2e_write_evidence();
+    }
+
     pub async fn e2e_run_status(&mut self) {
         self.e2e_run_subcommand(&["status"]).await;
     }

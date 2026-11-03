@@ -51,6 +51,10 @@ The developer lists the inbox or marks activity read.
 - T5: A configuration error exits 2 and a state error exits 3 before the interface starts; the message names the failure.
 - T6: `--snapshot` renders one frame to stdout with the same renderer and data and exits 0 without a terminal.
 - T7: The screen contains no token, comment body, helper command text, or enum name.
+- T8: `Tab`/`Shift-Tab` cycles focus between the watched pull request pane and the activity pane; the footer names the focused pane.
+- T9: `j`/`k` and the arrow keys move the selected row in the focused pane; the watched table scrolls to keep the selection visible, including large stacks; the activity selection clamps.
+- T10: The terminal inbox refreshes automatically from the read model at a fixed interval, preserving the selected pull request and clamping a vanished selection.
+- T11: A refresh never changes focus or replays a notification.
 
 ## Examples
 
@@ -73,6 +77,7 @@ The developer can review the retained activity and mark it read; the history and
 ## Capabilities
 
 - activity-inbox
+- inbox-navigation
 
 ## Interactions
 
@@ -81,6 +86,7 @@ The developer can review the retained activity and mark it read; the history and
 | activity-inbox | list unread activity | Developer lists unread activity |
 | activity-inbox | mark activity read | Developer marks activity read |
 | activity-inbox | open the inbox in the terminal UI | Developer opens the inbox TUI |
+| inbox-navigation | navigate the watched pull requests and activity, with automatic refresh | Developer navigates the inbox panes |
 
 ## Includes
 

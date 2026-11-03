@@ -101,14 +101,33 @@ fn activity_stack(view: &InboxView, key: &PullRequestKey) -> Option<u64> {
         .and_then(|pull_request| pull_request.stack.as_ref().map(|stack| stack.number))
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pane {
+    Watched,
+    Activity,
+}
+
 pub struct TuiApp {
     view: InboxView,
     selected: usize,
+    focus: Pane,
+    pr_selected: usize,
+    selected_pr: Option<PullRequestKey>,
 }
 
 impl TuiApp {
     pub fn new(view: InboxView) -> Self {
-        Self { view, selected: 0 }
+        Self {
+            view,
+            selected: 0,
+            focus: Pane::Activity,
+            pr_selected: 0,
+            selected_pr: None,
+        }
+    }
+
+    pub fn focus(&self) -> Pane {
+        self.focus
     }
 
     pub fn selected_summary(&self) -> Option<String> {
@@ -118,15 +137,50 @@ impl TuiApp {
             .map(|record| activity_summary(&record.event))
     }
 
+    pub fn selected_pull_request(&self) -> Option<&PullRequestView> {
+        self.ordered_pull_requests().get(self.pr_selected).copied()
+    }
+
+    fn ordered_pull_requests(&self) -> Vec<&PullRequestView> {
+        let (groups, standalone) = stack_groups(&self.view);
+        let mut ordered: Vec<&PullRequestView> = groups
+            .iter()
+            .flat_map(|group| group.members.iter().copied())
+            .collect();
+        ordered.extend(standalone);
+        ordered
+    }
+
+    fn clamp_pr_selection(&mut self, preserve: Option<PullRequestKey>) {
+        let (index, key) = {
+            let ordered = self.ordered_pull_requests();
+            if let Some(key) = preserve {
+                if let Some(index) = ordered.iter().position(|pull_request| pull_request.key == key) {
+                    (index, Some(key))
+                } else {
+                    let index = self.pr_selected.min(ordered.len().saturating_sub(1));
+                    (index, ordered.get(index).map(|pull_request| pull_request.key.clone()))
+                }
+            } else {
+                let index = self.pr_selected.min(ordered.len().saturating_sub(1));
+                (index, ordered.get(index).map(|pull_request| pull_request.key.clone()))
+            }
+        };
+        self.pr_selected = index;
+        self.selected_pr = key;
+    }
+
     pub async fn reload(
         &mut self,
         inbox: &dyn InboxService,
         config: &CoreConfig,
     ) -> Result<(), CoreError> {
+        let selected_pr = self.selected_pr.clone();
         self.view = inbox.view(config).await?;
         if self.selected >= self.view.activity.len() {
             self.selected = self.view.activity.len().saturating_sub(1);
         }
+        self.clamp_pr_selection(selected_pr);
         Ok(())
     }
 
@@ -138,24 +192,62 @@ impl TuiApp {
     ) -> Result<TuiAction, CoreError> {
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => Ok(TuiAction::Quit),
+            KeyCode::Tab | KeyCode::BackTab => {
+                self.focus = match self.focus {
+                    Pane::Watched => Pane::Activity,
+                    Pane::Activity => Pane::Watched,
+                };
+                Ok(TuiAction::Continue)
+            }
             KeyCode::Char('j') | KeyCode::Down => {
-                if self.selected + 1 < self.view.activity.len() {
-                    self.selected += 1;
+                match self.focus {
+                    Pane::Watched => {
+                        let next = {
+                            let ordered = self.ordered_pull_requests();
+                            if self.pr_selected + 1 < ordered.len() {
+                                Some((self.pr_selected + 1, ordered[self.pr_selected + 1].key.clone()))
+                            } else {
+                                None
+                            }
+                        };
+                        if let Some((index, key)) = next {
+                            self.pr_selected = index;
+                            self.selected_pr = Some(key);
+                        }
+                    }
+                    Pane::Activity => {
+                        if self.selected + 1 < self.view.activity.len() {
+                            self.selected += 1;
+                        }
+                    }
                 }
                 Ok(TuiAction::Continue)
             }
             KeyCode::Char('k') | KeyCode::Up => {
-                self.selected = self.selected.saturating_sub(1);
+                match self.focus {
+                    Pane::Watched => {
+                        let index = self.pr_selected.saturating_sub(1);
+                        let key = self
+                            .ordered_pull_requests()
+                            .get(index)
+                            .map(|pull_request| pull_request.key.clone());
+                        self.pr_selected = index;
+                        self.selected_pr = key;
+                    }
+                    Pane::Activity => {
+                        self.selected = self.selected.saturating_sub(1);
+                    }
+                }
                 Ok(TuiAction::Continue)
             }
-            KeyCode::Char('r') => {
+            KeyCode::Char('r') if self.focus == Pane::Activity => {
                 if let Some(record) = self.view.activity.get(self.selected) {
                     inbox.mark_read(&record.id).await?;
                     self.reload(inbox, config).await?;
                 }
                 Ok(TuiAction::Continue)
             }
-            KeyCode::Char('a') => {
+            KeyCode::Char('a') if self.focus == Pane::Activity => {
                 inbox.mark_all_read().await?;
                 self.reload(inbox, config).await?;
                 Ok(TuiAction::Continue)
@@ -165,7 +257,12 @@ impl TuiApp {
     }
 
     fn footer_keys(&self) -> &'static str {
-        "j/k move   r read   a read all   p scope   q quit"
+        match self.focus {
+            Pane::Watched => "Focus: PRs   Tab activity   j/k move   p scope   q quit",
+            Pane::Activity => {
+                "Focus: activity   Tab PRs   j/k move   r read   a all   p scope   q quit"
+            }
+        }
     }
 
     pub fn render(&self, frame: &mut Frame) {
@@ -285,8 +382,16 @@ impl TuiApp {
             .header(
                 Row::new(["Pull request", "State", "CI", "Position", "Stack", "Title"])
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            );
-            frame.render_widget(table, watched_layout[1]);
+            )
+            .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD))
+            .highlight_symbol("▶ ");
+            let selected = if self.focus == Pane::Watched {
+                Some(self.pr_selected)
+            } else {
+                None
+            };
+            let mut state = TableState::default().with_selected(selected);
+            frame.render_stateful_widget(table, watched_layout[1], &mut state);
         }
 
         let activity_block = Block::bordered()
@@ -338,7 +443,12 @@ impl TuiApp {
             .block(activity_block)
             .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD))
             .highlight_symbol("▶ ");
-            let mut state = TableState::default().with_selected(Some(self.selected));
+            let selected = if self.focus == Pane::Activity {
+                Some(self.selected)
+            } else {
+                None
+            };
+            let mut state = TableState::default().with_selected(selected);
             frame.render_stateful_widget(table, chunks[3], &mut state);
         }
 

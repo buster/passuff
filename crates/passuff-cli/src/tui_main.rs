@@ -1,9 +1,10 @@
 use std::io::IsTerminal;
+use std::time::Duration;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::Parser;
-use crossterm::event::{read, Event};
+use crossterm::event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
@@ -38,6 +39,8 @@ struct Args {
     scope_add: Option<String>,
     #[arg(long)]
     picker: bool,
+    #[arg(long, value_name = "KEYS")]
+    keys: Option<String>,
 }
 
 #[tokio::main]
@@ -121,6 +124,31 @@ async fn main() {
         }
     };
     let mut app = TuiApp::new(view);
+    if let Some(keys) = args.keys.as_deref() {
+        let config = config.as_ref().expect("validated configuration").clone();
+        for key in keys.split(',').map(str::trim).filter(|key| !key.is_empty()) {
+            let code = match key {
+                "tab" => KeyCode::Tab,
+                "backtab" => KeyCode::BackTab,
+                "j" | "down" => KeyCode::Char('j'),
+                "k" | "up" => KeyCode::Char('k'),
+                "r" => KeyCode::Char('r'),
+                "a" => KeyCode::Char('a'),
+                "q" => KeyCode::Char('q'),
+                other => {
+                    eprintln!("passuff-tui: unknown key {other}");
+                    std::process::exit(2);
+                }
+            };
+            if let Err(error) = app
+                .handle_key(KeyEvent::new(code, KeyModifiers::NONE), &inbox, &config.core)
+                .await
+            {
+                eprintln!("passuff: state error: {error}");
+                std::process::exit(3);
+            }
+        }
+    }
     if args.snapshot {
         if args.picker {
             let config = config.expect("validated configuration");
@@ -169,6 +197,18 @@ async fn reload_view(
     Ok(config)
 }
 
+async fn next_event(timeout: Duration) -> Result<Option<Event>, String> {
+    tokio::task::spawn_blocking(move || {
+        if poll(timeout).map_err(|error| format!("passuff-tui: event: {error}"))? {
+            Ok(Some(read().map_err(|error| format!("passuff-tui: event: {error}"))?))
+        } else {
+            Ok(None)
+        }
+    })
+    .await
+    .map_err(|error| format!("passuff-tui: event task: {error}"))?
+}
+
 async fn run_terminal(
     app: &mut TuiApp,
     inbox: &Inbox,
@@ -197,12 +237,11 @@ async fn run_terminal(
             if let Err(error) = terminal.draw(|frame| active.render(frame)) {
                 break Err(format!("passuff-tui: draw: {error}"));
             }
-            let event = match tokio::task::spawn_blocking(read).await {
-                Ok(Ok(event)) => event,
-                Ok(Err(error)) => break Err(format!("passuff-tui: event: {error}")),
-                Err(error) => break Err(format!("passuff-tui: event task: {error}")),
+            let event = match next_event(Duration::from_millis(1000)).await {
+                Ok(event) => event,
+                Err(error) => break Err(error),
             };
-            let Event::Key(key) = event else { continue };
+            let Some(Event::Key(key)) = event else { continue };
             match active.handle_key(key, editor) {
                 Ok(passuff_cli::scope::PickerOutcome::Close) => {
                     picker = None;
@@ -229,20 +268,29 @@ async fn run_terminal(
         if let Err(error) = terminal.draw(|frame| app.render(frame)) {
             break Err(format!("passuff-tui: draw: {error}"));
         }
-        let event = match tokio::task::spawn_blocking(read).await {
-            Ok(Ok(event)) => event,
-            Ok(Err(error)) => break Err(format!("passuff-tui: event: {error}")),
-            Err(error) => break Err(format!("passuff-tui: event task: {error}")),
+        let event = match next_event(Duration::from_millis(1000)).await {
+            Ok(event) => event,
+            Err(error) => break Err(error),
         };
-        let Event::Key(key) = event else { continue };
-        if matches!(key.code, crossterm::event::KeyCode::Char('p')) {
-            picker = Some(ScopePicker::new(&config, known.clone()));
-            continue;
-        }
-        match app.handle_key(key, inbox, &config.core).await {
-            Ok(TuiAction::Quit) => break Ok(()),
-            Ok(TuiAction::Continue) => {}
-            Err(error) => break Err(format!("passuff: state error: {error}")),
+        match event {
+            None => {
+                if let Err(error) = app.reload(inbox, &config.core).await {
+                    break Err(format!("passuff: state error: {error}"));
+                }
+                continue;
+            }
+            Some(Event::Key(key)) => {
+                if matches!(key.code, KeyCode::Char('p')) {
+                    picker = Some(ScopePicker::new(&config, known.clone()));
+                    continue;
+                }
+                match app.handle_key(key, inbox, &config.core).await {
+                    Ok(TuiAction::Quit) => break Ok(()),
+                    Ok(TuiAction::Continue) => {}
+                    Err(error) => break Err(format!("passuff: state error: {error}")),
+                }
+            }
+            Some(_) => continue,
         }
     };
     restore(&mut terminal);
