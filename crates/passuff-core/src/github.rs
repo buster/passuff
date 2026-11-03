@@ -340,6 +340,7 @@ impl GitHubApiAdapter {
                     .map(|rollup| map_ci(rollup).state);
                 pull_requests.push(ProbePullRequest {
                     repository: node.repository.name_with_owner,
+                    number: node.number,
                     node_id: node.id,
                     updated_at: node.updated_at,
                     head_oid: node
@@ -613,6 +614,7 @@ query($after: String) {
       pageInfo { hasNextPage endCursor }
       nodes {
         id
+        number
         updatedAt
         repository { nameWithOwner }
         commits(last: 1) { nodes { commit { oid statusCheckRollup { state } } } }
@@ -863,6 +865,7 @@ struct GqlProbeConnection {
 #[derive(Debug, Deserialize)]
 struct GqlProbePr {
     id: String,
+    number: u64,
     #[serde(rename = "updatedAt")]
     updated_at: String,
     repository: GqlRepo,

@@ -42,6 +42,7 @@ bot_comments = false
 [watch]
 mode = "all"               # all | selected
 repositories = []          # retained selected set; empty selected = watch nothing
+ignored_pull_requests = [] # owner/repo#number entries produce no activity or notifications
 
 [accounts.personal]
 auth = "gh_oauth"

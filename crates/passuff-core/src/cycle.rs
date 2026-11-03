@@ -58,6 +58,12 @@ impl PassuffCore {
                 .pull_requests
                 .into_iter()
                 .filter(|pull_request| scope.allows_repository(&pull_request.repository))
+                .filter(|pull_request| {
+                    !self
+                        .config
+                        .watch
+                        .ignores(&pull_request.repository, pull_request.number)
+                })
                 .collect();
             pull_requests.sort_by(|left, right| left.node_id.cmp(&right.node_id));
             if let Some(rate) = probe.allowance.clone() {
@@ -204,6 +210,10 @@ impl PassuffCore {
                     .config
                     .watch
                     .allows_repository(&pull_request.key.repository)
+                    || self
+                        .config
+                        .watch
+                        .ignores(&pull_request.key.repository, pull_request.key.number)
                 {
                     continue;
                 }
@@ -399,6 +409,7 @@ mod tests {
     fn pull_request(node_id: &str, updated_at: &str) -> ProbePullRequest {
         ProbePullRequest {
             repository: "acme/api".to_string(),
+            number: 42,
             node_id: node_id.to_string(),
             updated_at: updated_at.to_string(),
             head_oid: "abc".to_string(),
@@ -422,6 +433,7 @@ mod tests {
             watch: WatchConfig {
                 mode,
                 repositories,
+                ignored_pull_requests: Vec::new(),
             },
         }
     }

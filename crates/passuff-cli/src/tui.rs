@@ -153,6 +153,12 @@ fn newest<'a>(pull_requests: impl Iterator<Item = &'a PullRequestView>) -> &'a s
 }
 
 
+fn short_time(observed_at: &str) -> String {
+    chrono::DateTime::parse_from_rfc3339(observed_at)
+        .map(|time| time.format("%m-%d %H:%M").to_string())
+        .unwrap_or_else(|_| observed_at.get(..16).unwrap_or(observed_at).to_string())
+}
+
 fn activity_label(record: &ActivityRecord) -> String {
     let repository = record
         .key
@@ -526,38 +532,37 @@ impl TuiApp {
                 .iter()
                 .map(|record| {
                     Row::new(vec![
-                        Cell::from(activity_label(record)),
+                        Cell::from(short_time(&record.observed_at)),
                         Cell::from(
-                            record
-                                .observed_at
-                                .get(..19)
-                                .unwrap_or(&record.observed_at)
-                                .to_string(),
+                            self.view
+                                .pull_requests
+                                .iter()
+                                .find(|pull_request| pull_request.key == record.key)
+                                .map(|pull_request| pull_request.title.clone())
+                                .unwrap_or_else(|| activity_label(record)),
                         ),
-                        Cell::from(record.key.to_string()),
-                        Cell::from(if record.read { "read" } else { "unread" }),
                         Cell::from(
                             activity_stack(&self.view, &record.key)
                                 .map(|number| format!("stack {number}"))
                                 .unwrap_or_default(),
                         ),
                         Cell::from(activity_summary(&record.event)),
+                        Cell::from(if record.read { "read" } else { "unread" }),
                     ])
                 })
                 .collect();
             let table = Table::new(
                 rows,
                 [
+                    Constraint::Length(12),
+                    Constraint::Min(30),
                     Constraint::Length(10),
-                    Constraint::Length(19),
-                    Constraint::Length(14),
-                    Constraint::Length(7),
-                    Constraint::Length(10),
-                    Constraint::Min(20),
+                    Constraint::Min(22),
+                    Constraint::Length(6),
                 ],
             )
             .header(
-                Row::new(["ID", "Observed", "Pull request", "State", "Stack", "Event"])
+                Row::new(["When", "Title", "Stack", "Event", "Read"])
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
             .block(activity_block)
@@ -971,8 +976,12 @@ mod tests {
             record_on("acme/api#42", "a1", true),
         ]));
         let frame = app.snapshot();
-        assert!(frame.contains("▶ api#43"), "{frame}");
-        assert!(!frame.contains("▶ api#42"), "{frame}");
+        let selected = frame
+            .lines()
+            .find(|line| line.contains("▶"))
+            .expect("selected row");
+        assert!(selected.contains("api#43"), "{frame}");
+        assert!(!selected.contains("api#42"), "{frame}");
         assert!(frame.contains("New comment from @alice"), "{frame}");
     }
 

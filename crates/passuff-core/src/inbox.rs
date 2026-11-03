@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use chrono::DateTime;
 use passuff_config::CoreConfig;
 
 use crate::domain::{
@@ -86,14 +87,36 @@ impl Inbox {
                 stack: pr.stack.clone(),
             })
             .collect();
-        pull_requests.retain(|pr| config.watch.allows_repository(&pr.key.repository));
+        pull_requests.retain(|pr| {
+            config.watch.allows_repository(&pr.key.repository)
+                && !config
+                    .watch
+                    .ignores(&pr.key.repository, pr.key.number)
+        });
         pull_requests.sort_by(|a, b| a.key.cmp(&b.key));
-        let activity: Vec<ActivityRecord> = state
+        let mut activity: Vec<(usize, ActivityRecord)> = state
             .activity
             .iter()
-            .rev()
-            .filter(|record| config.watch.allows_repository(&record.key.repository))
-            .cloned()
+            .enumerate()
+            .filter(|(_, record)| {
+                config.watch.allows_repository(&record.key.repository)
+                    && !config
+                        .watch
+                        .ignores(&record.key.repository, record.key.number)
+            })
+            .map(|(index, record)| (index, record.clone()))
+            .collect();
+        activity.sort_by(|(left_index, left), (right_index, right)| {
+            let left_at = DateTime::parse_from_rfc3339(&left.observed_at).ok();
+            let right_at = DateTime::parse_from_rfc3339(&right.observed_at).ok();
+            right_at
+                .cmp(&left_at)
+                .then_with(|| right.observed_at.cmp(&left.observed_at))
+                .then_with(|| right_index.cmp(left_index))
+        });
+        let activity: Vec<ActivityRecord> = activity
+            .into_iter()
+            .map(|(_, record)| record)
             .collect();
         let unread = activity.iter().filter(|record| !record.read).count();
         InboxView {
@@ -169,6 +192,8 @@ mod tests {
     use crate::state::JsonStateStore;
     use passuff_config::{AccountConfig, CredentialSpec, EventToggles, WatchConfig};
     use std::collections::BTreeMap;
+
+use chrono::DateTime;
     use std::sync::Arc;
     use url::Url;
 
@@ -358,6 +383,7 @@ mod tests {
             watch: passuff_config::WatchConfig {
                 mode: passuff_config::WatchMode::Selected,
                 repositories: vec!["acme/api".to_string()],
+                ignored_pull_requests: Vec::new(),
             },
         };
         let view = Inbox::new(Arc::new(store))
