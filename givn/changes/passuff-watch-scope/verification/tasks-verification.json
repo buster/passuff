@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "change": "passuff-watch-scope",
+  "status": "passed",
+  "head": "f4b9803c79c8550057b7147ef777020549651f04",
+  "features_path": "givn/changes/passuff-watch-scope/specs",
+  "features_digest": "180f51f6acda47ac5e7db1f77d85b8f6686480024aa220aaf0c153fa2338fae1",
+  "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+  "command": "./scripts/verify.sh",
+  "tested_content_digest": "eddc20d03ba18344981e5339007a863bebfdc3f8fd5ac0631a41aeb5348e6685",
+  "content_scope": "change-proof/v1",
+  "runner_exit": 0,
+  "result": {
+    "scope": null,
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finished_at_unix": 1793706505
+}
