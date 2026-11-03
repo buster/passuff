@@ -42,6 +42,14 @@ end-to-end proof.
         shows the mode; `--scope-mode`; exit 0.
   - [x] COMMIT: `35d05eb` -- Batch: `watch-scope`
 
+- [x] Scenario: `A deselected repository stops observation`
+  - [x] **Design constraints:** out-of-scope observation stops; retained records hidden; no notification.
+  - [x] COMMIT: `35d05eb` -- Batch: `watch-scope`
+
+- [x] Scenario: `Adding a repository by owner/name`
+  - [x] **Design constraints:** manual entry validates and selects; mode selected.
+  - [x] COMMIT: `35d05eb` -- Batch: `watch-scope`
+
 - [x] Scenario: `The picker shows the known repositories`
   - [x] **Design constraints:** picker lists known repos, selected state, mode.
   - [x] COMMIT: `35d05eb` -- Batch: `watch-scope`
