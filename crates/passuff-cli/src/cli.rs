@@ -25,6 +25,8 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Create the configuration interactively
+    Setup,
     /// Run one observation pass and print notifications
     Check,
     /// Show accounts, watch scope, watched pull requests, and unread activity

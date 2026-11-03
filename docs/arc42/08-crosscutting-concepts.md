@@ -102,6 +102,15 @@ a catch-up cycle: activity is recorded as unread without a desktop notification
 or sound. A running watcher reloads the configuration before each cycle; a
 failed reload keeps the previous configuration.
 
+## First-run setup
+
+Setup is line-based and shared by `passuff setup` and the first-run terminal
+UI. It validates the configuration with `ConfigLoader::parse` before writing,
+creates parent directories, writes a temporary file plus rename, and never
+reads or stores a token: only an environment variable name, a command, or a
+permission-checked token-file path is recorded. A missing terminal and a
+missing configuration produce the `passuff setup` hint and exit 2.
+
 ## Stack metadata
 
 GitHub reports stack number, size, base, and position on pull requests where

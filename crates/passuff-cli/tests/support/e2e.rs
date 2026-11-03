@@ -645,7 +645,7 @@ impl World {
         let _ = fs::write(directory.join("transcript.txt"), transcript);
     }
 
-    fn configure_child(&self, command: &mut Command) {
+    pub fn configure_child(&self, command: &mut Command) {
         command.env("PASSUFF_E2E_TOKEN", "e2e-token");
         if let Ok(parent) = std::env::var("LLVM_PROFILE_FILE") {
             let directory = std::path::Path::new(&parent)

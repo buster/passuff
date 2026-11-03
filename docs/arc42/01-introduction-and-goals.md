@@ -25,6 +25,7 @@ The essential requirements are:
 - Provide a full-screen terminal UI over the same inbox for browsing and acknowledging activity.
 - Show stacked pull requests together with their stack position, size, base, and grouped activity.
 - Change the watch scope from the terminal inbox, hiding and restoring records and catching up silently on reselect.
+- Set up the first account and watch scope interactively when no configuration exists.
 - Run on macOS and Linux with desktop notifications and configurable sound.
 - Keep credentials out of configuration and persisted state.
 

@@ -24,6 +24,9 @@
   where an empty selected set observes none. The terminal picker writes the
   configuration atomically, and a running watcher reloads it before each
   cycle. See [chapter 08](08-crosscutting-concepts.md).
+- Provide a line-based first-run setup shared by `passuff setup` and the
+  terminal UI; it validates the configuration, never stores a token, and writes
+  atomically. See [chapter 06](06-runtime-view.md).
 - Persist a bounded activity history in the watch state and expose a read model
   (`InboxService`) to the CLI and the TUI. Status, inbox, and read never
   contact GitHub. See [ADR-0005](adr/ADR-0005-state-version-2-migration.md).

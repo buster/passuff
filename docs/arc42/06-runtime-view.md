@@ -223,6 +223,18 @@ repository or switches the mode.
    catch-up cycle, activity is recorded as unread without a notification;
    `last_scope` advances only after a cycle without account failures.
 
+## Scenario: First-run setup
+
+**Trigger:** `passuff setup` runs, or `passuff-tui` starts without a configuration.
+
+1. `SetupSession` asks for an account label, credential mode, expected login,
+   and the token source for token modes.
+2. It asks whether to add another account, then the watch scope.
+3. It validates the answers, builds the TOML, and writes a temporary file plus
+   rename; a negative replacement answer leaves an existing file unchanged.
+4. `passuff setup` exits 0; the terminal UI continues to the inbox. A
+   non-interactive start prints the `passuff setup` hint and exits 2.
+
 ## Scenario: Mark activity read
 
 **Trigger:** The developer marks one record or all records read.

@@ -42,6 +42,19 @@ async fn main() {
     );
     let interactive =
         args.command.is_none() && std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
+    if matches!(args.command, Some(Command::Setup)) {
+        let mut output = std::io::stdout();
+        let result = passuff_cli::setup::SetupSession::new(
+            config_path.clone(),
+            std::io::stdin().lock(),
+            &mut output,
+        )
+        .run();
+        match result {
+            Ok(()) => std::process::exit(0),
+            Err(error) => std::process::exit(error.exit),
+        }
+    }
     let state_store = Arc::new(JsonStateStore::new(state_path));
     let config = ConfigLoader::load(&config_path);
     let inbox_cli = || InboxCli::new(Arc::new(Inbox::new(state_store.clone())));
@@ -59,6 +72,7 @@ async fn main() {
     };
 
     let outcome = match args.command {
+        Some(Command::Setup) => unreachable!("setup handled before config load"),
         Some(Command::Check) => build_runtime(false).run_check(config).await,
         Some(Command::Status) => inbox_cli().status(config).await,
         Some(Command::Inbox { all }) => inbox_cli().inbox(config, all).await,

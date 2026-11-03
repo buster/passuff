@@ -171,6 +171,8 @@ pub struct World {
     pub tui_app: Option<TuiApp>,
     pub tui_closed: bool,
     pub watcher_config_path: Option<PathBuf>,
+    pub setup_original: Option<String>,
+    pub setup_token_file: Option<PathBuf>,
 }
 
 impl Default for World {
@@ -222,6 +224,8 @@ impl Default for World {
             tui_app: None,
             tui_closed: false,
             watcher_config_path: None,
+            setup_original: None,
+            setup_token_file: None,
         }
     }
 }
@@ -993,6 +997,62 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             });
         }
         self.write_state(&state);
+    }
+
+    pub fn setup_config_path(&self) -> PathBuf {
+        if self.e2e {
+            self.e2e_config_dir
+                .as_ref()
+                .expect("e2e configured")
+                .path()
+                .join("config.toml")
+        } else {
+            self.scope_config_path()
+        }
+    }
+
+    pub fn setup_config_text(&self) -> String {
+        std::fs::read_to_string(self.setup_config_path()).unwrap_or_default()
+    }
+
+    pub async fn run_setup(&mut self, answers: Vec<String>) {
+        let path = self.setup_config_path();
+        if self.e2e {
+            let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_passuff"));
+            command
+                .arg("--config")
+                .arg(&path)
+                .arg("setup")
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped());
+            self.configure_child(&mut command);
+            let mut child = command.spawn().expect("run setup");
+            {
+                use std::io::Write;
+                let stdin = child.stdin.as_mut().expect("stdin");
+                for answer in &answers {
+                    writeln!(stdin, "{answer}").expect("setup stdin");
+                }
+            }
+            let output = child.wait_with_output().expect("setup output");
+            self.last_status = output.status.code().unwrap_or(3);
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            self.last_transcript = if stdout.is_empty() { stderr } else { stdout };
+        } else {
+            let mut output = Vec::new();
+            let refs: Vec<&str> = answers.iter().map(String::as_str).collect();
+            let result = passuff_cli::setup::run_scripted(&path, &refs, &mut output);
+            self.last_transcript = String::from_utf8_lossy(&output).to_string();
+            self.last_status = match result {
+                Ok(()) => 0,
+                Err(error) => error.exit,
+            };
+            if self.last_status == 0 {
+                self.config_text = Some(self.setup_config_text());
+            }
+        }
     }
 
     pub fn scope_config_path(&self) -> PathBuf {

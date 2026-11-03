@@ -29,6 +29,7 @@
 | R-023 | A large known-repository list clips in the 100x30 picker. | Medium | Low | The picker clips rather than wrapping; a future change may add scrolling or filtering. |
 | R-024 | The TUI's mark-read actions and the watcher both save the whole state file, so one can overwrite the other's recent change. | Low | Medium | Pre-existing width; the scope edit adds no state writer. A future change may add file locking or a merge-on-save store. |
 | R-025 | A configuration writer drops the `mode` field and silently changes the scope semantics. | Low | Medium | `ScopeEditor` writes both `mode` and `repositories`; ADR-0006 records the compatibility contract; config unit tests cover the legacy shapes. |
+| R-026 | Setup writes a configuration with an unverified credential, so the first check fails. | Medium | Medium | Setup validates the configuration shape and reports the first check's account failure; token-file permissions are checked during setup. |
 
 ## Technical debt
 

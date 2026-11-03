@@ -52,7 +52,7 @@ flowchart LR
 
 Inside: authored pull request observation, activity classification, grouping,
 stack membership recording, stacked inbox grouping, watch-scope editing,
-desktop delivery, sound, configuration, state, and the CLI.
+first-run setup, desktop delivery, sound, configuration, state, and the CLI.
 
 Outside: GitHub mutations, stack creation or modification, per-account watch
 scope, a full repository catalog, webhooks, a hosted service, review of code

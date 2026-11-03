@@ -2,6 +2,7 @@ pub mod delivery;
 pub mod gh_login;
 pub mod inbox_cli;
 pub mod scope;
+pub mod setup;
 pub mod sound;
 pub mod transcript;
 pub mod tui;

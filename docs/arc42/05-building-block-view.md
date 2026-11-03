@@ -63,6 +63,7 @@ flowchart TB
 | `WatchMode` / `WatchConfig` | Explicit all/selected scope; an empty selected set observes none. |
 | `ScopeEditor` | Edit the watch scope atomically and preserve unrelated configuration; the watcher derives catch-up from the previous scope and retained records. |
 | `ScopePicker` | Terminal screen for the scope mode, known repositories, manual entry, and errors. |
+| `SetupSession` | Line-based first-run prompts, validation, and atomic configuration creation; never stores a token. |
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
 | `CredentialSource` / `SystemCredentialSource` | Port and environment/command/file/gh credential resolution; tokens never persisted. |
 | `passuff-cli` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |

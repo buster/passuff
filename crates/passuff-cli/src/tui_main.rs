@@ -94,6 +94,23 @@ async fn main() {
         }
     }
 
+    if !config_path.exists() {
+        if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() {
+            let mut output = std::io::stdout();
+            let result = passuff_cli::setup::SetupSession::new(
+                config_path.clone(),
+                std::io::stdin().lock(),
+                &mut output,
+            )
+            .run();
+            if let Err(error) = result {
+                std::process::exit(error.exit);
+            }
+        } else {
+            eprintln!("passuff: no configuration; run passuff setup");
+            std::process::exit(2);
+        }
+    }
     let config = ConfigLoader::load(&config_path);
     let inbox = Inbox::new(Arc::new(JsonStateStore::new(state_path.clone())));
     let view = match load_view(&config, &inbox).await {

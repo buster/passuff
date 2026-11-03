@@ -12,6 +12,8 @@ mod regular_steps;
 mod stacked_inbox_steps;
 #[path = "steps/watch_scope.rs"]
 mod watch_scope_steps;
+#[path = "steps/setup.rs"]
+mod setup_steps;
 #[path = "steps/watch_status.rs"]
 mod watch_status_steps;
 

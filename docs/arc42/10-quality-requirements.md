@@ -52,3 +52,4 @@ flowchart LR
 | QS-020 | Usability | The developer opens the inbox TUI with two events. | The snapshot shows counts, accounts, scope, the PR, and both events; `r` marks the selected one, `a` all, `q` quits. |
 | QS-021 | Reviewability | The developer opens the inbox for a stack of two pull requests. | The snapshot shows one stack group with base, size, positions, and aggregated unread; a standalone pull request stays flat. |
 | QS-022 | Controllability | The developer toggles a repository and reselects it after activity. | The picker persists the mode and set; the deselected records are hidden; reselect records gap activity as unread without a notification. |
+| QS-023 | Onboarding | A fresh machine runs passuff without a configuration. | `passuff setup` creates a validated configuration without a token value; the TUI opens; a non-terminal start points to `passuff setup`. |
