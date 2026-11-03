@@ -609,7 +609,7 @@ query($after: String) {
   rateLimit { cost remaining resetAt }
   viewer {
     login
-    pullRequests(first: 100, after: $after, states: [OPEN], orderBy: {field: UPDATED_AT, direction: DESC}) {
+    pullRequests(first: 100, after: $after, states: [OPEN, MERGED, CLOSED], orderBy: {field: UPDATED_AT, direction: DESC}) {
       pageInfo { hasNextPage endCursor }
       nodes {
         id

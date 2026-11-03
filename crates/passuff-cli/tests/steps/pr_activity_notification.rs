@@ -425,6 +425,7 @@ async fn apply_action(world: &mut World, action: &str, key: &str) {
             created_at: "2026-11-02T12:00:01Z".to_string(),
         };
         world.pr_mut(key).comments.push(comment.clone());
+        world.pr_mut(key).updated_at = comment.created_at.clone();
         if world.e2e {
             world
                 .e2e_set_comment(key, &comment.id, &comment.author, &comment.body)
