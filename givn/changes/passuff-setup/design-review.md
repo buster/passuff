@@ -2,7 +2,7 @@
 
 Review kind: self-review
 Author: passuff maintainer (operator)
-Reviewer context: self-review (operator-directed single in-context review)
+Reviewer context: passuff maintainer (operator)
 
 ## Findings and closure
 

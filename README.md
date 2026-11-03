@@ -53,7 +53,10 @@ github_user = "octo-work"
 token_file = "~/.config/passuff/work.token"
 ```
 
-Then run `passuff` (watch continuously) or `passuff check` (one pass).
+Then run `passuff` (watch continuously) or `passuff check` (one pass). On a
+fresh machine, `passuff setup` prompts for the account and watch scope and
+writes the configuration; `passuff-tui` runs the same prompts when the file is
+missing.
 
 `gh_oauth` uses the token from `gh auth token --user <github_user>` and, in an
 interactive watch, starts `gh auth login --web` once when no session exists.
@@ -95,6 +98,7 @@ cargo run --release -p passuff-cli -- --help
 ## Usage
 
 ```
+passuff setup               create the configuration interactively
 passuff                     watch until interrupted
 passuff check               run one observation pass
 passuff status              show accounts, watch scope, watched PRs, unread count

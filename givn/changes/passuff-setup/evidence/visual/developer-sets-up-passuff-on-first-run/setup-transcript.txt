@@ -1,0 +1,1 @@
+Account label: Auth (gh_oauth|token_env|token_command|token_file) [gh_oauth]: Expected GitHub login: Add another account? [y/N]: Watch (all|selected) [all]: passuff: configuration written to /tmp/setup-demo/config.toml
