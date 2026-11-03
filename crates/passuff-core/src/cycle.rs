@@ -72,7 +72,6 @@ impl PassuffCore {
             probes.push(ChangeProbe {
                 login: probe.login,
                 pull_requests,
-                allowance: probe.allowance,
             });
         }
         probes.sort_by(|left, right| left.login.cmp(&right.login));

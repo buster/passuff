@@ -289,7 +289,6 @@ pub struct ProbePullRequest {
 pub struct ChangeProbe {
     pub login: String,
     pub pull_requests: Vec<ProbePullRequest>,
-    pub allowance: Option<ApiAllowance>,
 }
 
 /// The outcome of comparing a probe with the last successful cycle.

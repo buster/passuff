@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use passuff_config::{AppConfig, ConfigLoader};
-use passuff_core::{ApiAllowance, PassuffCore, RefreshReport};
+use passuff_core::{ApiAllowance, PassuffCore};
 
 use crate::CliRuntime;
 
@@ -27,7 +27,6 @@ const MAX_BACKOFF: Duration = Duration::from_secs(60);
 pub struct ObservationUpdate {
     pub config: AppConfig,
     pub changed: bool,
-    pub report: Option<RefreshReport>,
     pub failure: Option<String>,
     pub next_delay: Duration,
 }
@@ -86,15 +85,15 @@ impl ObservationSession {
         };
         self.backoff = INITIAL_BACKOFF;
 
+        let mut changed = false;
         let mut failure = None;
-        let mut report = None;
         if signal.changed && allowance_allows_cycle(signal.allowance.as_ref()) {
             match self.core.refresh().await {
                 Ok(refreshed) => {
                     self.runtime
                         .deliver_report(&self.config, &refreshed)
                         .await;
-                    report = Some(refreshed);
+                    changed = true;
                 }
                 Err(error) => {
                     failure = Some(error.to_string());
@@ -104,8 +103,7 @@ impl ObservationSession {
         let next_delay = next_delay(signal.allowance.as_ref(), Utc::now());
         ObservationUpdate {
             config: self.config.clone(),
-            changed: report.is_some(),
-            report,
+            changed,
             failure,
             next_delay,
         }
@@ -117,7 +115,6 @@ impl ObservationSession {
         ObservationUpdate {
             config: self.config.clone(),
             changed: false,
-            report: None,
             failure: Some(message),
             next_delay: delay,
         }

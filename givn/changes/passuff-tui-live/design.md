@@ -67,7 +67,6 @@ pub struct ProbePullRequest {
 pub struct ChangeProbe {
     pub login: String,
     pub pull_requests: Vec<ProbePullRequest>, // sorted by node_id
-    pub allowance: ApiAllowance,
 }
 
 pub struct ChangeSignal {
@@ -113,8 +112,7 @@ Each tick returns one update:
 ```rust
 pub struct ObservationUpdate {
     pub config: AppConfig,        // reloaded from the config path every tick
-    pub changed: bool,            // a check cycle ran
-    pub report: Option<RefreshReport>,
+    pub changed: bool,            // a check cycle ran and the view must reload
     pub failure: Option<String>,  // probe or cycle failure, rendered in the footer
     pub next_delay: Duration,
 }

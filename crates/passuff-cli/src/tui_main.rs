@@ -382,13 +382,15 @@ async fn run_terminal(
             maybe_update = observation.recv() => {
                 let Some(update) = maybe_update else { continue };
                 config = update.config;
-                known = known_repositories(editor, &config, store).await;
-                if let Some(active) = picker.as_mut() {
-                    active.known = known.clone();
-                    active.reload(&config);
-                }
-                if let Err(error) = app.reload(inbox, &config.core).await {
-                    break Err(format!("passuff: state error: {error}"));
+                if update.changed {
+                    known = known_repositories(editor, &config, store).await;
+                    if let Some(active) = picker.as_mut() {
+                        active.known = known.clone();
+                        active.reload(&config);
+                    }
+                    if let Err(error) = app.reload(inbox, &config.core).await {
+                        break Err(format!("passuff: state error: {error}"));
+                    }
                 }
                 app.set_status(update.failure);
             }
