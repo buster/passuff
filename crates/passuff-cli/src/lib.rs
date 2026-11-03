@@ -1,3 +1,4 @@
+pub mod browser;
 pub mod delivery;
 pub mod gh_login;
 pub mod inbox_cli;

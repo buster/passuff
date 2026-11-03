@@ -2,12 +2,14 @@ use std::collections::BTreeMap;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use passuff_config::{AppConfig, ConfigError, CoreConfig};
-use passuff_core::{CoreError, InboxService, InboxView, PullRequestKey, PullRequestView};
+use passuff_core::{
+    ActivityRecord, CoreError, InboxService, InboxView, PullRequestKey, PullRequestView,
+};
 use ratatui::backend::TestBackend;
-use ratatui::layout::{Constraint, Layout};
+use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Cell, Paragraph, Row, Table, TableState};
+use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, TableState};
 use ratatui::{Frame, Terminal};
 
 use crate::transcript::{activity_summary, ci_label, state_label};
@@ -35,10 +37,18 @@ pub async fn load_view(
         })
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TuiAction {
     Continue,
     Quit,
+    OpenUrl(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct ActivityDetail {
+    pub record: ActivityRecord,
+    pub pull_request: Option<PullRequestView>,
+    pub url: Option<String>,
 }
 
 #[derive(Debug)]
@@ -114,6 +124,7 @@ pub struct TuiApp {
     pr_selected: usize,
     selected_pr: Option<PullRequestKey>,
     status: Option<String>,
+    popup: Option<ActivityDetail>,
 }
 
 impl TuiApp {
@@ -125,7 +136,12 @@ impl TuiApp {
             pr_selected: 0,
             selected_pr: None,
             status: None,
+            popup: None,
         }
+    }
+
+    pub fn close_popup(&mut self) {
+        self.popup = None;
     }
 
     /// Show a failure line in the footer until the next successful update.
@@ -197,6 +213,21 @@ impl TuiApp {
         inbox: &dyn InboxService,
         config: &CoreConfig,
     ) -> Result<TuiAction, CoreError> {
+        if self.popup.is_some() {
+            return match key.code {
+                KeyCode::Esc => {
+                    self.popup = None;
+                    Ok(TuiAction::Continue)
+                }
+                KeyCode::Enter => Ok(self
+                    .popup
+                    .as_ref()
+                    .and_then(|detail| detail.url.clone())
+                    .map(TuiAction::OpenUrl)
+                    .unwrap_or(TuiAction::Continue)),
+                _ => Ok(TuiAction::Continue),
+            };
+        }
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => Ok(TuiAction::Quit),
             KeyCode::Tab | KeyCode::BackTab => {
@@ -247,6 +278,25 @@ impl TuiApp {
                 }
                 Ok(TuiAction::Continue)
             }
+            KeyCode::Enter if self.focus == Pane::Activity => {
+                if let Some(record) = self.view.activity.get(self.selected).cloned() {
+                    let pull_request = self
+                        .view
+                        .pull_requests
+                        .iter()
+                        .find(|pull_request| pull_request.key == record.key)
+                        .cloned();
+                    let url = pull_request
+                        .as_ref()
+                        .map(|pull_request| pull_request.url.clone());
+                    self.popup = Some(ActivityDetail {
+                        record,
+                        pull_request,
+                        url,
+                    });
+                }
+                Ok(TuiAction::Continue)
+            }
             KeyCode::Char('r') if self.focus == Pane::Activity => {
                 if let Some(record) = self.view.activity.get(self.selected) {
                     inbox.mark_read(&record.id).await?;
@@ -267,7 +317,7 @@ impl TuiApp {
         match self.focus {
             Pane::Watched => "Focus: PRs   Tab activity   j/k move   p scope   q quit",
             Pane::Activity => {
-                "Focus: activity   Tab PRs   j/k move   r read   a all   p scope   q quit"
+                "Focus: activity   Tab PRs   j/k move   enter detail   r read   a all   p scope   q quit"
             }
         }
     }
@@ -479,6 +529,70 @@ impl TuiApp {
                 frame.render_widget(Paragraph::new(self.footer_keys()), controls_inner);
             }
         }
+        if self.popup.is_some() {
+            self.render_popup(frame);
+        }
+    }
+
+    fn render_popup(&self, frame: &mut Frame) {
+        let Some(detail) = self.popup.as_ref() else {
+            return;
+        };
+        let area = frame.area();
+        let width = area.width * 70 / 100;
+        let height = 9.min(area.height);
+        let rect = Rect::new(
+            (area.width - width) / 2,
+            (area.height - height) / 2,
+            width,
+            height,
+        );
+        let mut lines = vec![
+            Line::from(format!("Activity {}", detail.record.id)),
+            Line::from(format!(
+                "{}   {}",
+                detail.record.observed_at,
+                activity_summary(&detail.record.event)
+            )),
+        ];
+        match detail.pull_request.as_ref() {
+            Some(pull_request) => {
+                lines.push(Line::from(format!(
+                    "{}   {}",
+                    pull_request.key, pull_request.title
+                )));
+                let mut state_line = format!(
+                    "State: {}   {}",
+                    state_label(&pull_request.state),
+                    ci_label(&pull_request.ci_state)
+                );
+                if let Some(stack) = pull_request.stack.as_ref() {
+                    state_line.push_str(&format!(
+                        "   Stack: {} position {}",
+                        stack.number, stack.position
+                    ));
+                }
+                lines.push(Line::from(state_line));
+            }
+            None => lines.push(Line::from(format!(
+                "{}   pull request not in view",
+                detail.record.key
+            ))),
+        }
+        lines.push(Line::from(format!(
+            "Read: {}",
+            if detail.record.read { "read" } else { "unread" }
+        )));
+        lines.push(Line::from("Enter open in browser   Esc close"));
+        frame.render_widget(Clear, rect);
+        frame.render_widget(
+            Paragraph::new(lines).block(
+                Block::bordered()
+                    .title(" Activity ")
+                    .border_style(Style::new().fg(Color::Gray)),
+            ),
+            rect,
+        );
     }
 
     pub fn snapshot(&self) -> String {
@@ -627,6 +741,7 @@ mod tests {
             state: PrState::Open,
             ci_state: CiState::Success,
             title: format!("Pull request {key}"),
+            url: format!("https://github.com/{key}"),
             stack: Some(PullRequestStack {
                 number,
                 size,
@@ -642,6 +757,7 @@ mod tests {
             state: PrState::Open,
             ci_state: CiState::Success,
             title: format!("Pull request {key}"),
+            url: format!("https://github.com/{key}"),
             stack: None,
         }
     }

@@ -48,6 +48,7 @@ flowchart LR
 | GitHub stack metadata | GraphQL `stack` and `stackEntry` fields on authored pull requests | Read-only, preview-gated |
 | Status, inbox, and read | Terminal output over the local configuration and state; no GitHub call | Read and write state |
 | Terminal inbox (open) | GitHub GraphQL change probe and, on a change, a check cycle; terminal rendering | Read-only GitHub, read and write state |
+| Pull request in the browser | Platform opener (`xdg-open` on Linux, `open` on macOS) with the recorded pull request URL | Outbound |
 
 ## Scope boundaries
 

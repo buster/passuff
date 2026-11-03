@@ -179,6 +179,9 @@ pub struct World {
     pub observation_update: Option<ObservationUpdate>,
     pub planned_delay: Option<Duration>,
     pub e2e_pending_comment: Option<(String, String, String, String)>,
+    pub browser_log: Arc<Mutex<Vec<String>>>,
+    pub browser_fails: bool,
+    pub e2e_browser_log: Option<PathBuf>,
     pub watcher_config_path: Option<PathBuf>,
     pub setup_original: Option<String>,
     pub setup_token_file: Option<PathBuf>,
@@ -238,6 +241,9 @@ impl Default for World {
             observation_update: None,
             planned_delay: None,
             e2e_pending_comment: None,
+            browser_log: Arc::new(Mutex::new(Vec::new())),
+            browser_fails: false,
+            e2e_browser_log: None,
             watcher_config_path: None,
             setup_original: None,
             setup_token_file: None,
@@ -781,6 +787,23 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             .unwrap_or(0)
     }
 
+    pub fn browser_urls(&self) -> Vec<String> {
+        if self.e2e {
+            if let Some(path) = self.e2e_browser_log.as_ref() {
+                if let Ok(text) = std::fs::read_to_string(path) {
+                    return text.lines().map(str::to_string).collect();
+                }
+            }
+            Vec::new()
+        } else {
+            self.browser_log.lock().expect("browser log").clone()
+        }
+    }
+
+    pub fn fail_browser(&mut self) {
+        self.browser_fails = true;
+    }
+
     pub fn observation_observe_calls(&self) -> usize {
         self.observation_gateway
             .as_ref()
@@ -917,12 +940,22 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             "r" => crossterm::event::KeyCode::Char('r'),
             "a" => crossterm::event::KeyCode::Char('a'),
             "tab" => crossterm::event::KeyCode::Tab,
+            "enter" => crossterm::event::KeyCode::Enter,
             other => panic!("unknown key {other}"),
         };
         let event = crossterm::event::KeyEvent::new(code, crossterm::event::KeyModifiers::NONE);
         match app.handle_key(event, &inbox, &config.core).await {
             Ok(TuiAction::Quit) => self.tui_closed = true,
             Ok(TuiAction::Continue) => self.last_transcript = app.snapshot(),
+            Ok(TuiAction::OpenUrl(url)) => {
+                if self.browser_fails {
+                    app.set_status(Some("could not open browser: fake failure".to_string()));
+                } else {
+                    self.browser_log.lock().expect("browser log").push(url);
+                    app.close_popup();
+                }
+                self.last_transcript = app.snapshot();
+            }
             Err(error) => {
                 self.last_status = 3;
                 self.last_transcript = format!("passuff: state error: {error}");

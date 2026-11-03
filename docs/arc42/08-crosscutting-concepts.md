@@ -118,6 +118,16 @@ below 100 remaining points. A failed probe backs off exponentially and keeps
 the view. Updates preserve the selected PR key and never change focus. The
 `--keys` and `--observe` snapshot surfaces drive the same handler for E2E.
 
+## Activity detail and browser launch
+
+The activity pane's Enter opens a modal overlay built only from persisted data:
+the activity record and its pull request view. Modal key precedence runs before
+the inbox keys, so Escape closes the overlay instead of quitting and no other
+key moves the selection underneath it. The key interpreter returns an
+`OpenUrl` intent; only the binary adapter spawns the platform opener, so widget
+logic stays testable and free of process launches. A non-zero exit, a missing
+opener, or a spawn error is a footer status line and the overlay stays open.
+
 ## First-run setup
 
 Setup is line-based and shared by `passuff setup` and the first-run terminal

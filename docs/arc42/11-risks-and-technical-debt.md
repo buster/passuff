@@ -32,6 +32,7 @@
 | R-026 | Setup writes a configuration with an unverified credential, so the first check fails. | Medium | Medium | Setup validates the configuration shape and reports the first check's account failure; token-file permissions are checked during setup. |
 | R-027 | A redraw during a large table scroll loses the selection or a pending key. | Low | Low | Input runs on its own thread; the selected PR is restored by key and a 25-row snapshot test asserts the scrolled row is visible. |
 | R-028 | The inbox and the watch command both observe and write the whole state file. | Medium | Medium | Running both is documented as redundant; whole-file writes are atomic, but the last writer wins. A lock or a serialized store is deferred (TD-004). |
+| R-030 | The platform browser opener is missing or fails (headless session, no `xdg-open`, non-zero exit). | Medium | Low | The popup stays open and the footer names `could not open browser: ...`; the URL remains visible in the popup for manual use. |
 | R-029 | A change burst exhausts the account allowance and stalls observation. | Low | Medium | The delay spends at most half the remaining points across the window and the full cycle is deferred below 100 points; a failed probe backs off. |
 
 ## Technical debt

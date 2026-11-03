@@ -73,3 +73,17 @@ async fn activity_read(world: &mut World, summary: String, state: String) {
 async fn closed(world: &mut World) {
     assert!(world.tui_closed, "terminal UI was not closed");
 }
+
+#[when(regex = r#"^the browser will fail to open$"#)]
+async fn browser_fails(world: &mut World) {
+    world.fail_browser();
+}
+
+#[then(regex = r#"^the browser opened "([^"]+)"$"#)]
+async fn browser_opened(world: &mut World, url: String) {
+    let opened = world.browser_urls();
+    assert!(
+        opened.iter().any(|candidate| candidate == &url),
+        "expected the browser to open {url:?}, got {opened:?}"
+    );
+}
