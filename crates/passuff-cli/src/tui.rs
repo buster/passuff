@@ -8,8 +8,8 @@ use passuff_core::{
 use ratatui::backend::TestBackend;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::Line;
-use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, TableState};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, TableState, Wrap};
 use ratatui::{Frame, Terminal};
 
 use crate::transcript::{activity_summary, ci_label, state_label};
@@ -539,21 +539,22 @@ impl TuiApp {
             return;
         };
         let area = frame.area();
-        let width = area.width * 70 / 100;
-        let height = 9.min(area.height);
-        let rect = Rect::new(
-            (area.width - width) / 2,
-            (area.height - height) / 2,
-            width,
-            height,
-        );
+        let width = (area.width * 90 / 100)
+            .min(area.width.saturating_sub(2))
+            .max(20);
         let observed = detail
             .record
             .observed_at
             .get(..19)
             .unwrap_or(&detail.record.observed_at);
+        let key_style = Style::new()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD);
         let mut lines = vec![
-            Line::from(format!("Activity {}", detail.record.id)),
+            Line::from(vec![
+                Span::styled("Activity ", key_style),
+                Span::raw(detail.record.id.clone()),
+            ]),
             Line::from(format!(
                 "{}   {}",
                 observed,
@@ -588,14 +589,41 @@ impl TuiApp {
             "Read: {}",
             if detail.record.read { "read" } else { "unread" }
         )));
-        lines.push(Line::from("Enter open in browser   Esc close"));
+        lines.push(Line::from(vec![
+            Span::styled("Enter", key_style),
+            Span::raw(" open in browser   "),
+            Span::styled("Esc", key_style),
+            Span::raw(" close"),
+        ]));
+        let inner_width = usize::from(width.saturating_sub(2)).max(1);
+        let rows: usize = lines
+            .iter()
+            .map(|line| {
+                let length: usize = line.spans.iter().map(|span| span.content.chars().count()).sum();
+                length.max(1).div_ceil(inner_width)
+            })
+            .sum();
+        let height = (rows as u16 + 3)
+            .max(8)
+            .min(area.height.saturating_sub(2).max(8));
+        let rect = Rect::new(
+            (area.width - width) / 2,
+            (area.height - height) / 2,
+            width,
+            height,
+        );
         frame.render_widget(Clear, rect);
         frame.render_widget(
-            Paragraph::new(lines).block(
-                Block::bordered()
-                    .title(" Activity ")
-                    .border_style(Style::new().fg(Color::Gray)),
-            ),
+            Paragraph::new(lines)
+                .wrap(Wrap { trim: false })
+                .block(
+                    Block::bordered()
+                        .title(
+                            Line::from(" Activity ")
+                                .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                        )
+                        .border_style(Style::new().fg(Color::Green)),
+                ),
             rect,
         );
     }
@@ -765,6 +793,41 @@ mod tests {
             url: format!("https://github.com/{key}"),
             stack: None,
         }
+    }
+
+    #[test]
+    fn the_activity_detail_wraps_a_long_title() {
+        let title = "Set up passuff interactively when no configuration exists and validate every account before writing";
+        let mut pull_request = standalone("acme/api#42");
+        pull_request.title = title.to_string();
+        let record = record_on("acme/api#42", "a1", false);
+        let mut app = TuiApp::new(view(vec![record.clone()]));
+        app.view.pull_requests.push(pull_request.clone());
+        app.popup = Some(ActivityDetail {
+            record,
+            pull_request: Some(pull_request),
+            url: None,
+        });
+        let snapshot = app.snapshot();
+        assert!(
+            snapshot.contains("before writing"),
+            "long title was clipped: {snapshot}"
+        );
+        assert!(snapshot.contains("open in browser"));
+        assert!(snapshot.contains("Esc close"));
+        let backend = TestBackend::new(100, 30);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal
+            .draw(|frame| app.render(frame))
+            .expect("draw popup");
+        let buffer = terminal.backend().buffer();
+        let green_frame = (0..30).any(|y| {
+            (0..100).any(|x| {
+                let cell = &buffer[(x, y)];
+                cell.fg == Color::Green && cell.symbol() == "┌"
+            })
+        });
+        assert!(green_frame, "the popup frame is not green");
     }
 
     fn record_on(key: &str, id: &str, read: bool) -> ActivityRecord {
