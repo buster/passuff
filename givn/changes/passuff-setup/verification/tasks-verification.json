@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "change": "passuff-setup",
+  "status": "passed",
+  "head": "f62d718b2ef2b5f298755223d3ec500f6443fca3",
+  "features_path": "givn/changes/passuff-setup/specs",
+  "features_digest": "b77de0c52b3d662af6e04a6bc67bf090411be4929f64fa72df02e13cf06c7067",
+  "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+  "command": "./scripts/verify.sh",
+  "tested_content_digest": "1d122b0caf2aacb515d38558dc9f6dd1da90a8747d24f4abae646ebd870f163b",
+  "content_scope": "change-proof/v1",
+  "runner_exit": 0,
+  "result": {
+    "scope": null,
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finished_at_unix": 1793708041
+}
