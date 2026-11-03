@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "change": "passuff-activity-detail",
+  "status": "pending",
+  "candidate_revision": null,
+  "tested_revision": null,
+  "scopes": {},
+  "coverage": null,
+  "scope_evidence": {},
+  "coverage_inputs": null,
+  "merge_completed": true,
+  "merged_deltas": [
+    "review-activity-inbox/activity-inbox.feature"
+  ],
+  "merge_in_progress": null,
+  "merge_plan": [
+    "review-activity-inbox/activity-inbox.feature"
+  ],
+  "merge_targets": {
+    "review-activity-inbox/activity-inbox.feature": "givn/specs/review-activity-inbox/activity-inbox.feature"
+  },
+  "started_at_unix": 1793711915,
+  "finished_at_unix": null
+}
