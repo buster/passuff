@@ -278,6 +278,7 @@ pub struct ApiAllowance {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProbePullRequest {
     pub repository: String,
+    pub number: u64,
     pub node_id: String,
     pub updated_at: String,
     pub head_oid: String,

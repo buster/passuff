@@ -44,6 +44,7 @@ pub enum WatchMode {
 pub struct WatchConfig {
     pub mode: WatchMode,
     pub repositories: Vec<String>,
+    pub ignored_pull_requests: Vec<String>,
 }
 
 impl WatchConfig {
@@ -57,6 +58,15 @@ impl WatchConfig {
                 .repositories
                 .iter()
                 .any(|allowed| allowed.eq_ignore_ascii_case(repository))
+    }
+
+    /// True when the pull request is in the ignore list.
+    pub fn ignores(&self, repository: &str, number: u64) -> bool {
+        self.ignored_pull_requests.iter().any(|entry| {
+            entry.rsplit_once('#').is_some_and(|(repo, digits)| {
+                repo.eq_ignore_ascii_case(repository) && digits.parse::<u64>() == Ok(number)
+            })
+        })
     }
 
     pub fn label(&self) -> String {
@@ -73,6 +83,7 @@ impl WatchConfig {
 struct FileWatchConfig {
     mode: Option<WatchMode>,
     repositories: Vec<String>,
+    ignored_pull_requests: Vec<String>,
 }
 
 impl FileWatchConfig {
@@ -87,6 +98,7 @@ impl FileWatchConfig {
         WatchConfig {
             mode,
             repositories: self.repositories,
+            ignored_pull_requests: self.ignored_pull_requests,
         }
     }
 }
@@ -257,6 +269,7 @@ impl FileConfig {
         }
 
         validate_watch_scope(&self.watch.repositories)?;
+        validate_ignored_pull_requests(&self.watch.ignored_pull_requests)?;
         let mut accounts = BTreeMap::new();
         for (label, account) in self.accounts {
             if label.trim().is_empty() {
@@ -394,6 +407,35 @@ fn validate_watch_scope(repositories: &[String]) -> Result<(), ConfigError> {
             )));
         }
         seen.push(repository.to_string());
+    }
+    Ok(())
+}
+
+fn validate_ignored_pull_requests(entries: &[String]) -> Result<(), ConfigError> {
+    let mut seen: Vec<String> = Vec::new();
+    for entry in entries {
+        let entry = entry.trim();
+        let (repository, number) = entry.rsplit_once('#').unwrap_or(("", ""));
+        let valid_repository = !repository.is_empty()
+            && !repository.chars().any(char::is_whitespace)
+            && repository.matches('/').count() == 1
+            && !repository.starts_with('/')
+            && !repository.ends_with('/');
+        let valid_number = number.parse::<u64>().is_ok_and(|number| number > 0);
+        if !valid_repository || !valid_number {
+            return Err(ConfigError::Validation(format!(
+                "watch.ignored_pull_requests entry '{entry}' must be owner/repo#number"
+            )));
+        }
+        if seen
+            .iter()
+            .any(|existing| existing.eq_ignore_ascii_case(entry))
+        {
+            return Err(ConfigError::Validation(format!(
+                "watch.ignored_pull_requests contains duplicate '{entry}'"
+            )));
+        }
+        seen.push(entry.to_string());
     }
     Ok(())
 }
@@ -752,6 +794,38 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("must be a login"));
+    }
+
+    #[test]
+    fn ignored_pull_requests_parse_and_match() {
+        let config = parse(
+            r#"
+            [accounts.personal]
+            token_env = "TOKEN"
+
+            [watch]
+            ignored_pull_requests = ["acme/api#42"]
+            "#,
+        )
+        .unwrap();
+        assert!(config.core.watch.ignores("Acme/API", 42));
+        assert!(!config.core.watch.ignores("acme/api", 43));
+        assert!(!config.core.watch.ignores("acme/other", 42));
+    }
+
+    #[test]
+    fn rejects_an_invalid_ignored_pull_request() {
+        let error = parse(
+            r#"
+            [accounts.personal]
+            token_env = "TOKEN"
+
+            [watch]
+            ignored_pull_requests = ["acme/api"]
+            "#,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("owner/repo#number"));
     }
 
     #[test]

@@ -179,6 +179,7 @@ pub struct World {
     pub observation_update: Option<ObservationUpdate>,
     pub planned_delay: Option<Duration>,
     pub e2e_pending_comment: Option<(String, String, String, String)>,
+    pub ignored_pull_requests: Vec<String>,
     pub browser_log: Arc<Mutex<Vec<String>>>,
     pub browser_fails: bool,
     pub e2e_browser_log: Option<PathBuf>,
@@ -241,6 +242,7 @@ impl Default for World {
             observation_update: None,
             planned_delay: None,
             e2e_pending_comment: None,
+            ignored_pull_requests: Vec::new(),
             browser_log: Arc::new(Mutex::new(Vec::new())),
             browser_fails: false,
             e2e_browser_log: None,
@@ -411,6 +413,15 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
 
     fn config_text_from_accounts(&self) -> String {
         let mut text = String::new();
+        if !self.ignored_pull_requests.is_empty() {
+            let entries = self
+                .ignored_pull_requests
+                .iter()
+                .map(|entry| format!("\"{entry}\""))
+                .collect::<Vec<_>>()
+                .join(", ");
+            text.push_str(&format!("[watch]\nignored_pull_requests = [{entries}]\n\n"));
+        }
         for account in self.accounts.values() {
             text.push_str(&format!("[accounts.{}]\n", account.label));
             match &account.auth {
@@ -593,6 +604,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                         passuff_config::WatchMode::Selected
                     },
                     repositories: self.watch_scope.clone(),
+                    ignored_pull_requests: self.ignored_pull_requests.clone(),
                 },
             },
             notifications: self.notifications.clone(),
@@ -1441,6 +1453,7 @@ impl GitHubGateway for FakeGateway {
                 .iter()
                 .map(|pull_request| ProbePullRequest {
                     repository: pull_request.key.repository.clone(),
+                    number: pull_request.key.number,
                     node_id: pull_request.node_id.clone(),
                     updated_at: pull_request.updated_at.clone(),
                     head_oid: pull_request.head_oid.clone(),

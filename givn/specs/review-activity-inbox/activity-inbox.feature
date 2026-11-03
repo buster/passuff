@@ -193,6 +193,18 @@ Feature: Activity inbox
     And  the exit status is 0
 
   @activity-inbox
+  Scenario: An ignored pull request produces no activity
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    And  the pull request "acme/api#42" is ignored
+    When  "alice" comments "Not interesting" on "acme/api#42"
+    And  passuff runs one check
+    Then  the transcript reports no notifications
+    When  the developer lists the inbox
+    Then  the transcript reports "no unread activity"
+
+  @activity-inbox
   Scenario: The terminal UI shows the inbox
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

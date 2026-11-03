@@ -61,6 +61,11 @@ async fn already_observed_two(world: &mut World, _a: String, _b: String) {
     }
 }
 
+#[given(regex = r#"^the pull request "([^"]+)" is ignored$"#)]
+async fn ignored_pull_request(world: &mut World, key: String) {
+    world.ignored_pull_requests.push(key);
+}
+
 #[given(regex = r#"^the pull request already has a comment by "([^"]+)"$"#)]
 async fn existing_comment(world: &mut World, author: String) {
     let key = world
