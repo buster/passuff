@@ -43,12 +43,12 @@ While the terminal inbox is open, it observes the configured accounts itself ins
 - Capability: `inbox-navigation`.
 - Source topic: none; this change does not originate from an ideation seed.
 - Personas: `multi-account-developer`.
-- Review kind: self-review.
+- Review kind: self-review
 - Interface: terminal.
 
 ## Capability Routing
 
-| Capability | Decision | Rationale |
-|---|---|---|
-| activity-inbox | EXTEND activity-inbox | The existing "Developer opens the inbox TUI" scenario is modified so opening observes the account; it no longer needs an external check to populate the view. |
-| inbox-navigation | EXTEND inbox-navigation | The live update, the cheap probe, the allowance pacing, and the failure fallback keep the terminal inbox's panes current after opening; they advance the same developer goal as navigation and need no second capability. |
+| Proposed capability | Route's recommendation | Decision | Rationale (if you deviated from route) |
+|---|---|---|---|
+| activity-inbox | no signal (tie) | `EXTEND activity-inbox` | The existing "Developer opens the inbox TUI" scenario is modified so opening observes the account; it no longer needs an external check. |
+| inbox-navigation | no signal (tie) | `EXTEND inbox-navigation` | The live update, the cheap probe, the allowance pacing, and the failure fallback keep the terminal inbox's panes current after opening; no second capability is warranted. |
