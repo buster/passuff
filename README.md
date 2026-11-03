@@ -103,6 +103,10 @@ passuff read <id>           mark one activity record read
 passuff read --all          mark every activity record read
 passuff-tui                 open the inbox in a full-screen terminal UI
 passuff-tui --snapshot      print one TUI frame and exit
+
+The terminal inbox groups pull requests that GitHub reports as one stack,
+showing the stack base and size and each member's position; repositories where
+the stacked-PRs preview is unavailable show standalone rows.
 passuff --config PATH       use a specific configuration file
 passuff --state PATH        use a specific state file
 passuff --verbose           enable diagnostic logs on stderr
