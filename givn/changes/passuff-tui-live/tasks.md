@@ -46,29 +46,29 @@
   - [x] **Design constraints:** `--snapshot --observe`; no external check; the
         inbox's own observation records `New comment from @alice` and
         `1 unread of 1`; exit 0.
-  - [x] COMMIT: `PENDING` -- Batch: `live-observation`
+  - [x] COMMIT: `9d1bc4f` -- Batch: `live-observation`
 
 - [x] Scenario: `The inbox shows activity observed while it is open` (e2e)
   - [x] **Design constraints:** real binary with `--snapshot --observe-for
         6000`; the comment is added to the mock 1.5 s into the run; the final
         frame shows `New comment from @alice` and `1 unread of 1`; exit 0.
-  - [x] COMMIT: `PENDING` -- Batch: `live-observation`
+  - [x] COMMIT: `9d1bc4f` -- Batch: `live-observation`
 
 - [x] Scenario: `The inbox keeps observation cheap while nothing changes`
   - [x] **Design constraints:** three unchanged probes; the fake gateway
         counts 1 full observation and 3 probes.
-  - [x] COMMIT: `PENDING` -- Batch: `live-observation`
+  - [x] COMMIT: `9d1bc4f` -- Batch: `live-observation`
 
 - [x] Scenario: `The inbox paces observation against the account allowance`
   - [x] **Design constraints:** 100 points with 3,600 seconds to reset; the
         planned delay is at least 30 seconds (design value 72 seconds).
-  - [x] COMMIT: `PENDING` -- Batch: `live-observation`
+  - [x] COMMIT: `9d1bc4f` -- Batch: `live-observation`
 
 - [x] Scenario: `A failed observation keeps the last inbox view`
   - [x] **Design constraints:** the first observation records the comment; the
         next probe fails; the frame still shows `New comment from @alice`; the
         loop continues and exits 0.
-  - [x] COMMIT: `PENDING` -- Batch: `live-observation`
+  - [x] COMMIT: `9d1bc4f` -- Batch: `live-observation`
 
 - [x] Unit test: a failed probe sets `failure` and keeps the previous view; the
       next successful update clears it (covered by the failure scenario and
