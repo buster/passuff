@@ -578,23 +578,29 @@ impl TuiApp {
                         stack.number, stack.position
                     ));
                 }
-                lines.push(Line::from(state_line));
+                lines.push(
+                    Line::from(state_line)
+                        .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                );
             }
             None => lines.push(Line::from(format!(
                 "{}   pull request not in view",
                 detail.record.key
             ))),
         }
-        lines.push(Line::from(format!(
-            "Read: {}",
-            if detail.record.read { "read" } else { "unread" }
-        )));
-        lines.push(Line::from(vec![
+        lines.push(
+            Line::from(format!(
+                "Read: {}",
+                if detail.record.read { "read" } else { "unread" }
+            ))
+            .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+        );
+        let hint = Line::from(vec![
             Span::styled("Enter", key_style),
             Span::raw(" open in browser   "),
             Span::styled("Esc", key_style),
             Span::raw(" close"),
-        ]));
+        ]);
         let inner_width = usize::from(width.saturating_sub(2)).max(1);
         let rows: usize = lines
             .iter()
@@ -604,28 +610,40 @@ impl TuiApp {
             })
             .sum();
         let height = (rows as u16 + 3)
-            .max(8)
-            .min(area.height.saturating_sub(2).max(8));
+            .max(7)
+            .min(area.height.saturating_sub(2).max(7));
         let rect = Rect::new(
             (area.width - width) / 2,
             (area.height - height) / 2,
             width,
             height,
         );
+        let block = Block::bordered()
+            .title(
+                Line::from(" Activity ")
+                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            )
+            .border_style(Style::new().fg(Color::Green));
+        let inner = block.inner(rect);
         frame.render_widget(Clear, rect);
-        frame.render_widget(
-            Paragraph::new(lines)
-                .wrap(Wrap { trim: false })
-                .block(
-                    Block::bordered()
-                        .title(
-                            Line::from(" Activity ")
-                                .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-                        )
-                        .border_style(Style::new().fg(Color::Green)),
-                ),
-            rect,
+        frame.render_widget(block, rect);
+        let content = Rect::new(
+            inner.x,
+            inner.y,
+            inner.width,
+            inner.height.saturating_sub(1),
         );
+        let hint_area = Rect::new(
+            inner.x,
+            inner.y + inner.height.saturating_sub(1),
+            inner.width,
+            1,
+        );
+        frame.render_widget(
+            Paragraph::new(lines).wrap(Wrap { trim: false }),
+            content,
+        );
+        frame.render_widget(Paragraph::new(hint), hint_area);
     }
 
     pub fn snapshot(&self) -> String {
@@ -815,6 +833,15 @@ mod tests {
         );
         assert!(snapshot.contains("open in browser"));
         assert!(snapshot.contains("Esc close"));
+        let lines: Vec<&str> = snapshot.lines().collect();
+        let hint_row = lines
+            .iter()
+            .position(|line| line.contains("open in browser"))
+            .expect("hint line");
+        assert!(
+            lines[hint_row + 1].contains("└"),
+            "hint is not on the bottom line: {}", lines[hint_row + 1]
+        );
         let backend = TestBackend::new(100, 30);
         let mut terminal = Terminal::new(backend).expect("terminal");
         terminal
