@@ -349,10 +349,14 @@ impl CliRuntime {
         for key in &report.baselines_recorded {
             lines.push(self.renderer.render_baseline(key));
         }
-        for notification in &report.notifications {
-            let rendered = self
-                .renderer
-                .render_notification(notification, config.notifications.sound);
+        if !report.notifications.is_empty() {
+            let rendered = if report.notifications.len() == 1 {
+                self.renderer
+                    .render_notification(&report.notifications[0], config.notifications.sound)
+            } else {
+                self.renderer
+                    .render_digest(&report.notifications, config.notifications.sound)
+            };
             let delivery = self
                 .ports
                 .delivery

@@ -74,8 +74,8 @@ flowchart TB
 | `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, show an activity detail overlay, return an open intent for the pull request URL, handle keys, and mark records read; a blocking input thread feeds keys, and `--snapshot` prints one frame. |
 | `SystemBrowserOpener` | Launch the platform browser with a pull request URL; report a missing or failing opener as a status line. |
 | `ObservationSession` | Decide when to probe, when to run a targeted pass, and when the reconciliation interval has elapsed; deliver the cycle's notifications, keep the last view on failure, and hand updates to the terminal loop. |
-| `TranscriptRenderer` | Render notifications, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
-| `DesktopDelivery` | Real `notify-rust` delivery; production path on Linux E2E and macOS. |
+| `TranscriptRenderer` | Render notifications, the per-pass digest, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
+| `DesktopDelivery` | Real `notify-rust` delivery of one digest per check pass; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |
 
 ## Level 2 — Key building blocks
@@ -174,7 +174,7 @@ block, a desktop message, and at most one sound.
 
 | Element | Responsibility |
 |---|---|
-| TranscriptRenderer | Stable summary, event lines, account failures, baselines, and empty-cycle text. |
-| DesktopDelivery | Platform notification delivery through `notify-rust`. |
+| TranscriptRenderer | Stable summary, per-pass digest with count, event lines, account failures, baselines, and empty-cycle text. |
+| DesktopDelivery | Platform notification delivery of one digest per check pass through `notify-rust`. |
 | SystemSoundPlayer | Choose the platform player, play the bundled WAV, fall back to the XDG hint. |
 | RecordingDelivery | Record the same title and body for macOS E2E and diagnostics. |

@@ -28,8 +28,8 @@ The developer starts the watcher, or runs a single check pass.
 3. On the first observation of an open pull request, the watcher records a baseline and reports no activity. A short-lived closed pull request is handled by R27.
 4. On each later observation, the watcher compares the pull request with its recorded observation.
 5. The watcher classifies eligible changes into activity events, including the R27 short-lived state change.
-6. The watcher groups the activity events for one pull request into one notification.
-7. The watcher always prints the terminal transcript. When desktop notification is enabled it also displays a desktop message; when sound is enabled it plays the configured sound once.
+6. The watcher groups the activity events of one check pass: one pull request keeps its events in one notification; several pull requests are summarized in one digest notification naming the total activity count.
+7. The watcher always prints the terminal transcript. When desktop notification is enabled it also displays one desktop message per delivered notification; when sound is enabled it plays the configured sound once per delivered notification.
 8. The watcher records the observed activity so it is not reported again.
 
 ## Extensions
@@ -57,7 +57,7 @@ The developer starts the watcher, or runs a single check pass.
 - R10: A commit or push to the pull request branch produces no notification.
 - R11: Activity on a pull request authored by a login outside the configured login set produces no notification.
 - R12: A bot-authored comment produces no notification unless bot comments are enabled.
-- R13: All new activity for one pull request in one observation pass is grouped into one notification; the sound plays once for that notification.
+- R13: All new activity in one observation pass is grouped into one delivered notification: one pull request keeps its events together, several pull requests become one digest naming the total activity count and each pull request's count. The terminal transcript keeps the per-event detail; the sound plays once for the delivered notification.
 - R14: The first observation of an authored pull request records a baseline without notifying about existing activity, except the R27 short-lived state change.
 - R15: Already notified activity is never notified again, including after a restart.
 - R16: A known authored pull request merged or closed while the watcher was stopped is notified on the next observation.
@@ -68,7 +68,7 @@ The developer starts the watcher, or runs a single check pass.
 - R21: The one-shot check performs one observation pass, reports every notification it would deliver, and exits.
 - R22: The continuous watcher observes at the configured interval until interrupted.
 - R23: Each event family (comments, reviews, CI failure, CI recovery, state changes) can be disabled independently; disabling suppresses that family. The comments family covers conversation comments and review comments; the reviews family covers submitted reviews.
-- R24: The configured sound is played once per notification when sound is enabled; disabling sound suppresses audio independently of the desktop notification.
+- R24: The configured sound is played once per delivered notification when sound is enabled; disabling sound suppresses audio independently of the desktop notification.
 - R25: Label, draft, assignee, milestone, and base-branch changes produce no notification.
 - R26: A pull request first observed after the account's first cycle records a baseline without notifying about its existing activity, except the R27 short-lived state change.
 - R27: A pull request created after the account's last successful observation and merged or closed between observations produces one state-change notification.
@@ -86,6 +86,8 @@ The developer starts the watcher, or runs a single check pass.
 - R39: When a repository scope excludes a repository, an authored pull request outside it is not observed or notified; already watched pull requests and activity are hidden from the inbox and status but retained in state.
 - R40: Activity on an already-merged or already-closed watched pull request does not notify. The transition that made it terminal, a short-lived pull request (R27), and a reopen (R28) are still reported.
 - R41: A check cycle observes only the pull requests selected from the change probe and the discovery search; a reconciliation pass observes every watched open pull request and every open assigned or review-requested pull request.
+- R42: A digest notification names the total activity count and the number of pull requests; the desktop body lists each pull request's activity count, capped at five pull requests followed by the number of remaining pull requests.
+- R43: The bundled default sound is three short beeps within one second.
 - R42: `notify-test` sends one test notification through the configured desktop and sound surfaces, reports the result of each enabled surface, exits 0 when every enabled surface succeeds, 1 when an enabled surface fails, and 2 for a configuration error or when both surfaces are disabled. On macOS the desktop notification is delivered through Notification Center via `osascript`.
 - R43: `--no-desktop` and `--no-sound` suppress the corresponding notification surface for that run without changing the configuration; both `passuff` and `passuff-tui` accept them, and `notify-test` respects them.
 
@@ -95,6 +97,7 @@ The developer starts the watcher, or runs a single check pass.
 - A comment by the configured work account on the personal account's pull request stays silent.
 - A CI failure on acme/api#42 notifies; a later success notifies once as a recovery.
 - A pull request created and merged between two checks notifies once as merged.
+- A pass with activity on three pull requests delivers one digest naming three activities in three pull requests.
 - A merge of the developer's own pull request notifies once; own comments and reviews stay silent.
 - Disabling the comments event family silences new comments but not CI failures.
 - A work account without a gh session opens a browser login on start, then watches its pull requests.
@@ -108,7 +111,7 @@ The watcher never notifies about activity on a pull request that was not authore
 
 ## Success guarantee
 
-The developer receives one grouped desktop notification with sound, when both are enabled, for each eligible set of new activity on an authored pull request, and receives no notification for own comments or reviews, code pushes, other people's pull requests, or activity that existed before the baseline.
+The developer receives one delivered desktop notification with sound, when both are enabled, for the eligible activity of one check pass, and receives no notification for own comments or reviews, code pushes, other people's pull requests, or activity that existed before the baseline.
 
 ## Personas
 

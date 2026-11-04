@@ -48,6 +48,9 @@ sequenceDiagram
 7. Events are grouped by pull request; empty groups are discarded. A target that
    was not observed keeps its previous probe baseline and is retried.
 8. The core persists state before returning the report.
+9. The CLI renders one notification for a single pull request; several pull
+   requests become one digest naming the total activity count. The delivery
+   adapter is called once for the pass, so the sound plays once.
 9. The CLI prints the transcript block and invokes the delivery adapter once per
    group.
 10. The sound plays once per notification when enabled.

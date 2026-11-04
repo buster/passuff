@@ -14,7 +14,10 @@
   core returns its report. This buys the no-replay guarantee and accepts
   at-most-once delivery. See [chapter 05](05-building-block-view.md).
 - Deliver through the local desktop notification surface and a bundled WAV
-  played by a system player. No hosted push channel, audio library, or
+  played by a system player. One notification is delivered per check pass: a
+  single pull request keeps its events together, several become one digest with
+  the total count, and the sound plays once. The bundled default is three short
+  beeps within one second. No hosted push channel, audio library, or
   third-party account is involved. See
   [ADR-0002](adr/ADR-0002-local-desktop-notifications.md).
 - Record GitHub-reported stack membership read-only with the observation and
@@ -78,7 +81,7 @@
 
 | Quality attribute | Approach |
 |---|---|
-| Accuracy | Authored-only observation, configured login set, explicit event rules, pure classifier tests, and one notification per pull request per cycle. |
+| Accuracy | Authored-only observation, configured login set, explicit event rules, pure classifier tests, and one delivered notification per check pass with the per-pull-request detail in the transcript. |
 | No replay | Seen-ID sets persisted before the core returns; the CLI delivers afterwards; restart scenarios in the Gherkin suite. |
 | Reliability | Per-account isolation, atomic state writes, corrupt-state quarantine, timeouts, and rate-limit reporting. |
 | Timeliness | Default 60-second cycle; configurable interval; the first cycle starts immediately. |

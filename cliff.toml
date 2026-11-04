@@ -45,5 +45,6 @@ commit_parsers = [
     { message = '^fix', group = "Bug Fixes" },
     { message = '^perf', group = "Performance" },
     { message = '^revert', group = "Reverts" },
-    { message = '.*', skip = true },
+    { message = '^(docs|chore|ci|test|style|refactor)(\(|:)', skip = true },
+    { message = '.*', group = "Changes" },
 ]

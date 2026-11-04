@@ -66,7 +66,10 @@ Continuous mode reports failures and retries on the next cycle.
 
 ## Notification delivery
 
-One notification is produced per pull request per cycle. The core returns a
+The core produces one notification per pull request per cycle; the CLI delivers
+one notification per cycle. Several pull requests become one digest naming the
+total activity count and the per-pull-request counts, and the terminal transcript
+keeps the event detail. The sound plays once per delivered notification. The core returns a
 `Notification` value; the CLI formats the transcript block and the desktop
 title and body. The transcript is the primary observable output and is always
 printed. The desktop adapter uses `notify-rust`. The sound adapter plays a

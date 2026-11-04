@@ -22,7 +22,10 @@ something needs attention: comments and reviews by other people, failing or
 recovered CI, and merged or closed pull requests. Pushes and activity on pull
 requests you are not involved in stay silent; your own comments and reviews are
 recorded as read without a notification. It runs on Linux and macOS, prints a
-terminal transcript, raises a desktop notification, and plays a sound.
+terminal transcript, raises a desktop notification, and plays a sound. One
+notification is delivered per check pass: several pull requests become one
+digest naming the activity count, and the default sound is three short beeps
+within one second.
 
 ![passuff inbox demo](passuff.gif)
 
