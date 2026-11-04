@@ -571,7 +571,7 @@ mod tests {
     use passuff_config::{
         AccountConfig, CredentialSpec, EventToggles, WatchConfig, WatchMode,
     };
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::sync::Mutex;
     use url::Url;
 
@@ -870,6 +870,135 @@ mod tests {
             }],
         )));
         assert!(core.refresh_reconciliation().await.expect("retired").notifications.is_empty());
+    }
+
+    fn probe(pull_requests: Vec<ProbePullRequest>) -> ChangeProbe {
+        ChangeProbe {
+            label: "personal".to_string(),
+            login: "octo".to_string(),
+            pull_requests,
+        }
+    }
+
+    fn terminal(node_id: &str, updated_at: &str, created_at: &str) -> ProbePullRequest {
+        let mut pull_request = pull_request(node_id, updated_at);
+        pull_request.state = crate::domain::PrState::Merged;
+        pull_request.created_at = created_at.to_string();
+        pull_request
+    }
+
+    #[test]
+    fn a_new_open_pull_request_is_relevant() {
+        let pending = probe(vec![pull_request("n1", "t1")]);
+        assert_eq!(relevant_targets(None, &pending, None), vec!["n1"]);
+    }
+
+    #[test]
+    fn an_unchanged_open_pull_request_is_not_relevant() {
+        let current = probe(vec![pull_request("n1", "t1")]);
+        let pending = current.clone();
+        assert!(relevant_targets(Some(&current), &pending, None).is_empty());
+    }
+
+    #[test]
+    fn a_changed_open_pull_request_is_relevant() {
+        let current = probe(vec![pull_request("n1", "t1")]);
+        let pending = probe(vec![pull_request("n1", "t2")]);
+        assert_eq!(relevant_targets(Some(&current), &pending, None), vec!["n1"]);
+    }
+
+    #[test]
+    fn a_terminal_update_time_change_is_not_relevant() {
+        let current = probe(vec![terminal("n1", "t1", "2026-11-03T10:00:00Z")]);
+        let pending = probe(vec![terminal("n1", "t2", "2026-11-03T10:00:00Z")]);
+        assert!(relevant_targets(Some(&current), &pending, None).is_empty());
+    }
+
+    #[test]
+    fn a_terminal_transition_is_relevant() {
+        let current = probe(vec![pull_request("n1", "t1")]);
+        let pending = probe(vec![terminal("n1", "t2", "2026-11-03T10:00:00Z")]);
+        assert_eq!(relevant_targets(Some(&current), &pending, None), vec!["n1"]);
+    }
+
+    #[test]
+    fn a_reopen_is_relevant() {
+        let current = probe(vec![terminal("n1", "t1", "2026-11-03T10:00:00Z")]);
+        let pending = probe(vec![pull_request("n1", "t2")]);
+        assert_eq!(relevant_targets(Some(&current), &pending, None), vec!["n1"]);
+    }
+
+    #[test]
+    fn a_new_short_lived_pull_request_is_relevant() {
+        let pending = probe(vec![terminal("n1", "t2", "2026-11-03T12:00:00Z")]);
+        assert_eq!(
+            relevant_targets(None, &pending, Some("2026-11-03T10:00:00Z")),
+            vec!["n1"]
+        );
+        assert!(
+            relevant_targets(None, &pending, Some("2026-11-03T13:00:00Z")).is_empty()
+        );
+    }
+
+    #[test]
+    fn a_failed_account_keeps_its_previous_baseline() {
+        let gateway = Arc::new(ProbeGateway::new(Vec::new()));
+        let store = Arc::new(MemoryStore(Arc::new(Mutex::new(WatcherState::default()))));
+        let mut core = core(config(WatchMode::All, Vec::new()), gateway, store);
+        core.current = Some(vec![probe(vec![pull_request("n1", "t1")])]);
+        core.pending = Some(vec![probe(vec![pull_request("n1", "t2")])]);
+        core.commit_probe(
+            BTreeMap::<String, ObservedAccount>::new(),
+            BTreeSet::from(["personal".to_string()]),
+        );
+        assert_eq!(
+            core.current.expect("current")[0].pull_requests[0].updated_at,
+            "t1"
+        );
+    }
+
+    #[test]
+    fn a_missing_observed_target_keeps_its_previous_baseline() {
+        let gateway = Arc::new(ProbeGateway::new(Vec::new()));
+        let store = Arc::new(MemoryStore(Arc::new(Mutex::new(WatcherState::default()))));
+        let mut core = core(config(WatchMode::All, Vec::new()), gateway, store);
+        core.current = Some(vec![probe(vec![pull_request("n1", "t1")])]);
+        core.pending = Some(vec![probe(vec![pull_request("n1", "t2")])]);
+        let mut observed = BTreeMap::new();
+        observed.insert(
+            "personal".to_string(),
+            ObservedAccount {
+                targets: vec!["n1".to_string()],
+                seen: Vec::new(),
+            },
+        );
+        core.commit_probe(observed, BTreeSet::new());
+        assert_eq!(
+            core.current.expect("current")[0].pull_requests[0].updated_at,
+            "t1"
+        );
+    }
+
+    #[test]
+    fn an_observed_target_commits_the_pending_baseline() {
+        let gateway = Arc::new(ProbeGateway::new(Vec::new()));
+        let store = Arc::new(MemoryStore(Arc::new(Mutex::new(WatcherState::default()))));
+        let mut core = core(config(WatchMode::All, Vec::new()), gateway, store);
+        core.current = Some(vec![probe(vec![pull_request("n1", "t1")])]);
+        core.pending = Some(vec![probe(vec![pull_request("n1", "t2")])]);
+        let mut observed = BTreeMap::new();
+        observed.insert(
+            "personal".to_string(),
+            ObservedAccount {
+                targets: vec!["n1".to_string()],
+                seen: vec!["n1".to_string()],
+            },
+        );
+        core.commit_probe(observed, BTreeSet::new());
+        assert_eq!(
+            core.current.expect("current")[0].pull_requests[0].updated_at,
+            "t2"
+        );
     }
 
 }

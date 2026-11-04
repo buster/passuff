@@ -25,6 +25,7 @@ Create `~/.config/passuff/config.toml`:
 
 ```toml
 poll_interval_secs = 60
+reconciliation_interval_secs = 3600 # live inbox reconciliation; default one hour
 
 [notifications]
 desktop = true
@@ -117,10 +118,12 @@ showing the stack base and size and each member's position; repositories where
 the stacked-PRs preview is unavailable show standalone rows.
 
 The open inbox observes the configured accounts itself: it asks GitHub for a
-cheap change signal, runs a full check only when something changed, and shows
-the result without a keypress or a second process. The delay follows the
-account's remaining API allowance, so a busy account updates more slowly than
-an idle one. Running `passuff` (the watch command) at the same time is
+cheap change signal, observes only the open pull requests that changed, and
+shows the result without a keypress or a second process. It also reconciles
+every watched open pull request and every open assigned or review-requested pull
+request at `reconciliation_interval_secs` (default one hour). The delay follows
+the account's remaining API allowance, so a busy account updates more slowly
+than an idle one. Running `passuff` (the watch command) at the same time is
 redundant: both observe and write the same state.
 
 `Tab` switches focus between the watched pull requests and the activity list;
@@ -154,7 +157,9 @@ error, `3` state failure.
 
 The first observation of each pull request records a baseline and does not
 replay historical activity. Short-lived pull requests created and merged
-between two checks still notify their terminal state.
+between two checks still notify their terminal state. Once a pull request is
+merged or closed, later comments and reviews produce no notification; the
+transition itself and a reopen are still reported.
 
 ## Development
 
@@ -189,8 +194,8 @@ GPL-3.0-or-later. See `LICENSE`.
 
 Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
 
-Line coverage: 88% (3571/4055)
-Branch coverage: 41% (557/1374)
+Line coverage: 84% (5263/6302)
+Branch coverage: 33% (708/2148)
 
 Reproduce the result:
 

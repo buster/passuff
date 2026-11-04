@@ -26,7 +26,7 @@ STATUS: DONE
 - **Real alternatives:** a smaller fixed observation set (open plus known watched) versus the current full page; a webhook or push channel is already rejected by ADR-0001/ADR-0007 and the local-only constraint.
 - **Durable consequence:** the probe fingerprint and the reconciliation interval bound notification detection; reversing requires restoring the full-page observation and reworking the target-selection tests.
 - **Existing decisions:** ADR-0007 "Probe before observing and pace the inbox against the account allowance" owns the observation strategy. This change refines it, so the route is `AMEND_ADR` for ADR-0007. No `NEW_ADR`: the cheaper home is ADR-0007 plus the Gherkin specifications and `design.md`.
-- **Chapter 11 consequence:** the amended ADR's bad consequences (terminal retirement, fingerprint blind spots, sweep-bounded involved freshness) are recorded as risks and as the changed thrift scenario.
+- **Chapter 11 consequence:** the amended ADR's bad consequences (terminal retirement, fingerprint blind spots, pass-bounded involved freshness) are recorded as risks and as the changed thrift scenario.
 
 ## Notes
 

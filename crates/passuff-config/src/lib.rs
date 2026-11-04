@@ -608,6 +608,29 @@ mod tests {
     }
 
     #[test]
+    fn the_reconciliation_interval_defaults_to_one_hour() {
+        let config = parse("[accounts.personal]\ntoken_env = \"A\"\n").unwrap();
+        assert_eq!(config.reconciliation_interval_secs, 3600);
+    }
+
+    #[test]
+    fn an_explicit_reconciliation_interval_is_accepted() {
+        let config = parse(
+            "reconciliation_interval_secs = 120\n[accounts.personal]\ntoken_env = \"A\"\n",
+        )
+        .unwrap();
+        assert_eq!(config.reconciliation_interval_secs, 120);
+    }
+
+    #[test]
+    fn a_zero_reconciliation_interval_is_rejected() {
+        assert!(parse(
+            "reconciliation_interval_secs = 0\n[accounts.personal]\ntoken_env = \"A\"\n"
+        )
+        .is_err());
+    }
+
+    #[test]
     fn rejects_unknown_keys() {
         let error = parse(
             r#"

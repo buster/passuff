@@ -98,7 +98,7 @@ tests protect it.
 ## Branch findings
 
 - **Scope:** the proposal asks for terminal retirement, targeted observation,
-  and a configurable reconciliation sweep. The specs contain exactly those and
+  and a configurable reconciliation pass. The specs contain exactly those and
   nothing extra; hiding terminal rows is explicitly out of scope. No mismatch.
 - **Tech choices:** the existing Rust, tokio, reqwest, cucumber-rs, wiremock,
   and ratatui stack fits. No new dependency. Simpler alternative (a fixed
@@ -171,5 +171,16 @@ tests protect it.
 - R40/R41 and the failure-retry scenario were added to the traceability.
 - `A failed observation keeps the change pending` was added to the delta specs.
 - No `@e2e` tag was removed; no mandatory check was deferred.
+
+## Post-implementation amendment (2026-11-04)
+
+The implementation pass aligned two illustrative types in the Data model with
+the code without changing a decision: the target set is the private
+`relevant_targets(current, pending, last_check_at) -> Vec<String>` rather than a
+public `ObservationTargets` value, and the probe cache is
+`last_check: BTreeMap<String, Option<String>>` because the reconciliation pass
+reads watched open ids from the loaded state. `ChangeProbe` gained the account
+label for per-account baseline commitment. No contract, query shape, scheduling
+rule, or consequence changed; the grilling answers still hold.
 
 DESIGN-REVIEW: PASS

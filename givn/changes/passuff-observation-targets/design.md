@@ -35,7 +35,7 @@ The core stops being a full-snapshot observer on every cycle. It selects observa
 flowchart LR
     dev["Developer"] -->|runs| cli["passuff check / watch"]
     dev -->|opens| tui["passuff-tui"]
-    tui --> session["ObservationSession\n(pacing + sweep schedule)"]
+    tui --> session["ObservationSession\n(pacing + reconciliation schedule)"]
     session -->|probe| core["PassuffCore"]
     session -->|targeted or reconciliation| core
     cli -->|reconciliation pass| core
@@ -53,7 +53,7 @@ flowchart LR
 |---|---|---|---|---|
 | `GitHubGateway` (`probe`, `observe(ids)`, `search`) | watch-pull-requests | `PassuffCore` for the watch command and the terminal inbox | `GitHubApiAdapter` | a second external provider is supported |
 | `PassuffCore` (`probe`, `refresh_targeted`, `refresh_reconciliation`) | watch-pull-requests | `CliRuntime`, `ObservationSession` | `PassuffCore` in `crates/passuff-core/src/cycle.rs` | a second observation strategy is supported |
-| `LiveObservation` (`tick`, `next_delay`, sweep schedule) | review-activity-inbox | `passuff-tui` input loop | `ObservationSession` in `crates/passuff-cli/src/live.rs` | the headless watch command adopts the same pacing |
+| `LiveObservation` (`tick`, `next_delay`, reconciliation schedule) | review-activity-inbox | `passuff-tui` input loop | `ObservationSession` in `crates/passuff-cli/src/live.rs` | the headless watch command adopts the same pacing |
 | `InboxService` (`view`, `mark_read`) | review-activity-inbox | terminal inbox, CLI inbox/read | `Inbox` | a second read-model consumer needs different projections |
 
 `PassuffCore` keeps one responsibility: select observation targets, observe them, classify, and commit. `ObservationSession` keeps one responsibility: decide when to probe, when to target, and when to reconcile. The terminal inbox keeps input and rendering.
@@ -74,11 +74,6 @@ pub struct ProbePullRequest {
     pub state: PrState,
 }
 
-pub struct ObservationTargets {
-    pub login: String,
-    pub node_ids: Vec<String>, // changed, transitioned, new, short-lived
-}
-
 pub enum Discovery {
     None,
     New,   // observed assigned/review-requested ids not already watched
@@ -94,23 +89,18 @@ pub struct ChangeSignal {
 
 `PrState` already has `Open`, `Merged`, `Closed` and `is_terminal()`.
 
-`ChangeSignal` gains no public field; the target set stays inside `PassuffCore`. `PassuffCore` caches a `WatchSnapshot` from the last successful refresh:
+`ChangeProbe` carries the account label beside the login so the probe baseline can be committed per account. The target set is a `Vec<String>` of node ids computed by the private `relevant_targets(current, pending, last_check_at)` function; it does not need a public type.
 
-```rust
-struct WatchSnapshot {
-    last_check_at: BTreeMap<String, Option<String>>, // account label -> last check
-    watched_open: BTreeMap<String, Vec<String>>,     // account label -> open node ids
-}
-```
+`PassuffCore` caches `last_check: BTreeMap<String, Option<String>>` (account label -> last successful check) from every successful refresh. The watched-open set is read from the loaded state by the reconciliation pass, so the cache holds only the last check times.
 
-`probe` uses the snapshot to decide whether the pending diff contains a relevant target, so a comment on a known terminal pull request does not report a change and does not start a cycle. If the snapshot is absent (start of a session), the session performs a reconciliation pass first.
+`probe` uses the cache to decide whether the pending diff contains a relevant target, so a comment on a known terminal pull request does not report a change and does not start a cycle. If the cache is absent (start of a session), the session performs a reconciliation pass first.
 
 The probe continues past a failed account and reports the failure in its signal, matching the check cycle's account isolation; one bad credential must not suppress the other accounts' targets or turn a check into a state error.
 
 `AppConfig` and the configuration file gain a top-level `reconciliation_interval_secs: u64`, default `3600`, validated to be at least `1` (the same rule as `poll_interval_secs`). It sits beside `poll_interval_secs`; the two are independent:
 
-- `poll_interval_secs` remains the headless `passuff watch` cadence. Each watch tick is a reconciliation pass, so the headless watcher needs no separate sweep.
-- `reconciliation_interval_secs` is the live inbox sweep interval. The live inbox ticks at the allowance-paced probe cadence.
+- `poll_interval_secs` remains the headless `passuff watch` cadence. Each watch tick is a reconciliation pass, so the headless watcher needs no separate reconciliation pass.
+- `reconciliation_interval_secs` is the live inbox reconciliation interval. The live inbox ticks at the allowance-paced probe cadence.
 
 ## Target selection
 
@@ -218,7 +208,7 @@ E2E infrastructure: the existing `wiremock` GitHub boundary and the `passuff-tui
 - Decides D1: terminal watched pull requests retire from observation after their terminal transition. Only a transition, a short-lived pull request, or a reopen is observed. Realized in target selection and in the classification filter; the activity history and the 30-day reopen rule keep the persisted records.
 - Decides D2: terminal records stay visible in the watched pane; hiding them is a separate change. Realized by leaving `view_from_state` unchanged.
 - Decides D3: the live inbox runs a reconciliation pass hourly by default, configurable. Realized in `ObservationSession::next_reconciliation_at` and `reconciliation_interval_secs`. The headless watcher reconciles on its existing `poll_interval_secs` cadence.
-- Decides D4: `reconciliation_interval_secs` is a top-level integer, default `3600`, minimum `1`. A short value is allowed for tests and for an operator who wants frequent sweeps; the below-100-point deferral bounds the spend. Realized in `passuff-config` parsing and validation plus the session deferral.
+- Decides D4: `reconciliation_interval_secs` is a top-level integer, default `3600`, minimum `1`. A short value is allowed for tests and for an operator who wants frequent reconciliation passes; the below-100-point deferral bounds the spend. Realized in `passuff-config` parsing and validation plus the session deferral.
 
 ## Use-case traceability
 
