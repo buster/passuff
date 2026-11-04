@@ -6,7 +6,7 @@ Feature: Observation targets in the live inbox
   Scenario: A comment on a merged pull request reaches the inbox
     Then  the scenario is removed
 
-  @givn.added @wip
+  @givn.added
   Scenario: The inbox observes only the open pull request that changed
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -19,7 +19,7 @@ Feature: Observation targets in the live inbox
     Then  the TUI shows "comment by @alice"
     And  the inbox has observed only "acme/api#42"
 
-  @givn.added @wip
+  @givn.added
   Scenario: The inbox reconciles open pull requests when the interval elapses
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "alice"

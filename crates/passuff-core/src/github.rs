@@ -679,29 +679,6 @@ query($after: String) {
 }
 "#;
 
-#[derive(Debug, Deserialize)]
-struct GqlResponse {
-    data: Option<GqlData>,
-    errors: Option<Vec<GqlError>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GqlData {
-    viewer: GqlViewer,
-}
-
-#[derive(Debug, Deserialize)]
-struct GqlViewer {
-    login: String,
-    #[serde(rename = "pullRequests")]
-    pull_requests: Option<GqlConnection<GqlPr>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GqlConnection<T> {
-    nodes: Vec<T>,
-}
-
 #[derive(Debug, Default, Deserialize)]
 struct GqlPageInfo {
     #[serde(rename = "hasNextPage", default)]

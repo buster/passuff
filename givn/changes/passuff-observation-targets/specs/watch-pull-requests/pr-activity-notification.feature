@@ -2,7 +2,7 @@
 
 Feature: Observation targets
 
-  @givn.added @wip
+  @givn.added
   Scenario Outline: Activity on a merged or closed pull request does not notify
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -17,7 +17,7 @@ Feature: Observation targets
       | merged |
       | closed |
 
-  @givn.added @wip
+  @givn.added
   Scenario: A review on a merged pull request does not notify
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -27,7 +27,7 @@ Feature: Observation targets
     And  passuff runs one check
     Then  the transcript reports no notifications
 
-  @givn.added @wip
+  @givn.added
   Scenario: A failed observation keeps the change pending
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
