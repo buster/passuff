@@ -1,5 +1,3 @@
-STATUS: DONE
-
 # Arc42 assessment: passuff-observation-targets
 
 ## Chapter selection
@@ -32,3 +30,7 @@ STATUS: DONE
 
 - The glossary and domain model were updated before review: `docs/glossary.md` gains changed pull request, observation target, reconciliation pass, reconciliation interval, and terminal retirement; `docs/domain-model.md` records the probe → targets → observation relationship.
 - No new dependency, deployment unit, or external boundary is introduced.
+
+## Status
+
+STATUS: DONE
