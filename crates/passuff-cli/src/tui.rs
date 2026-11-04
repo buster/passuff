@@ -336,6 +336,9 @@ impl TuiApp {
             self.selected = self.view.activity.len().saturating_sub(1);
         }
         self.clamp_pr_selection(selected_pr);
+        if self.focus == Pane::Activity {
+            self.sync_pr_selection();
+        }
         Ok(())
     }
 
@@ -1172,6 +1175,62 @@ mod tests {
             .await
             .expect("left");
         assert!(!app.show_ignored());
+    }
+
+    #[tokio::test]
+    async fn reload_moves_the_pull_request_cursor_with_the_selected_activity() {
+        let mut app = TuiApp::new(view(vec![record_on("acme/api#42", "a1", false)]));
+        app.view.pull_requests = vec![
+            standalone("acme/api#42"),
+            standalone("acme/api#43"),
+        ];
+        let mut next = view(vec![
+            record_on("acme/api#43", "a2", false),
+            record_on("acme/api#42", "a1", false),
+        ]);
+        next.pull_requests = vec![
+            standalone("acme/api#42"),
+            standalone("acme/api#43"),
+        ];
+        let inbox = FakeInbox::new(vec![next]);
+        app.reload(&inbox, &core_config())
+            .await
+            .expect("reload");
+        assert_eq!(
+            app.selected_pull_request().map(|pr| pr.key.to_string()),
+            Some("acme/api#43".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn reload_does_not_move_the_cursor_while_the_pull_request_pane_is_focused() {
+        let mut app = TuiApp::new(view(vec![record_on("acme/api#42", "a1", false)]));
+        app.view.pull_requests = vec![
+            standalone("acme/api#42"),
+            standalone("acme/api#43"),
+        ];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.selected_pr = Some(pr_key("acme/api#42"));
+        app.pr_selected = 0;
+        let mut next = view(vec![
+            record_on("acme/api#43", "a2", false),
+            record_on("acme/api#42", "a1", false),
+        ]);
+        next.pull_requests = vec![
+            standalone("acme/api#42"),
+            standalone("acme/api#43"),
+        ];
+        let inbox = FakeInbox::new(vec![next]);
+        app.reload(&inbox, &core_config())
+            .await
+            .expect("reload");
+        assert_eq!(
+            app.selected_pull_request().map(|pr| pr.key.to_string()),
+            Some("acme/api#42".to_string())
+        );
     }
 
     #[tokio::test]
