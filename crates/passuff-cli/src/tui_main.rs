@@ -10,7 +10,7 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use passuff_cli::browser::{BrowserOpener, SystemBrowserOpener};
-use passuff_cli::delivery::{build_delivery, mute_delivery};
+use passuff_cli::delivery::{build_delivery, mute_delivery, MutedDelivery, NotificationSwitches};
 use passuff_cli::live::{ObservationSession, ObservationUpdate};
 use passuff_cli::scope::{ScopeEditor, ScopePicker};
 use passuff_cli::sound::SystemSoundPlayer;
@@ -142,8 +142,15 @@ async fn main() {
 
     if args.observe || args.observe_for.is_some() {
         let active = config.as_ref().expect("validated configuration").clone();
+        let notifications = app.notification_switches();
         let mut session = match ObservationSession::open(
-            runtime_for(&config_path, &state_path, !args.no_desktop, !args.no_sound),
+            runtime_for(
+                &config_path,
+                &state_path,
+                notifications,
+                args.no_desktop,
+                args.no_sound,
+            ),
             active.clone(),
             config_path.clone(),
         )
@@ -187,6 +194,8 @@ async fn main() {
                 "home" => KeyCode::Home,
                 "end" => KeyCode::End,
                 "x" => KeyCode::Char('x'),
+                "comma" => KeyCode::Char(','),
+                "space" => KeyCode::Char(' '),
                 other => {
                     eprintln!("passuff-tui: unknown key {other}");
                     std::process::exit(2);
@@ -242,6 +251,7 @@ async fn main() {
     let preferences_path = state_path.with_file_name("ui.json");
     let saved_preferences = load_preferences(&preferences_path).unwrap_or_default();
     app.apply_preferences(&saved_preferences);
+    let notifications = app.notification_switches();
     if let Err(message) = run_terminal(
         &mut app,
         &inbox,
@@ -249,7 +259,13 @@ async fn main() {
         &editor,
         &state_store,
         args.picker,
-        runtime_for(&config_path, &state_path, !args.no_desktop, !args.no_sound),
+        runtime_for(
+            &config_path,
+            &state_path,
+            notifications,
+            args.no_desktop,
+            args.no_sound,
+        ),
         config_path,
         &preferences_path,
         &saved_preferences,
@@ -282,11 +298,13 @@ fn save_preferences(path: &Path, preferences: &TuiPreferences) -> Result<(), Str
 fn runtime_for(
     config_path: &Path,
     state_path: &Path,
-    desktop: bool,
-    sound_enabled: bool,
+    notifications: NotificationSwitches,
+    no_desktop: bool,
+    no_sound: bool,
 ) -> CliRuntime {
     let sound = Arc::new(SystemSoundPlayer::new());
-    let delivery = mute_delivery(build_delivery(sound), desktop, sound_enabled);
+    let dynamic = MutedDelivery::with_switches(build_delivery(sound), notifications);
+    let delivery = mute_delivery(Arc::new(dynamic), !no_desktop, !no_sound);
     CliRuntime::new(CliPorts {
         gateway: Arc::new(GitHubApiAdapter::new()),
         store: Arc::new(JsonStateStore::new(state_path.to_path_buf())),

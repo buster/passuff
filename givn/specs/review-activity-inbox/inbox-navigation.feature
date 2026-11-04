@@ -175,6 +175,21 @@ Feature: Inbox navigation
     And  the activity "New comment from @bob" is unread
 
   @inbox-navigation
+  Scenario: The developer mutes notifications from the settings dialog
+    Given  a configured account "personal" with login "octo-personal"
+    When  the developer opens the inbox TUI
+    And  the developer presses "comma"
+    Then  the TUI shows "Settings"
+    And  the TUI shows "Desktop notifications"
+    And  the TUI shows "Sound"
+    When  the developer presses "j"
+    And  the developer presses "space"
+    Then  the notification sound is muted
+    And  the desktop notification is enabled
+    When  the developer presses "esc"
+    Then  the TUI does not show "Desktop notifications"
+
+  @inbox-navigation
   Scenario: The developer opens the key reference
     Given  a configured account "personal" with login "octo-personal"
     When  the developer opens the inbox TUI

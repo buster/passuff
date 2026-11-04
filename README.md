@@ -147,9 +147,10 @@ records read (with no filter, all of them); `enter` opens a detail overlay
 listing every recorded change for that pull request together with the selected
 comment or review in full; `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and
 `Home`/`End` scroll the overlay and the watched pull request dialog; `esc`
-closes it, and `enter` in the overlay opens the pull request in your browser. `h`/`F1` shows the keys for the focused pane. Sort and
-filter settings are saved to `ui.json` next to the state file when you confirm
-the save prompt on exit. Press `p` to open the
+closes it, and `enter` in the overlay opens the pull request in your browser. `h`/`F1` shows the keys for the focused pane; `,` opens the settings dialog,
+where `j`/`k` select desktop notifications or sound, `space` toggles, and `esc`
+closes. Sort, filter, and notification settings are saved to `ui.json` next to
+the state file when you confirm the save prompt on exit. Press `p` to open the
 watch-scope picker: `j`/`k` move,
 `space` toggles, `m` switches all/selected, type `owner/name` and press Enter to
 add, and `esc` closes. Scripted snapshots accept `--picker`,

@@ -1030,6 +1030,8 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             "home" => crossterm::event::KeyCode::Home,
             "end" => crossterm::event::KeyCode::End,
             "x" => crossterm::event::KeyCode::Char('x'),
+            "," | "comma" => crossterm::event::KeyCode::Char(','),
+            " " | "space" => crossterm::event::KeyCode::Char(' '),
             "s" => crossterm::event::KeyCode::Char('s'),
             "S" => crossterm::event::KeyCode::Char('S'),
             "f" => crossterm::event::KeyCode::Char('f'),
