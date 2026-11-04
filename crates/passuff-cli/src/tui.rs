@@ -1056,7 +1056,10 @@ impl TuiApp {
     }
 
     fn row_highlight_style(&self) -> Style {
-        theme::gold_bold()
+        Style::new()
+            .fg(Color::Black)
+            .bg(theme::GOLD)
+            .add_modifier(Modifier::BOLD)
     }
 
     fn visible_activity(&self) -> Vec<&ActivityRecord> {
@@ -2415,7 +2418,8 @@ mod tests {
         assert!(buffer[(x, y)].modifier.contains(Modifier::BOLD));
 
         let (x, y) = find("▶");
-        assert_eq!(buffer[(x, y)].fg, theme::GOLD);
+        assert_eq!(buffer[(x, y)].bg, theme::GOLD);
+        assert_eq!(buffer[(x, y)].fg, Color::Black);
         assert!(buffer[(x, y)].modifier.contains(Modifier::BOLD));
 
         let (x, y) = find("1 unread of 1");
