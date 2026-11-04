@@ -28,6 +28,7 @@ pub struct ObservationUpdate {
     pub config: AppConfig,
     pub changed: bool,
     pub failure: Option<String>,
+    pub allowance: Option<ApiAllowance>,
     pub next_delay: Duration,
 }
 
@@ -125,6 +126,7 @@ impl ObservationSession {
             config: self.config.clone(),
             changed,
             failure,
+            allowance: signal.allowance.clone(),
             next_delay,
         }
     }
@@ -136,6 +138,7 @@ impl ObservationSession {
             config: self.config.clone(),
             changed: false,
             failure: Some(message),
+            allowance: None,
             next_delay: delay,
         }
     }
@@ -171,6 +174,7 @@ mod tests {
     fn allowance(remaining: u32, reset_at: &str) -> ApiAllowance {
         ApiAllowance {
             cost: 1,
+            limit: 5_000,
             remaining,
             reset_at: reset_at.to_string(),
         }

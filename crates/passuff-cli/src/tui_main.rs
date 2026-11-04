@@ -539,6 +539,9 @@ async fn run_terminal(
                 };
                 next_update_at = Some(std::time::Instant::now() + update.next_delay);
                 app.set_countdown(Some(update.next_delay));
+                if let Some(allowance) = update.allowance.as_ref() {
+                    app.set_budget(allowance.remaining, allowance.limit);
+                }
                 config = update.config;
                 if update.changed {
                     known = known_repositories(editor, &config, store).await;
