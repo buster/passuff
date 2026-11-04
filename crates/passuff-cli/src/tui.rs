@@ -256,7 +256,6 @@ fn newest<'a>(pull_requests: impl Iterator<Item = &'a PullRequestView>) -> &'a s
 
 const PULL_REQUEST_COLUMN_WIDTH: usize = 18;
 const PULL_REQUEST_LABEL_WIDTH: usize = PULL_REQUEST_COLUMN_WIDTH - 2;
-const PEOPLE_COLUMN_WIDTH: usize = 23;
 
 fn tail_label(text: &str, width: usize) -> String {
     let characters: Vec<char> = text.chars().collect();
@@ -1113,7 +1112,10 @@ impl TuiApp {
             );
         } else {
             let (groups, standalone) = stack_groups(&self.view);
-            let mut rows: Vec<Row> = Vec::new();
+            let mut entries: Vec<(&PullRequestView, String, String, Option<String>)> = Vec::new();
+            let mut has_stack = false;
+            let mut stack_width = 1;
+            let mut people_width = 1;
             for unit in self.sort_units(ordered_units(&groups, &standalone)) {
                 for pull_request in unit {
                     let key = tail_label(&pull_request.key.to_string(), PULL_REQUEST_LABEL_WIDTH);
@@ -1121,42 +1123,50 @@ impl TuiApp {
                     let stack = pull_request
                         .stack
                         .as_ref()
-                        .map(|stack| format!("{}/{}", stack.position, stack.size))
-                        .unwrap_or_default();
-                    rows.push(Row::new(vec![
-                        Cell::from(key),
-                        Cell::from(state_label(&pull_request.state)),
-                        Cell::from(ci_label(&pull_request.ci_state)),
-                        Cell::from(stack),
-                        Cell::from(people),
-                        Cell::from(pull_request.title.clone()),
-                    ]));
+                        .map(|stack| format!("{}/{}", stack.position, stack.size));
+                    if let Some(stack) = stack.as_ref() {
+                        has_stack = true;
+                        stack_width = stack_width.max(stack.chars().count());
+                    }
+                    people_width = people_width.max(people.chars().count());
+                    entries.push((pull_request, key, people, stack));
                 }
             }
-            let table = Table::new(
-                rows,
-                [
-                    Constraint::Length(PULL_REQUEST_COLUMN_WIDTH as u16),
-                    Constraint::Length(6),
-                    Constraint::Length(12),
-                    Constraint::Length(6),
-                    Constraint::Length(PEOPLE_COLUMN_WIDTH as u16),
-                    Constraint::Min(15),
-                ],
-            )
-            .header(
-                Row::new([
-                    "Pull request",
-                    "State",
-                    "CI",
-                    "Stack",
-                    "Creator / Assignee",
-                    "Title",
-                ])
-                .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            )
-            .row_highlight_style(self.row_highlight_style(Pane::Watched))
-            .highlight_symbol("▶ ");
+            let mut constraints = vec![
+                Constraint::Length(PULL_REQUEST_COLUMN_WIDTH as u16),
+                Constraint::Length(6),
+                Constraint::Length(12),
+            ];
+            let mut header = vec!["Pull request", "State", "CI"];
+            if has_stack {
+                constraints.push(Constraint::Length(stack_width as u16));
+                header.push("☰");
+            }
+            constraints.push(Constraint::Length(people_width as u16));
+            header.push("☺");
+            constraints.push(Constraint::Min(15));
+            header.push("Title");
+            let mut rows: Vec<Row> = Vec::new();
+            for (pull_request, key, people, stack) in entries {
+                let mut cells = vec![
+                    Cell::from(key),
+                    Cell::from(state_label(&pull_request.state)),
+                    Cell::from(ci_label(&pull_request.ci_state)),
+                ];
+                if has_stack {
+                    cells.push(Cell::from(stack.unwrap_or_default()));
+                }
+                cells.push(Cell::from(people));
+                cells.push(Cell::from(pull_request.title.clone()));
+                rows.push(Row::new(cells));
+            }
+            let table = Table::new(rows, constraints)
+                .header(
+                    Row::new(header)
+                        .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                )
+                .row_highlight_style(self.row_highlight_style(Pane::Watched))
+                .highlight_symbol("▶ ");
             let table = table.block(watched_block);
             let mut state = TableState::default().with_selected(Some(self.pr_selected));
             frame.render_stateful_widget(table, chunks[2], &mut state);
@@ -2102,7 +2112,7 @@ mod tests {
         pull_request.assignees = vec!["alice".to_string()];
         app.view.pull_requests = vec![pull_request];
         let frame = app.snapshot();
-        assert!(frame.contains("Creator / Assignee"), "{frame}");
+        assert!(frame.contains("☺"), "{frame}");
         assert!(frame.contains("@octo-personal → @alice"), "{frame}");
     }
 
@@ -2113,7 +2123,20 @@ mod tests {
         app.view.pull_requests = vec![standalone(key)];
         let frame = app.snapshot();
         assert!(frame.contains("…repository#1234"), "{frame}");
-        assert!(!frame.contains("very-long-organization"), "{frame}");
+        assert!(frame.contains("▶ …repository#1234"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn the_stack_symbol_appears_only_when_a_visible_pull_request_is_stacked() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.view.pull_requests = vec![standalone("acme/api#42")];
+        let frame = app.snapshot();
+        assert!(frame.contains("☺"), "{frame}");
+        assert!(!frame.contains("☰"), "{frame}");
+        app.view.pull_requests = vec![stacked("acme/api#42", 7, 2, 1, "main")];
+        let frame = app.snapshot();
+        assert!(frame.contains("☰"), "{frame}");
+        assert!(frame.contains("1/2"), "{frame}");
     }
 
     #[tokio::test]
