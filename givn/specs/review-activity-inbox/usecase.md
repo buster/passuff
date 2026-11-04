@@ -57,7 +57,7 @@ The developer lists the inbox or marks activity read.
 - T11: A refresh never changes focus or replays a notification.
 - T12: The inbox paces observation against the account's remaining API allowance; it never spends the allowance faster than it is replenished.
 - T13: A failed observation keeps the last view and is retried without ending the program.
-- T14: Enter on the focused activity opens a detail popup with the recorded id, event summary, observation time, read state, and the pull request's key, title, state, CI result, and stack position; it shows no comment or review body.
+- T14: Enter on the focused activity opens a detail popup with the recorded id, event summary, observation time, read state, the pull request's key, title, state, CI result, and stack position, and the selected comment or review body in full, rendered as Markdown; `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and `Home`/`End` scroll it.
 - T15: Escape closes the detail popup and returns to the unchanged inbox.
 - T16: Enter in the detail popup opens the pull request's URL in the system browser and closes the popup; a launch failure keeps the popup open and reports the failure.
 - T17: Enter outside the activity pane, or with no selected activity, changes nothing.
@@ -67,7 +67,7 @@ The developer lists the inbox or marks activity read.
 - T21: `h`/`H`/`F1` shows the key reference for the focused pane; Escape closes it.
 - T22: `C` resets the sort, direction, activity filters, and ignored view. Sort, direction, filters, and ignored view persist across runs when the developer confirms saving on exit.
 - T23: The watched table shows a pull request key with its significant end (a leading ellipsis when the column truncates it) and its creator and assignees; when the creator is also an assignee or none is assigned, one login is shown. The `☰` stack column appears only when a visible pull request is stacked, and the `☺` people column is as wide as its longest label.
-- T24: Enter on the focused watched pull request opens its metadata dialog; the description keeps its line and paragraph breaks (consecutive blank lines collapse to one), renders a Markdown subset (headings green and bold without markers, bullet and numbered lists with hanging indents, task boxes, code fences dimmed without the fences, horizontal rules, inline emphasis and code markers removed, links reduced to their text, HTML comments removed), and ends with an ellipsis when it exceeds the dialog height.
+- T24: Enter on the focused watched pull request opens its metadata dialog; the description keeps its line and paragraph breaks (consecutive blank lines collapse to one), renders a Markdown subset (headings green and bold without markers, bullet and numbered lists with hanging indents, task boxes, code fences dimmed without the fences, horizontal rules, inline emphasis and code markers removed, links reduced to their text, HTML comments removed), and scrolls with `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and `Home`/`End`, which jump to its top and bottom.
 
 ## Examples
 

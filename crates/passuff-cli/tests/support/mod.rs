@@ -1247,7 +1247,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                 observed_at: "2026-11-02T10:00:00Z".to_string(),
                 event: ActivityEvent::Comment {
                     author: "seed".to_string(),
-                    body_excerpt: "seed".to_string(),
+                    body: "seed".to_string(),
                 },
                 read: false,
             });

@@ -78,6 +78,14 @@ async fn pull_request_markdown_description(world: &mut World, key: String) {
         "## Summary\n\n- first item\n- second item\n\n**bold** text".to_string();
 }
 
+#[given(regex = r#"^the pull request "([^"]+)" has a long description$"#)]
+async fn pull_request_long_description(world: &mut World, key: String) {
+    world.pr_mut(&key).description = (1..=40)
+        .map(|line| format!("line {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+}
+
 #[given(regex = r#"^the pull request "([^"]+)" is assigned to "([^"]+)"$"#)]
 async fn pull_request_assignee(world: &mut World, key: String, login: String) {
     world.pr_mut(&key).assignees.push(login);

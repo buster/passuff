@@ -14,7 +14,7 @@ pub use cycle::PassuffCore;
 pub use domain::{
     Account, AccountFailure, AccountFailureKind, AccountState, ActivityEvent, ActivityRecord,
     ApiAllowance, AuthoredPullRequest, Baseline, ChangeProbe, ChangeSignal, CiResult, CiState,
-    Comment, CoreError, CurrentObservation, ProbePullRequest,
+    Comment, CoreError, CurrentObservation, ProbePullRequest, excerpt,
     LoginSet, Notification, PrState, PullRequestKey, PullRequestStack, RefreshReport, Review,
     ReviewComment, ScopeSnapshot, StateError, WatchedPullRequest, WatcherState,
 };

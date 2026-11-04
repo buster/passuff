@@ -177,7 +177,7 @@ fn render_event(event: &ActivityEvent) -> String {
         ActivityEvent::ReviewComment { author, .. } => {
             format!("Review comment from @{author}")
         }
-        ActivityEvent::Review { author, state } => format!("Review {state} by @{author}"),
+        ActivityEvent::Review { author, state, .. } => format!("Review {state} by @{author}"),
         ActivityEvent::CiFailure { failed_checks } if !failed_checks.is_empty() => {
             format!("CI failing: {}", failed_checks.join(", "))
         }
