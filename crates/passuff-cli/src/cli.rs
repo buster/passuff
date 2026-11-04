@@ -21,6 +21,14 @@ pub struct Cli {
     /// Enable diagnostic logs on stderr (debug unless RUST_LOG is set)
     #[arg(long, global = true)]
     pub verbose: bool,
+
+    /// Suppress desktop notifications for this run
+    #[arg(long, global = true)]
+    pub no_desktop: bool,
+
+    /// Suppress the notification sound for this run
+    #[arg(long, global = true)]
+    pub no_sound: bool,
 }
 
 #[derive(Debug, Subcommand)]

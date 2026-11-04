@@ -57,10 +57,13 @@ async fn main() {
     let state_store = Arc::new(JsonStateStore::new(state_path));
     let config = ConfigLoader::load(&config_path);
     let inbox_cli = || InboxCli::new(Arc::new(Inbox::new(state_store.clone())));
+    let desktop = !args.no_desktop;
+    let sound_enabled = !args.no_sound;
     let build_runtime = |interactive_credentials: bool| {
         let credentials = system_credentials(interactive_credentials);
         let sound = Arc::new(SystemSoundPlayer::new());
-        let delivery = build_delivery(sound);
+        let delivery =
+            passuff_cli::delivery::mute_delivery(build_delivery(sound), desktop, sound_enabled);
         CliRuntime::new(CliPorts {
             gateway: Arc::new(GitHubApiAdapter::new()),
             store: state_store.clone(),
@@ -78,7 +81,13 @@ async fn main() {
         Some(Command::Read { id, all }) => inbox_cli().read(config, id, all).await,
         Some(Command::NotifyTest) => {
             let sound = Arc::new(SystemSoundPlayer::new());
-            passuff_cli::notify_cli::notify_test(config, build_delivery(sound)).await
+            passuff_cli::notify_cli::notify_test(
+                config,
+                build_delivery(sound),
+                args.no_desktop,
+                args.no_sound,
+            )
+            .await
         }
         None => build_runtime(interactive).run_watch(config).await,
     };

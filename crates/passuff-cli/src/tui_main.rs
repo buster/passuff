@@ -10,7 +10,7 @@ use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use passuff_cli::browser::{BrowserOpener, SystemBrowserOpener};
-use passuff_cli::delivery::build_delivery;
+use passuff_cli::delivery::{build_delivery, mute_delivery};
 use passuff_cli::live::{ObservationSession, ObservationUpdate};
 use passuff_cli::scope::{ScopeEditor, ScopePicker};
 use passuff_cli::sound::SystemSoundPlayer;
@@ -50,6 +50,12 @@ struct Args {
     picker: bool,
     #[arg(long, value_name = "KEYS")]
     keys: Option<String>,
+    /// Suppress desktop notifications for this run
+    #[arg(long)]
+    no_desktop: bool,
+    /// Suppress the notification sound for this run
+    #[arg(long)]
+    no_sound: bool,
 }
 
 #[tokio::main]
@@ -137,7 +143,7 @@ async fn main() {
     if args.observe || args.observe_for.is_some() {
         let active = config.as_ref().expect("validated configuration").clone();
         let mut session = match ObservationSession::open(
-            runtime_for(&config_path, &state_path),
+            runtime_for(&config_path, &state_path, !args.no_desktop, !args.no_sound),
             active.clone(),
             config_path.clone(),
         )
@@ -243,7 +249,7 @@ async fn main() {
         &editor,
         &state_store,
         args.picker,
-        runtime_for(&config_path, &state_path),
+        runtime_for(&config_path, &state_path, !args.no_desktop, !args.no_sound),
         config_path,
         &preferences_path,
         &saved_preferences,
@@ -273,13 +279,19 @@ fn save_preferences(path: &Path, preferences: &TuiPreferences) -> Result<(), Str
     Ok(())
 }
 
-fn runtime_for(config_path: &Path, state_path: &Path) -> CliRuntime {
+fn runtime_for(
+    config_path: &Path,
+    state_path: &Path,
+    desktop: bool,
+    sound_enabled: bool,
+) -> CliRuntime {
     let sound = Arc::new(SystemSoundPlayer::new());
+    let delivery = mute_delivery(build_delivery(sound), desktop, sound_enabled);
     CliRuntime::new(CliPorts {
         gateway: Arc::new(GitHubApiAdapter::new()),
         store: Arc::new(JsonStateStore::new(state_path.to_path_buf())),
         credentials: system_credentials(false),
-        delivery: build_delivery(sound),
+        delivery,
     })
     .with_config_path(config_path.to_path_buf())
 }

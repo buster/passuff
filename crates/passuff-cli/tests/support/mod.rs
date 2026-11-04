@@ -946,10 +946,16 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
     }
 
     pub async fn run_notify_test(&mut self) {
+        self.run_notify_test_with(&[]).await;
+    }
+
+    pub async fn run_notify_test_with(&mut self, flags: &[&str]) {
         if self.e2e {
-            self.e2e_run_notify_test().await;
+            self.e2e_run_notify_test_with(flags).await;
             return;
         }
+        let no_desktop = flags.contains(&"--no-desktop");
+        let no_sound = flags.contains(&"--no-sound");
         let config = if let Some(text) = self.config_text.clone() {
             ConfigLoader::parse(&text)
         } else if self.invalid_config {
@@ -967,7 +973,8 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         } else {
             Arc::new(RecordingDelivery::new(sound, self.notification_log.clone()))
         };
-        let outcome = passuff_cli::notify_cli::notify_test(config, delivery).await;
+        let outcome =
+            passuff_cli::notify_cli::notify_test(config, delivery, no_desktop, no_sound).await;
         self.last_report = outcome.report;
         self.last_transcript = outcome.transcript;
         self.last_status = outcome.status;
