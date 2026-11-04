@@ -467,6 +467,37 @@ impl TuiApp {
         self.focus
     }
 
+    fn focus_label(&self) -> &'static str {
+        match self.focus {
+            Pane::Watched => "PRs",
+            Pane::Activity => "activity",
+        }
+    }
+
+    fn pane_border_style(&self, pane: Pane) -> Style {
+        Style::new().fg(if self.focus == pane {
+            Color::Green
+        } else {
+            Color::Gray
+        })
+    }
+
+    fn pane_title_style(&self, pane: Pane) -> Style {
+        if self.focus == pane {
+            Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)
+        } else {
+            Style::new().fg(Color::Gray)
+        }
+    }
+
+    fn row_highlight_style(&self, pane: Pane) -> Style {
+        if self.focus == pane {
+            Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD)
+        } else {
+            Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+        }
+    }
+
     fn visible_activity(&self) -> Vec<&ActivityRecord> {
         let records = self.view.activity.iter();
         match self.activity_filter.as_ref() {
@@ -973,10 +1004,11 @@ impl TuiApp {
             .map(|_| format!("   (filtered from {})", self.view.activity.len()))
             .unwrap_or_default();
         let mut spans = vec![Span::raw(format!(
-            "{} unread of {}{}   |   Focus: activity",
+            "{} unread of {}{}   |   Focus: {}",
             unread,
             visible.len(),
-            filtered
+            filtered,
+            self.focus_label()
         ))];
         if self.fetching {
             const FRAMES: [&str; 4] = ["◇", "◆", "◈", "◆"];
@@ -1005,11 +1037,14 @@ impl TuiApp {
         let watched_mode = if self.show_ignored { "all" } else { "filtered" };
         let direction = if self.descending { "↓" } else { "↑" };
         let watched_block = Block::bordered()
-            .title(format!(
-                " Watched pull requests · {watched_mode} · sort: {} {direction} ",
-                self.sort.label()
-            ))
-            .border_style(Style::new().fg(Color::Gray));
+            .title(
+                Line::from(format!(
+                    " Watched pull requests · {watched_mode} · sort: {} {direction} ",
+                    self.sort.label()
+                ))
+                .style(self.pane_title_style(Pane::Watched)),
+            )
+            .border_style(self.pane_border_style(Pane::Watched));
         if self.view.pull_requests.is_empty() {
             frame.render_widget(
                 Paragraph::new("no watched pull requests").block(watched_block),
@@ -1052,16 +1087,9 @@ impl TuiApp {
                 Row::new(["Pull request", "State", "CI", "Stack", "Title"])
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
-            .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD))
+            .row_highlight_style(self.row_highlight_style(Pane::Watched))
             .highlight_symbol("▶ ");
-            let highlight = if self.focus == Pane::Watched {
-                Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD)
-            } else {
-                Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-            };
-            let table = table
-                .block(watched_block)
-                .row_highlight_style(highlight);
+            let table = table.block(watched_block);
             let mut state = TableState::default().with_selected(Some(self.pr_selected));
             frame.render_stateful_widget(table, chunks[2], &mut state);
         }
@@ -1071,11 +1099,8 @@ impl TuiApp {
             None => " Activity ".to_string(),
         };
         let activity_block = Block::bordered()
-            .title(
-                Line::from(activity_title)
-                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            )
-            .border_style(Style::new().fg(Color::Green));
+            .title(Line::from(activity_title).style(self.pane_title_style(Pane::Activity)))
+            .border_style(self.pane_border_style(Pane::Activity));
         let visible_activity = self.visible_activity();
         if visible_activity.is_empty() {
             let empty = if self.activity_filter.is_some() {
@@ -1113,14 +1138,9 @@ impl TuiApp {
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
             .block(activity_block)
-            .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD))
+            .row_highlight_style(self.row_highlight_style(Pane::Activity))
             .highlight_symbol("▶ ");
-            let selected = if self.focus == Pane::Activity {
-                Some(self.selected)
-            } else {
-                None
-            };
-            let mut state = TableState::default().with_selected(selected);
+            let mut state = TableState::default().with_selected(Some(self.selected));
             frame.render_stateful_widget(table, chunks[3], &mut state);
         }
 
@@ -1753,6 +1773,79 @@ mod tests {
         assert_eq!(frame.matches("▶").count(), 1, "{frame}");
         assert_eq!(selected, selected, "{frame}");
         assert!(frame.contains("comment by @alice"), "{frame}");
+    }
+
+    fn pane_border_color(app: &TuiApp, title: &str) -> Color {
+        let backend = TestBackend::new(100, 30);
+        let mut terminal = Terminal::new(backend).expect("test terminal");
+        terminal.draw(|frame| app.render(frame)).expect("draw");
+        let buffer = terminal.backend().buffer();
+        let y = (0..30)
+            .find(|y| {
+                (0..100)
+                    .map(|x| {
+                        buffer
+                            .cell((x, *y))
+                            .map(|cell| cell.symbol())
+                            .unwrap_or(" ")
+                    })
+                    .collect::<String>()
+                    .contains(title)
+            })
+            .expect("pane title");
+        buffer[(1, y)].fg
+    }
+
+    #[tokio::test]
+    async fn the_green_frame_follows_the_focused_pane() {
+        let mut view = view(vec![record_on("acme/api#42", "a1", false)]);
+        view.pull_requests = vec![standalone("acme/api#42")];
+        let mut app = TuiApp::new(view);
+        let inbox = FakeInbox::new(Vec::new());
+
+        assert_eq!(pane_border_color(&app, " Activity "), Color::Green);
+        assert_eq!(
+            pane_border_color(&app, " Watched pull requests"),
+            Color::Gray
+        );
+
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+
+        assert_eq!(
+            pane_border_color(&app, " Watched pull requests"),
+            Color::Green
+        );
+        assert_eq!(pane_border_color(&app, " Activity "), Color::Gray);
+    }
+
+    #[tokio::test]
+    async fn the_activity_arrow_stays_while_the_pull_request_pane_has_focus() {
+        let mut view = view(vec![record_on("acme/api#42", "a1", false)]);
+        view.pull_requests = vec![standalone("acme/api#42")];
+        let mut app = TuiApp::new(view);
+        let inbox = FakeInbox::new(Vec::new());
+        let activity_row = |frame: &str| {
+            frame
+                .lines()
+                .find(|line| line.contains("comment by @alice"))
+                .expect("activity row")
+                .to_string()
+        };
+
+        assert!(activity_row(&app.snapshot()).contains('▶'));
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        let frame = app.snapshot();
+        assert!(activity_row(&frame).contains('▶'), "{frame}");
+        let pr_row = frame
+            .lines()
+            .find(|line| line.contains("Pull request acme/api#42"))
+            .expect("pull request row");
+        assert!(pr_row.contains('▶'), "{frame}");
+        assert!(frame.contains("|   Focus: PRs"), "{frame}");
     }
 
     #[test]
