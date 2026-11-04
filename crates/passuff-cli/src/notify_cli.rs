@@ -29,10 +29,6 @@ pub async fn notify_test(
 
     let rendered = renderer.render_test_notification(config.notifications.sound);
     let report = delivery.deliver(&rendered, &config.notifications).await;
-    // macOS sends the desktop notification asynchronously from the delivery
-    // handle's drop; give the system time to accept it before the process exits.
-    #[cfg(target_os = "macos")]
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     let mut lines = Vec::new();
     let mut failed = false;
     let mut enabled = false;
