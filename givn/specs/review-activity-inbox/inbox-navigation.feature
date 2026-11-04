@@ -38,6 +38,24 @@ Feature: Inbox navigation
     And  the TUI shows "Focus: PRs"
 
   @inbox-navigation
+  Scenario: A long pull request key keeps its number visible
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "very-long-organization/very-long-repository#1234" by "octo-personal"
+    And  the watcher has already observed "very-long-organization/very-long-repository#1234"
+    When  the developer opens the inbox TUI
+    Then  the TUI shows "…repository#1234"
+
+  @inbox-navigation
+  Scenario: The watched table shows the creator and the assignee
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the pull request "acme/api#42" is assigned to "alice"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer opens the inbox TUI
+    Then  the TUI shows "Creator / Assignee"
+    And  the TUI shows "@octo-personal → @alice"
+
+  @inbox-navigation
   Scenario: The developer sorts the watched list
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

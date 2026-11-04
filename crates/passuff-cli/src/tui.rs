@@ -254,6 +254,48 @@ fn newest<'a>(pull_requests: impl Iterator<Item = &'a PullRequestView>) -> &'a s
         .unwrap_or("")
 }
 
+const PULL_REQUEST_COLUMN_WIDTH: usize = 18;
+const PULL_REQUEST_LABEL_WIDTH: usize = PULL_REQUEST_COLUMN_WIDTH - 2;
+const PEOPLE_COLUMN_WIDTH: usize = 23;
+
+fn tail_label(text: &str, width: usize) -> String {
+    let characters: Vec<char> = text.chars().collect();
+    if characters.len() <= width {
+        return text.to_string();
+    }
+    let tail: String = characters[characters.len() - (width - 1)..]
+        .iter()
+        .collect();
+    format!("…{tail}")
+}
+
+fn people_label(author: &str, assignees: &[String]) -> String {
+    let mut others: Vec<&str> = Vec::new();
+    for assignee in assignees {
+        if assignee.eq_ignore_ascii_case(author)
+            || others
+                .iter()
+                .any(|seen| seen.eq_ignore_ascii_case(assignee))
+        {
+            continue;
+        }
+        others.push(assignee);
+    }
+    let creator = format!("@{author}");
+    if others.is_empty() {
+        creator
+    } else {
+        format!(
+            "{creator} → {}",
+            others
+                .iter()
+                .map(|login| format!("@{login}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
 
 fn event_line(event: &ActivityEvent) -> String {
     match event {
@@ -1074,37 +1116,44 @@ impl TuiApp {
             let mut rows: Vec<Row> = Vec::new();
             for unit in self.sort_units(ordered_units(&groups, &standalone)) {
                 for pull_request in unit {
-                    match pull_request.stack.as_ref() {
-                        Some(stack) => rows.push(Row::new(vec![
-                            Cell::from(pull_request.key.to_string()),
-                            Cell::from(state_label(&pull_request.state)),
-                            Cell::from(ci_label(&pull_request.ci_state)),
-                            Cell::from(format!("{}/{}", stack.position, stack.size)),
-                            Cell::from(pull_request.title.clone()),
-                        ])),
-                        None => rows.push(Row::new(vec![
-                            Cell::from(pull_request.key.to_string()),
-                            Cell::from(state_label(&pull_request.state)),
-                            Cell::from(ci_label(&pull_request.ci_state)),
-                            Cell::from(""),
-                            Cell::from(pull_request.title.clone()),
-                        ])),
-                    }
+                    let key = tail_label(&pull_request.key.to_string(), PULL_REQUEST_LABEL_WIDTH);
+                    let people = people_label(&pull_request.author, &pull_request.assignees);
+                    let stack = pull_request
+                        .stack
+                        .as_ref()
+                        .map(|stack| format!("{}/{}", stack.position, stack.size))
+                        .unwrap_or_default();
+                    rows.push(Row::new(vec![
+                        Cell::from(key),
+                        Cell::from(state_label(&pull_request.state)),
+                        Cell::from(ci_label(&pull_request.ci_state)),
+                        Cell::from(stack),
+                        Cell::from(people),
+                        Cell::from(pull_request.title.clone()),
+                    ]));
                 }
             }
             let table = Table::new(
                 rows,
                 [
-                    Constraint::Length(18),
-                    Constraint::Length(8),
+                    Constraint::Length(PULL_REQUEST_COLUMN_WIDTH as u16),
+                    Constraint::Length(6),
                     Constraint::Length(12),
-                    Constraint::Length(8),
+                    Constraint::Length(6),
+                    Constraint::Length(PEOPLE_COLUMN_WIDTH as u16),
                     Constraint::Min(15),
                 ],
             )
             .header(
-                Row::new(["Pull request", "State", "CI", "Stack", "Title"])
-                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                Row::new([
+                    "Pull request",
+                    "State",
+                    "CI",
+                    "Stack",
+                    "Creator / Assignee",
+                    "Title",
+                ])
+                .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
             .row_highlight_style(self.row_highlight_style(Pane::Watched))
             .highlight_symbol("▶ ");
@@ -1873,7 +1922,7 @@ mod tests {
         assert!(activity_row(&frame).contains('▶'), "{frame}");
         let pr_row = frame
             .lines()
-            .find(|line| line.contains("Pull request acme/api#42"))
+            .find(|line| line.contains("acme/api#42"))
             .expect("pull request row");
         assert!(pr_row.contains('▶'), "{frame}");
         assert!(frame.contains("|   Focus: PRs"), "{frame}");
@@ -2019,6 +2068,52 @@ mod tests {
         let frame = app.snapshot();
         assert!(frame.contains("1 unread of 2"), "{frame}");
         assert!(!frame.contains("filtered from"), "{frame}");
+    }
+
+    #[test]
+    fn tail_label_keeps_the_end_of_a_long_key() {
+        let key = "very-long-organization/very-long-repository#1234";
+        assert_eq!(tail_label(key, 16), "…repository#1234");
+        assert_eq!(tail_label("acme/api#42", 16), "acme/api#42");
+    }
+
+    #[test]
+    fn people_label_collapses_creator_and_assignees() {
+        assert_eq!(people_label("alice", &[]), "@alice");
+        assert_eq!(people_label("alice", &["alice".to_string()]), "@alice");
+        assert_eq!(
+            people_label("alice", &["Alice".to_string(), "bob".to_string()]),
+            "@alice → @bob"
+        );
+        assert_eq!(
+            people_label("alice", &["bob".to_string(), "bob".to_string()]),
+            "@alice → @bob"
+        );
+        assert_eq!(
+            people_label("alice", &["bob".to_string(), "carol".to_string()]),
+            "@alice → @bob, @carol"
+        );
+    }
+
+    #[tokio::test]
+    async fn the_watched_table_shows_the_creator_and_assignees() {
+        let mut app = TuiApp::new(view(vec![record_on("acme/api#42", "a1", false)]));
+        let mut pull_request = standalone("acme/api#42");
+        pull_request.assignees = vec!["alice".to_string()];
+        app.view.pull_requests = vec![pull_request];
+        let frame = app.snapshot();
+        assert!(frame.contains("Creator / Assignee"), "{frame}");
+        assert!(frame.contains("@octo-personal → @alice"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn a_long_pull_request_key_keeps_its_number_visible() {
+        let key = "very-long-organization/very-long-repository#1234";
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.view.pull_requests = vec![standalone(key)];
+        let frame = app.snapshot();
+        assert!(frame.contains("…repository#1234"), "{frame}");
+        assert!(!frame.contains("very-long-organization"), "{frame}");
     }
 
     #[tokio::test]
