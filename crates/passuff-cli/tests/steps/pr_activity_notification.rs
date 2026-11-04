@@ -66,6 +66,12 @@ async fn pull_request_description(world: &mut World, key: String, description: S
     world.pr_mut(&key).description = description;
 }
 
+#[given(regex = r#"^the pull request "([^"]+)" has a multi-line description$"#)]
+async fn pull_request_multiline_description(world: &mut World, key: String) {
+    world.pr_mut(&key).description =
+        "Summary\nFirst paragraph\n\nSecond paragraph".to_string();
+}
+
 #[given(regex = r#"^the pull request "([^"]+)" is assigned to "([^"]+)"$"#)]
 async fn pull_request_assignee(world: &mut World, key: String, login: String) {
     world.pr_mut(&key).assignees.push(login);

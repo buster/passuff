@@ -188,6 +188,20 @@ Feature: Inbox navigation
     And  the TUI shows "CI: passing"
 
   @inbox-navigation
+  Scenario: The pull request description keeps its paragraphs
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the pull request "acme/api#42" has a multi-line description
+    And  the watcher has already observed "acme/api#42"
+    When  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "enter"
+    Then  the TUI shows "Description:"
+    And  the TUI shows "Summary"
+    And  the TUI shows "Second paragraph"
+    And  the TUI does not show "Summary First paragraph"
+
+  @inbox-navigation
   Scenario: The developer ignores and restores a pull request
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
