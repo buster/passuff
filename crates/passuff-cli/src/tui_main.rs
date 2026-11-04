@@ -324,7 +324,7 @@ async fn apply_action(
 ) -> Result<bool, String> {
     match action {
         TuiAction::Continue => Ok(false),
-        TuiAction::Quit => Ok(false),
+        TuiAction::Quit | TuiAction::QuitDiscard => Ok(false),
         TuiAction::QuitSave => Ok(true),
         TuiAction::OpenUrl(url) => {
             match opener.open(&url) {
@@ -504,6 +504,9 @@ async fn run_terminal(
                     }
                     Ok(TuiAction::QuitSave) => {
                         save_preferences(preferences_path, &app.preferences())?;
+                        break Ok(());
+                    }
+                    Ok(TuiAction::QuitDiscard) => {
                         break Ok(());
                     }
                     Ok(action) => {

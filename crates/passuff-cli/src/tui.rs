@@ -43,6 +43,7 @@ pub enum TuiAction {
     Continue,
     Quit,
     QuitSave,
+    QuitDiscard,
     OpenUrl(String),
     ToggleIgnoredView,
     ToggleIgnore(PullRequestKey),
@@ -623,7 +624,7 @@ impl TuiApp {
                 }
                 KeyCode::Char('n') | KeyCode::Char('N') => {
                     self.save_prompt = false;
-                    Ok(TuiAction::Quit)
+                    Ok(TuiAction::QuitDiscard)
                 }
                 KeyCode::Esc => {
                     self.save_prompt = false;
@@ -2092,6 +2093,39 @@ mod tests {
         assert!(frame.contains("Changes on acme/api#42: 2"), "{frame}");
         assert!(frame.contains("comment by @alice"), "{frame}");
         assert!(frame.contains("CI failing: build"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn the_save_prompt_answers_discard_save_and_cancel() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let inbox = FakeInbox::new(Vec::new());
+        app.show_save_prompt();
+        assert_eq!(
+            app.handle_key(key(KeyCode::Char('n')), &inbox, &core_config())
+                .await
+                .expect("discard"),
+            TuiAction::QuitDiscard
+        );
+        app.show_save_prompt();
+        assert_eq!(
+            app.handle_key(key(KeyCode::Char('y')), &inbox, &core_config())
+                .await
+                .expect("save"),
+            TuiAction::QuitSave
+        );
+        app.show_save_prompt();
+        assert_eq!(
+            app.handle_key(key(KeyCode::Esc), &inbox, &core_config())
+                .await
+                .expect("cancel"),
+            TuiAction::Continue
+        );
+        assert_eq!(
+            app.handle_key(key(KeyCode::Char('n')), &inbox, &core_config())
+                .await
+                .expect("unbound"),
+            TuiAction::Continue
+        );
     }
 
     #[tokio::test]

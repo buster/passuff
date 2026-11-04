@@ -982,7 +982,9 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         };
         let event = crossterm::event::KeyEvent::new(code, crossterm::event::KeyModifiers::NONE);
         match app.handle_key(event, &inbox, &config.core).await {
-            Ok(TuiAction::Quit) | Ok(TuiAction::QuitSave) => self.tui_closed = true,
+            Ok(TuiAction::Quit) | Ok(TuiAction::QuitSave) | Ok(TuiAction::QuitDiscard) => {
+                self.tui_closed = true
+            }
             Ok(TuiAction::Continue) => self.last_transcript = app.snapshot(),
             Ok(TuiAction::OpenUrl(url)) => {
                 if self.browser_fails {
