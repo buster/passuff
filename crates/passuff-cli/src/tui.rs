@@ -42,9 +42,110 @@ pub async fn load_view(
 pub enum TuiAction {
     Continue,
     Quit,
+    QuitSave,
     OpenUrl(String),
     ToggleIgnoredView,
     ToggleIgnore(PullRequestKey),
+    ResetView,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct TuiPreferences {
+    pub sort: String,
+    pub descending: bool,
+    pub filter: Option<String>,
+    #[serde(default)]
+    pub show_ignored: bool,
+}
+
+impl Default for TuiPreferences {
+    fn default() -> Self {
+        Self {
+            sort: "updated".to_string(),
+            descending: true,
+            filter: None,
+            show_ignored: false,
+        }
+    }
+}
+
+fn sort_from_preference(value: &str) -> SortMode {
+    match value {
+        "name" => SortMode::Name,
+        "state" => SortMode::State,
+        "age" => SortMode::Age,
+        _ => SortMode::Updated,
+    }
+}
+
+fn filter_from_preference(value: &str) -> Option<ActivityFilter> {
+    let (kind, rest) = value.split_once(':')?;
+    match kind {
+        "pr" => {
+            let (repository, number) = rest.rsplit_once('#')?;
+            Some(ActivityFilter::PullRequest(PullRequestKey::new(
+                repository.to_string(),
+                number.parse().ok()?,
+            )))
+        }
+        "stack" => {
+            let (repository, number) = rest.rsplit_once('#')?;
+            Some(ActivityFilter::Stack(
+                repository.to_string(),
+                number.parse().ok()?,
+            ))
+        }
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortMode {
+    Updated,
+    Name,
+    State,
+    Age,
+}
+
+impl SortMode {
+    fn label(&self) -> &'static str {
+        match self {
+            SortMode::Updated => "updated",
+            SortMode::Name => "name",
+            SortMode::State => "state",
+            SortMode::Age => "age",
+        }
+    }
+
+    fn next(&self) -> Self {
+        match self {
+            SortMode::Updated => SortMode::Name,
+            SortMode::Name => SortMode::State,
+            SortMode::State => SortMode::Age,
+            SortMode::Age => SortMode::Updated,
+        }
+    }
+
+    fn default_descending(&self) -> bool {
+        matches!(self, SortMode::Updated | SortMode::Age)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ActivityFilter {
+    PullRequest(PullRequestKey),
+    Stack(String, u64),
+}
+
+impl ActivityFilter {
+    fn label(&self) -> String {
+        match self {
+            ActivityFilter::PullRequest(key) => key.to_string(),
+            ActivityFilter::Stack(repository, number) => {
+                format!("{repository} stack {number}")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -103,6 +204,14 @@ fn stack_groups(view: &InboxView) -> (Vec<StackGroup<'_>>, Vec<&PullRequestView>
             .then_with(|| left.key.cmp(&right.key))
     });
     (result, standalone)
+}
+
+fn state_rank(state: &PrState) -> u8 {
+    match state {
+        PrState::Open => 0,
+        PrState::Merged => 1,
+        PrState::Closed => 2,
+    }
 }
 
 fn ordered_units<'a>(
@@ -262,8 +371,13 @@ pub struct TuiApp {
     status: Option<String>,
     countdown: Option<std::time::Duration>,
     popup: Option<ActivityDetail>,
+    sort: SortMode,
+    descending: bool,
+    activity_filter: Option<ActivityFilter>,
+    help: Option<Pane>,
     pr_detail: Option<PullRequestView>,
     show_ignored: bool,
+    save_prompt: bool,
 }
 
 impl TuiApp {
@@ -277,8 +391,13 @@ impl TuiApp {
             status: None,
             countdown: None,
             popup: None,
+            sort: SortMode::Updated,
+            descending: true,
+            activity_filter: None,
+            help: None,
             pr_detail: None,
             show_ignored: false,
+            save_prompt: false,
         }
     }
 
@@ -296,7 +415,7 @@ impl TuiApp {
     }
 
     fn sync_pr_selection(&mut self) {
-        let Some(record) = self.view.activity.get(self.selected) else {
+        let Some(record) = self.visible_activity().get(self.selected).copied() else {
             return;
         };
         let key = record.key.clone();
@@ -324,9 +443,96 @@ impl TuiApp {
         self.focus
     }
 
+    fn visible_activity(&self) -> Vec<&ActivityRecord> {
+        let records = self.view.activity.iter();
+        match self.activity_filter.as_ref() {
+            None => records.collect(),
+            Some(ActivityFilter::PullRequest(key)) => {
+                records.filter(|record| &record.key == key).collect()
+            }
+            Some(ActivityFilter::Stack(repository, number)) => {
+                let members: Vec<&PullRequestKey> = self
+                    .view
+                    .pull_requests
+                    .iter()
+                    .filter(|pull_request| {
+                        pull_request.stack.as_ref().is_some_and(|stack| {
+                            stack.number == *number
+                                && pull_request.key.repository.eq_ignore_ascii_case(repository)
+                        })
+                    })
+                    .map(|pull_request| &pull_request.key)
+                    .collect();
+                records
+                    .filter(|record| members.contains(&&record.key))
+                    .collect()
+            }
+        }
+    }
+
+    pub fn sort_mode(&self) -> SortMode {
+        self.sort
+    }
+
+    pub fn descending(&self) -> bool {
+        self.descending
+    }
+
+    pub fn activity_filter(&self) -> Option<&ActivityFilter> {
+        self.activity_filter.as_ref()
+    }
+
+    pub fn preferences(&self) -> TuiPreferences {
+        TuiPreferences {
+            sort: self.sort.label().to_string(),
+            descending: self.descending,
+            filter: self.activity_filter.as_ref().map(|filter| match filter {
+                ActivityFilter::PullRequest(key) => format!("pr:{key}"),
+                ActivityFilter::Stack(repository, number) => {
+                    format!("stack:{repository}#{number}")
+                }
+            }),
+            show_ignored: self.show_ignored,
+        }
+    }
+
+    pub fn apply_preferences(&mut self, preferences: &TuiPreferences) {
+        self.sort = sort_from_preference(&preferences.sort);
+        self.descending = preferences.descending;
+        self.activity_filter = preferences
+            .filter
+            .as_deref()
+            .and_then(filter_from_preference);
+        self.show_ignored = preferences.show_ignored;
+    }
+
+    pub fn show_save_prompt(&mut self) {
+        self.save_prompt = true;
+    }
+
+    fn sort_units<'a>(&self, units: Vec<Vec<&'a PullRequestView>>) -> Vec<Vec<&'a PullRequestView>> {
+        let mut units = units;
+        units.sort_by(|left, right| {
+            let left = left[0];
+            let right = right[0];
+            let ordering = match self.sort {
+                SortMode::Updated => left.updated_at.cmp(&right.updated_at),
+                SortMode::Age => left.created_at.cmp(&right.created_at),
+                SortMode::Name => left.title.to_lowercase().cmp(&right.title.to_lowercase()),
+                SortMode::State => state_rank(&left.state).cmp(&state_rank(&right.state)),
+            };
+            let ordering = if self.descending {
+                ordering.reverse()
+            } else {
+                ordering
+            };
+            ordering.then_with(|| left.key.cmp(&right.key))
+        });
+        units
+    }
+
     pub fn selected_summary(&self) -> Option<String> {
-        self.view
-            .activity
+        self.visible_activity()
             .get(self.selected)
             .map(|record| activity_summary(&record.event))
     }
@@ -337,7 +543,7 @@ impl TuiApp {
 
     fn ordered_pull_requests(&self) -> Vec<&PullRequestView> {
         let (groups, standalone) = stack_groups(&self.view);
-        ordered_units(&groups, &standalone)
+        self.sort_units(ordered_units(&groups, &standalone))
             .into_iter()
             .flatten()
             .collect()
@@ -369,8 +575,9 @@ impl TuiApp {
     ) -> Result<(), CoreError> {
         let selected_pr = self.selected_pr.clone();
         self.view = inbox.view(config).await?;
-        if self.selected >= self.view.activity.len() {
-            self.selected = self.view.activity.len().saturating_sub(1);
+        let visible = self.visible_activity().len();
+        if self.selected >= visible {
+            self.selected = visible.saturating_sub(1);
         }
         self.clamp_pr_selection(selected_pr);
         if self.focus == Pane::Activity {
@@ -385,6 +592,32 @@ impl TuiApp {
         inbox: &dyn InboxService,
         config: &CoreConfig,
     ) -> Result<TuiAction, CoreError> {
+        if self.save_prompt {
+            return match key.code {
+                KeyCode::Char('y') | KeyCode::Char('Y') => {
+                    self.save_prompt = false;
+                    Ok(TuiAction::QuitSave)
+                }
+                KeyCode::Char('n') | KeyCode::Char('N') => {
+                    self.save_prompt = false;
+                    Ok(TuiAction::Quit)
+                }
+                KeyCode::Esc => {
+                    self.save_prompt = false;
+                    Ok(TuiAction::Continue)
+                }
+                _ => Ok(TuiAction::Continue),
+            };
+        }
+        if self.help.is_some() {
+            if matches!(
+                key.code,
+                KeyCode::Esc | KeyCode::Char('h') | KeyCode::Char('H') | KeyCode::F(1)
+            ) {
+                self.help = None;
+            }
+            return Ok(TuiAction::Continue);
+        }
         if self.pr_detail.is_some() {
             return match key.code {
                 KeyCode::Esc => {
@@ -440,7 +673,7 @@ impl TuiApp {
                         }
                     }
                     Pane::Activity => {
-                        if self.selected + 1 < self.view.activity.len() {
+                        if self.selected + 1 < self.visible_activity().len() {
                             self.selected += 1;
                         }
                         self.sync_pr_selection();
@@ -470,7 +703,8 @@ impl TuiApp {
                         self.selected_pr = key;
                     }
                     Pane::Activity => {
-                        self.selected = (self.selected + 10).min(self.view.activity.len().saturating_sub(1));
+                        self.selected = (self.selected + 10)
+                            .min(self.visible_activity().len().saturating_sub(1));
                         self.sync_pr_selection();
                     }
                 }
@@ -497,6 +731,75 @@ impl TuiApp {
                 .selected_pull_request()
                 .map(|pull_request| TuiAction::ToggleIgnore(pull_request.key.clone()))
                 .unwrap_or(TuiAction::Continue)),
+            KeyCode::Char('s') if self.focus == Pane::Watched => {
+                self.sort = self.sort.next();
+                self.descending = self.sort.default_descending();
+                let preserve = self.selected_pr.clone();
+                self.clamp_pr_selection(preserve);
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char('S') if self.focus == Pane::Watched => {
+                self.descending = !self.descending;
+                let preserve = self.selected_pr.clone();
+                self.clamp_pr_selection(preserve);
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char('f') if self.focus == Pane::Watched => {
+                let next = self
+                    .selected_pull_request()
+                    .map(|pull_request| ActivityFilter::PullRequest(pull_request.key.clone()));
+                if let Some(next) = next {
+                    if self.activity_filter.as_ref() == Some(&next) {
+                        self.activity_filter = None;
+                    } else {
+                        self.activity_filter = Some(next);
+                    }
+                    self.selected = 0;
+                }
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char('F') if self.focus == Pane::Watched => {
+                let filter = self.selected_pull_request().map(|pull_request| {
+                    pull_request
+                        .stack
+                        .as_ref()
+                        .map(|stack| {
+                            ActivityFilter::Stack(
+                                pull_request.key.repository.clone(),
+                                stack.number,
+                            )
+                        })
+                        .unwrap_or_else(|| {
+                            ActivityFilter::PullRequest(pull_request.key.clone())
+                        })
+                });
+                if let Some(filter) = filter {
+                    if self.activity_filter.as_ref() == Some(&filter) {
+                        self.activity_filter = None;
+                    } else {
+                        self.activity_filter = Some(filter);
+                    }
+                    self.selected = 0;
+                }
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char('c') => {
+                self.activity_filter = None;
+                self.selected = 0;
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::Char('C') => {
+                self.sort = SortMode::Updated;
+                self.descending = true;
+                self.activity_filter = None;
+                self.show_ignored = false;
+                self.selected = 0;
+                Ok(TuiAction::ResetView)
+            }
+            KeyCode::Char('h') | KeyCode::Char('H') | KeyCode::F(1) => {
+                self.help = Some(self.focus);
+                Ok(TuiAction::Continue)
+            }
             KeyCode::Char('k') | KeyCode::Up => {
                 match self.focus {
                     Pane::Watched => {
@@ -523,7 +826,11 @@ impl TuiApp {
                 Ok(TuiAction::Continue)
             }
             KeyCode::Enter if self.focus == Pane::Activity => {
-                if let Some(record) = self.view.activity.get(self.selected).cloned() {
+                let selected_record = self
+                    .visible_activity()
+                    .get(self.selected)
+                    .map(|record| (*record).clone());
+                if let Some(record) = selected_record {
                     let pull_request = self
                         .view
                         .pull_requests
@@ -551,14 +858,29 @@ impl TuiApp {
                 Ok(TuiAction::Continue)
             }
             KeyCode::Char('r') if self.focus == Pane::Activity => {
-                if let Some(record) = self.view.activity.get(self.selected) {
+                let record = self
+                    .visible_activity()
+                    .get(self.selected)
+                    .map(|record| (*record).clone());
+                if let Some(record) = record {
                     inbox.mark_read(&record.id).await?;
                     self.reload(inbox, config).await?;
                 }
                 Ok(TuiAction::Continue)
             }
             KeyCode::Char('a') if self.focus == Pane::Activity => {
-                inbox.mark_all_read().await?;
+                if self.activity_filter.is_some() {
+                    let ids: Vec<String> = self
+                        .visible_activity()
+                        .iter()
+                        .map(|record| record.id.clone())
+                        .collect();
+                    for id in ids {
+                        inbox.mark_read(&id).await?;
+                    }
+                } else {
+                    inbox.mark_all_read().await?;
+                }
                 self.reload(inbox, config).await?;
                 Ok(TuiAction::Continue)
             }
@@ -623,11 +945,19 @@ impl TuiApp {
             .countdown
             .map(|remaining| format!("   |   ↻ {}s", remaining.as_secs().max(1)))
             .unwrap_or_default();
+        let visible = self.visible_activity();
+        let unread = visible.iter().filter(|record| !record.read).count();
+        let filtered = self
+            .activity_filter
+            .as_ref()
+            .map(|_| format!("   (filtered from {})", self.view.activity.len()))
+            .unwrap_or_default();
         frame.render_widget(
             Paragraph::new(format!(
-                "{} unread of {}   |   Focus: activity{}",
-                self.view.unread,
-                self.view.activity.len(),
+                "{} unread of {}{}   |   Focus: activity{}",
+                unread,
+                visible.len(),
+                filtered,
                 countdown
             ))
             .style(Style::new().fg(Color::Yellow)),
@@ -635,8 +965,12 @@ impl TuiApp {
         );
 
         let watched_mode = if self.show_ignored { "all" } else { "filtered" };
+        let direction = if self.descending { "↓" } else { "↑" };
         let watched_block = Block::bordered()
-            .title(format!(" Watched pull requests · {watched_mode} "))
+            .title(format!(
+                " Watched pull requests · {watched_mode} · sort: {} {direction} ",
+                self.sort.label()
+            ))
             .border_style(Style::new().fg(Color::Gray));
         if self.view.pull_requests.is_empty() {
             frame.render_widget(
@@ -646,7 +980,7 @@ impl TuiApp {
         } else {
             let (groups, standalone) = stack_groups(&self.view);
             let mut rows: Vec<Row> = Vec::new();
-            for unit in ordered_units(&groups, &standalone) {
+            for unit in self.sort_units(ordered_units(&groups, &standalone)) {
                 for pull_request in unit {
                     match pull_request.stack.as_ref() {
                         Some(stack) => rows.push(Row::new(vec![
@@ -694,21 +1028,26 @@ impl TuiApp {
             frame.render_stateful_widget(table, chunks[2], &mut state);
         }
 
+        let activity_title = match self.activity_filter.as_ref() {
+            Some(filter) => format!(" Activity · {} ", filter.label()),
+            None => " Activity ".to_string(),
+        };
         let activity_block = Block::bordered()
             .title(
-                Line::from(" Activity ")
+                Line::from(activity_title)
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
             .border_style(Style::new().fg(Color::Green));
-        if self.view.activity.is_empty() {
-            frame.render_widget(
-                Paragraph::new("no activity yet").block(activity_block),
-                chunks[3],
-            );
+        let visible_activity = self.visible_activity();
+        if visible_activity.is_empty() {
+            let empty = if self.activity_filter.is_some() {
+                "no activity for this filter"
+            } else {
+                "no activity yet"
+            };
+            frame.render_widget(Paragraph::new(empty).block(activity_block), chunks[3]);
         } else {
-            let rows: Vec<Row> = self
-                .view
-                .activity
+            let rows: Vec<Row> = visible_activity
                 .iter()
                 .map(|record| {
                     Row::new(vec![
@@ -772,6 +1111,95 @@ impl TuiApp {
         if self.pr_detail.is_some() {
             self.render_pr_popup(frame);
         }
+        if self.help.is_some() {
+            self.render_help(frame);
+        }
+        if self.save_prompt {
+            let area = frame.area();
+            let width = 54.min(area.width.saturating_sub(2)).max(20);
+            let rect = Rect::new((area.width - width) / 2, area.height / 2, width, 3);
+            frame.render_widget(Clear, rect);
+            frame.render_widget(
+                Paragraph::new("Save sort and filter settings?  y yes  n no  Esc cancel").block(
+                    Block::bordered()
+                        .title(" Leave ")
+                        .border_style(Style::new().fg(Color::Green)),
+                ),
+                rect,
+            );
+        }
+    }
+
+    fn render_help(&self, frame: &mut Frame) {
+        let Some(pane) = self.help else { return; };
+        let area = frame.area();
+        let width = (area.width * 70 / 100)
+            .min(area.width.saturating_sub(2))
+            .max(20);
+        let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+        let mut lines = vec![
+            Line::from(Span::styled(
+                match pane {
+                    Pane::Watched => "Pull request pane",
+                    Pane::Activity => "Activity pane",
+                },
+                key_style,
+            )),
+            Line::from(""),
+        ];
+        let entries: &[(&str, &str)] = match pane {
+            Pane::Watched => &[
+                ("Tab", "switch pane"),
+                ("j/k, up/down", "move selection"),
+                ("PgUp/PgDn", "move by ten"),
+                ("Enter", "pull request detail"),
+                ("x", "ignore or restore"),
+                ("left/right", "filtered / all"),
+                ("s / S", "sort field / reverse"),
+                ("f / F", "filter activities to PR / stack"),
+                ("c / C", "clear filter / reset view"),
+                ("p", "watch scope"),
+                ("h / F1", "this help"),
+                ("q", "quit"),
+            ],
+            Pane::Activity => &[
+                ("Tab", "switch pane"),
+                ("j/k, up/down", "move selection"),
+                ("PgUp/PgDn", "move by ten"),
+                ("Enter", "activity detail"),
+                ("r", "mark selected read"),
+                ("a", "mark visible read"),
+                ("f / F", "filter to PR / stack"),
+                ("c / C", "clear filter / reset view"),
+                ("h / F1", "this help"),
+                ("q", "quit"),
+            ],
+        };
+        for (keys, description) in entries {
+            lines.push(Line::from(format!("{keys:<12} {description}")));
+        }
+        let inner_width = usize::from(width.saturating_sub(2)).max(1);
+        let rows: usize = lines
+            .iter()
+            .map(|line| {
+                let length: usize = line.spans.iter().map(|span| span.content.chars().count()).sum();
+                length.max(1).div_ceil(inner_width)
+            })
+            .sum();
+        let height = (rows as u16 + 3)
+            .max(8)
+            .min(area.height.saturating_sub(2).max(8));
+        let rect = Rect::new(
+            (area.width - width) / 2,
+            (area.height - height) / 2,
+            width,
+            height,
+        );
+        let block = Block::bordered()
+            .title(Line::from(" Keys ").style(key_style))
+            .border_style(Style::new().fg(Color::Green));
+        frame.render_widget(Clear, rect);
+        frame.render_widget(Paragraph::new(lines).block(block), rect);
     }
 
     fn render_popup(&self, frame: &mut Frame) {
@@ -1307,6 +1735,109 @@ mod tests {
             .expect_err("reload failure");
         assert!(matches!(error, CoreError::State(_)));
         assert_eq!(inbox.reads.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn preferences_round_trip_through_apply() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.sort = SortMode::Name;
+        app.descending = false;
+        app.activity_filter = Some(ActivityFilter::PullRequest(pr_key("acme/api#42")));
+        app.show_ignored = true;
+        let preferences = app.preferences();
+        let mut restored = TuiApp::new(view(Vec::new()));
+        restored.apply_preferences(&preferences);
+        assert_eq!(restored.preferences(), preferences);
+        assert_eq!(restored.sort_mode(), SortMode::Name);
+        assert!(!restored.descending());
+    }
+
+    #[tokio::test]
+    async fn sorting_by_name_orders_the_watched_rows() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let mut zebra = standalone("acme/api#1");
+        zebra.title = "Zebra".to_string();
+        let mut alpha = standalone("acme/api#2");
+        alpha.title = "Alpha".to_string();
+        app.view.pull_requests = vec![zebra, alpha];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::Char('s')), &inbox, &core_config())
+            .await
+            .expect("sort");
+        let frame = app.snapshot();
+        assert!(frame.find("Alpha").unwrap() < frame.find("Zebra").unwrap(), "{frame}");
+        assert!(frame.contains("sort: name ↑"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn f_filters_the_activity_to_the_selected_pull_request() {
+        let mut app = TuiApp::new(view(vec![
+            record_on("acme/api#42", "a1", false),
+            record_on("acme/api#43", "a2", false),
+        ]));
+        app.view.pull_requests = vec![
+            standalone("acme/api#42"),
+            standalone("acme/api#43"),
+        ];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::Char('f')), &inbox, &core_config())
+            .await
+            .expect("filter");
+        let frame = app.snapshot();
+        assert!(frame.contains("Activity · acme/api#42"), "{frame}");
+        assert!(frame.contains("1 unread of 1"), "{frame}");
+        assert!(frame.contains("(filtered from 2)"), "{frame}");
+        app.handle_key(key(KeyCode::Char('c')), &inbox, &core_config())
+            .await
+            .expect("clear");
+        assert!(!app.snapshot().contains("filtered from"));
+    }
+
+    #[tokio::test]
+    async fn f_filters_the_activity_to_the_whole_stack() {
+        let mut app = TuiApp::new(view(vec![
+            record_on("acme/api#42", "a1", false),
+            record_on("acme/api#43", "a2", false),
+        ]));
+        app.view.pull_requests = vec![
+            stacked("acme/api#42", 7, 2, 1, "main"),
+            stacked("acme/api#43", 7, 2, 2, "main"),
+        ];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::Char('F')), &inbox, &core_config())
+            .await
+            .expect("stack filter");
+        let frame = app.snapshot();
+        assert!(frame.contains("Activity · acme/api stack 7"), "{frame}");
+        assert!(frame.contains("2 unread of 2"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn h_opens_the_keys_for_the_focused_pane() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::Char('h')), &inbox, &core_config())
+            .await
+            .expect("help");
+        let frame = app.snapshot();
+        assert!(frame.contains("Pull request pane"), "{frame}");
+        assert!(frame.contains("sort field / reverse"), "{frame}");
+        app.handle_key(key(KeyCode::Esc), &inbox, &core_config())
+            .await
+            .expect("close help");
+        assert!(!app.snapshot().contains("Pull request pane"));
     }
 
     #[tokio::test]

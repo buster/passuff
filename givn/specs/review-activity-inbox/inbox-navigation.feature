@@ -38,6 +38,84 @@ Feature: Inbox navigation
     And  the TUI shows "Focus: PRs"
 
   @inbox-navigation
+  Scenario: The developer sorts the watched list
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "s"
+    Then  the TUI shows "sort: name ↑"
+    When  the developer presses "S"
+    Then  the TUI shows "sort: name ↓"
+
+  @inbox-navigation
+  Scenario: The developer filters the activity to a pull request
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  an authored pull request "acme/api#43" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    And  the watcher has already observed "acme/api#43"
+    When  "alice" comments "Review this" on "acme/api#42"
+    And  "bob" comments "Review that" on "acme/api#43"
+    And  passuff runs one check
+    And  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "f"
+    Then  the TUI shows "Activity · acme/api#42"
+    And  the TUI shows "1 unread of 1"
+    And  the TUI shows "(filtered from 2)"
+    When  the developer presses "c"
+    Then  the TUI shows "2 unread of 2"
+    And  the TUI does not show "(filtered from"
+
+  @inbox-navigation
+  Scenario: The developer filters the activity to a stack
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  an authored pull request "acme/api#43" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    And  the watcher has already observed "acme/api#43"
+    And  GitHub reports stack 7 for "acme/api#42" at position 1 of 2 with base "main"
+    And  GitHub reports stack 7 for "acme/api#43" at position 2 of 2 with base "main"
+    When  "alice" comments "Review this" on "acme/api#42"
+    And  "bob" comments "Review that" on "acme/api#43"
+    And  passuff runs one check
+    And  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "F"
+    Then  the TUI shows "Activity · acme/api stack 7"
+    And  the TUI shows "2 unread of 2"
+
+  @inbox-navigation
+  Scenario: Marking all read applies to the filtered activity
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  an authored pull request "acme/api#43" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    And  the watcher has already observed "acme/api#43"
+    When  "alice" comments "Review this" on "acme/api#42"
+    And  "bob" comments "Review that" on "acme/api#43"
+    And  passuff runs one check
+    And  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "f"
+    And  the developer presses "tab"
+    And  the developer presses "a"
+    Then  the activity "New comment from @alice" is read
+    And  the activity "New comment from @bob" is unread
+
+  @inbox-navigation
+  Scenario: The developer opens the key reference
+    Given  a configured account "personal" with login "octo-personal"
+    When  the developer opens the inbox TUI
+    And  the developer presses "h"
+    Then  the TUI shows "Activity pane"
+    And  the TUI shows "mark visible read"
+    When  the developer presses "esc"
+    Then  the TUI does not show "Activity pane"
+
+  @inbox-navigation
   Scenario: The pull request detail shows its metadata
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

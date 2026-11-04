@@ -14,7 +14,7 @@ use passuff_cli::delivery::build_delivery;
 use passuff_cli::live::{ObservationSession, ObservationUpdate};
 use passuff_cli::scope::{ScopeEditor, ScopePicker};
 use passuff_cli::sound::SystemSoundPlayer;
-use passuff_cli::tui::{load_view, TuiAction, TuiApp};
+use passuff_cli::tui::{load_view, TuiAction, TuiApp, TuiPreferences};
 use passuff_cli::{system_credentials, CliPorts, CliRuntime};
 use passuff_config::{AppConfig, ConfigLoader, WatchMode};
 use passuff_core::{GitHubApiAdapter, Inbox, JsonStateStore, SnapshotStore};
@@ -231,6 +231,9 @@ async fn main() {
         std::process::exit(3);
     }
     let config = config.expect("validated configuration");
+    let preferences_path = state_path.with_file_name("ui.json");
+    let saved_preferences = load_preferences(&preferences_path).unwrap_or_default();
+    app.apply_preferences(&saved_preferences);
     if let Err(message) = run_terminal(
         &mut app,
         &inbox,
@@ -240,12 +243,32 @@ async fn main() {
         args.picker,
         runtime_for(&config_path, &state_path),
         config_path,
+        &preferences_path,
+        &saved_preferences,
     )
     .await
     {
         eprintln!("{message}");
         std::process::exit(3);
     }
+}
+
+fn load_preferences(path: &Path) -> Option<TuiPreferences> {
+    let text = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str(&text).ok()
+}
+
+fn save_preferences(path: &Path, preferences: &TuiPreferences) -> Result<(), String> {
+    let text = serde_json::to_string_pretty(preferences)
+        .map_err(|error| format!("cannot save view settings: {error}"))?;
+    let temporary = path.with_extension("json.tmp");
+    std::fs::write(&temporary, text)
+        .map_err(|error| format!("cannot save view settings: {error}"))?;
+    if let Err(error) = std::fs::rename(&temporary, path) {
+        let _ = std::fs::remove_file(&temporary);
+        return Err(format!("cannot save view settings: {error}"));
+    }
+    Ok(())
 }
 
 fn runtime_for(config_path: &Path, state_path: &Path) -> CliRuntime {
@@ -301,7 +324,8 @@ async fn apply_action(
 ) -> Result<bool, String> {
     match action {
         TuiAction::Continue => Ok(false),
-        TuiAction::Quit => Ok(true),
+        TuiAction::Quit => Ok(false),
+        TuiAction::QuitSave => Ok(true),
         TuiAction::OpenUrl(url) => {
             match opener.open(&url) {
                 Ok(()) => app.close_popup(),
@@ -309,7 +333,7 @@ async fn apply_action(
             }
             Ok(false)
         }
-        TuiAction::ToggleIgnoredView => {
+        TuiAction::ToggleIgnoredView | TuiAction::ResetView => {
             let view_config = display_config(config, app.show_ignored());
             app.reload(inbox, &view_config.core)
                 .await
@@ -389,6 +413,8 @@ async fn run_terminal(
     start_picker: bool,
     runtime: CliRuntime,
     config_path: PathBuf,
+    preferences_path: &std::path::Path,
+    saved_preferences: &TuiPreferences,
 ) -> Result<(), String> {
     enable_raw_mode().map_err(|error| format!("passuff-tui: raw mode: {error}"))?;
     let mut stdout = std::io::stdout();
@@ -458,6 +484,17 @@ async fn run_terminal(
                     continue;
                 }
                 match app.handle_key(key, inbox, &config.core).await {
+                    Ok(TuiAction::Quit) => {
+                        if app.preferences() != *saved_preferences {
+                            app.show_save_prompt();
+                            continue;
+                        }
+                        break Ok(());
+                    }
+                    Ok(TuiAction::QuitSave) => {
+                        save_preferences(preferences_path, &app.preferences())?;
+                        break Ok(());
+                    }
                     Ok(action) => {
                         match apply_action(
                             app,

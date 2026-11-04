@@ -970,11 +970,18 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             "pageup" => crossterm::event::KeyCode::PageUp,
             "pagedown" => crossterm::event::KeyCode::PageDown,
             "x" => crossterm::event::KeyCode::Char('x'),
+            "s" => crossterm::event::KeyCode::Char('s'),
+            "S" => crossterm::event::KeyCode::Char('S'),
+            "f" => crossterm::event::KeyCode::Char('f'),
+            "F" => crossterm::event::KeyCode::Char('F'),
+            "c" => crossterm::event::KeyCode::Char('c'),
+            "C" => crossterm::event::KeyCode::Char('C'),
+            "h" => crossterm::event::KeyCode::Char('h'),
             other => panic!("unknown key {other}"),
         };
         let event = crossterm::event::KeyEvent::new(code, crossterm::event::KeyModifiers::NONE);
         match app.handle_key(event, &inbox, &config.core).await {
-            Ok(TuiAction::Quit) => self.tui_closed = true,
+            Ok(TuiAction::Quit) | Ok(TuiAction::QuitSave) => self.tui_closed = true,
             Ok(TuiAction::Continue) => self.last_transcript = app.snapshot(),
             Ok(TuiAction::OpenUrl(url)) => {
                 if self.browser_fails {
@@ -985,7 +992,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                 }
                 self.last_transcript = app.snapshot();
             }
-            Ok(TuiAction::ToggleIgnoredView) => {
+            Ok(TuiAction::ToggleIgnoredView) | Ok(TuiAction::ResetView) => {
                 self.tui_app = Some(app);
                 self.reload_tui_with_view().await;
                 return;
