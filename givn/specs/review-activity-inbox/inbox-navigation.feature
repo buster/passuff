@@ -47,10 +47,10 @@ Feature: Inbox navigation
     When  the developer opens the inbox TUI
     And  the developer presses "tab"
     And  the developer presses "enter"
-    Then  the TUI shows "Created by @octo-personal"
-    And  the TUI shows "Assigned: @alice"
+    Then  the TUI shows "Creator: @octo-personal"
+    And  the TUI shows "Assignee: @alice"
     And  the TUI shows "Adds the live inbox"
-    And  the TUI shows "CI passing"
+    And  the TUI shows "CI: passing"
 
   @inbox-navigation
   Scenario: The developer ignores and restores a pull request

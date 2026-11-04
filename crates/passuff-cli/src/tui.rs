@@ -197,6 +197,48 @@ fn event_line(event: &ActivityEvent) -> String {
     }
 }
 
+fn wrap_text(text: &str, width: usize) -> Vec<String> {
+    let width = width.max(1);
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        let candidate = if current.is_empty() {
+            word.chars().count()
+        } else {
+            current.chars().count() + 1 + word.chars().count()
+        };
+        if candidate <= width {
+            if !current.is_empty() {
+                current.push(' ');
+            }
+            current.push_str(word);
+            continue;
+        }
+        if !current.is_empty() {
+            lines.push(std::mem::take(&mut current));
+        }
+        if word.chars().count() > width {
+            let mut chunk = String::new();
+            for character in word.chars() {
+                if chunk.chars().count() == width {
+                    lines.push(std::mem::take(&mut chunk));
+                }
+                chunk.push(character);
+            }
+            current = chunk;
+        } else {
+            current.push_str(word);
+        }
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
 fn short_time(observed_at: &str) -> String {
     chrono::DateTime::parse_from_rfc3339(observed_at)
         .map(|time| time.format("%m-%d %H:%M").to_string())
@@ -754,103 +796,6 @@ impl TuiApp {
         }
     }
 
-    fn render_pr_popup(&self, frame: &mut Frame) {
-        let Some(pull_request) = self.pr_detail.as_ref() else {
-            return;
-        };
-        let area = frame.area();
-        let width = (area.width * 90 / 100)
-            .min(area.width.saturating_sub(2))
-            .max(20);
-        let key_style = Style::new()
-            .fg(Color::Green)
-            .add_modifier(Modifier::BOLD);
-        let mut lines = vec![
-            Line::from(vec![
-                Span::styled(format!("{} ", pull_request.key), key_style),
-                Span::raw(format!(
-                    "{}   {}",
-                    state_label(&pull_request.state),
-                    ci_label(&pull_request.ci_state)
-                )),
-            ]),
-            Line::from(format!(
-                "Created by @{} on {}",
-                pull_request.author,
-                short_time(&pull_request.created_at)
-            )),
-            Line::from(if pull_request.assignees.is_empty() {
-                "Assigned: nobody".to_string()
-            } else {
-                format!(
-                    "Assigned: {}",
-                    pull_request
-                        .assignees
-                        .iter()
-                        .map(|login| format!("@{login}"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            }),
-        ];
-        if let Some(stack) = pull_request.stack.as_ref() {
-            lines.push(Line::from(format!(
-                "Stack {} position {} of {}",
-                stack.number, stack.position, stack.size
-            )));
-        }
-        if pull_request.is_draft {
-            lines.push(Line::from("Draft"));
-        }
-        lines.push(Line::from(Span::styled("Description:", key_style)));
-        if pull_request.description.trim().is_empty() {
-            lines.push(Line::from("(no description)"));
-        } else {
-            lines.push(Line::from(pull_request.description.clone()));
-        }
-        let hint = Line::from(vec![
-            Span::styled("Enter", key_style),
-            Span::raw(" open in browser   "),
-            Span::styled("Esc", key_style),
-            Span::raw(" close"),
-        ]);
-        let inner_width = usize::from(width.saturating_sub(2)).max(1);
-        let rows: usize = lines
-            .iter()
-            .map(|line| {
-                let length: usize = line.spans.iter().map(|span| span.content.chars().count()).sum();
-                length.max(1).div_ceil(inner_width)
-            })
-            .sum();
-        let height = (rows as u16 + 3)
-            .max(8)
-            .min(area.height.saturating_sub(2).max(8));
-        let rect = Rect::new(
-            (area.width - width) / 2,
-            (area.height - height) / 2,
-            width,
-            height,
-        );
-        let block = Block::bordered()
-            .title(
-                Line::from(" Pull request ")
-                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            )
-            .border_style(Style::new().fg(Color::Green));
-        let inner = block.inner(rect);
-        frame.render_widget(Clear, rect);
-        frame.render_widget(block, rect);
-        let content = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
-        let hint_area = Rect::new(
-            inner.x,
-            inner.y + inner.height.saturating_sub(1),
-            inner.width,
-            1,
-        );
-        frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), content);
-        frame.render_widget(Paragraph::new(hint), hint_area);
-    }
-
     fn render_popup(&self, frame: &mut Frame) {
         let Some(detail) = self.popup.as_ref() else {
             return;
@@ -883,10 +828,7 @@ impl TuiApp {
                         stack.number, stack.position
                     ));
                 }
-                lines.push(
-                    Line::from(state_line)
-                        .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-                );
+                lines.push(Line::from(state_line));
             }
             None => lines.push(Line::from(format!(
                 "{}   pull request not in view",
@@ -938,23 +880,121 @@ impl TuiApp {
         let inner = block.inner(rect);
         frame.render_widget(Clear, rect);
         frame.render_widget(block, rect);
-        let content = Rect::new(
-            inner.x,
-            inner.y,
-            inner.width,
-            inner.height.saturating_sub(1),
-        );
+        let content = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
         let hint_area = Rect::new(
             inner.x,
             inner.y + inner.height.saturating_sub(1),
             inner.width,
             1,
         );
-        frame.render_widget(
-            Paragraph::new(lines).wrap(Wrap { trim: false }),
-            content,
-        );
+        frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), content);
         frame.render_widget(Paragraph::new(hint), hint_area);
+    }
+
+    fn render_pr_popup(&self, frame: &mut Frame) {
+        let Some(pull_request) = self.pr_detail.as_ref() else {
+            return;
+        };
+        let area = frame.area();
+        let width = (area.width * 80 / 100)
+            .min(area.width.saturating_sub(2))
+            .max(20);
+        let inner_width = usize::from(width.saturating_sub(2)).max(1);
+        let key_style = Style::new()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD);
+        let label = |text: &str| Span::styled(text.to_string(), key_style);
+
+        let mut status = state_label(&pull_request.state).to_string();
+        if pull_request.is_draft {
+            status.push_str(", draft");
+        }
+        let ci = ci_label(&pull_request.ci_state)
+            .strip_prefix("CI ")
+            .unwrap_or(ci_label(&pull_request.ci_state))
+            .to_string();
+        let creator = format!(
+            "@{} ({})",
+            pull_request.author,
+            short_time(&pull_request.created_at)
+        );
+        let assignees = if pull_request.assignees.is_empty() {
+            "none".to_string()
+        } else {
+            pull_request
+                .assignees
+                .iter()
+                .map(|login| format!("@{login}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        let header = vec![
+            Line::from(vec![label("Status: "), Span::raw(status)]),
+            Line::from(vec![label("CI: "), Span::raw(ci)]),
+            Line::from(vec![label("Creator: "), Span::raw(creator)]),
+            Line::from(vec![label("Assignee: "), Span::raw(assignees)]),
+            Line::from(label("Description:")),
+        ];
+        let max_height = (area.height * 80 / 100)
+            .min(area.height.saturating_sub(2))
+            .max(8);
+        let body_capacity = usize::from(
+            max_height
+                .saturating_sub(3)
+                .saturating_sub(header.len() as u16),
+        )
+        .max(1);
+        let description = if pull_request.description.trim().is_empty() {
+            "(no description)".to_string()
+        } else {
+            pull_request.description.clone()
+        };
+        let mut wrapped = wrap_text(&description, inner_width);
+        if wrapped.len() > body_capacity {
+            wrapped.truncate(body_capacity);
+            if let Some(last) = wrapped.last_mut() {
+                let mut truncated: String = last
+                    .chars()
+                    .take(inner_width.saturating_sub(1))
+                    .collect();
+                truncated.push('…');
+                *last = truncated;
+            }
+        }
+        let mut lines = header;
+        for line in wrapped {
+            lines.push(Line::from(line));
+        }
+        let height = (lines.len() as u16 + 3).min(max_height);
+        let rect = Rect::new(
+            (area.width - width) / 2,
+            (area.height - height) / 2,
+            width,
+            height,
+        );
+        let block = Block::bordered()
+            .title(Line::from(format!(" PR - {} ", pull_request.key)).style(key_style))
+            .border_style(Style::new().fg(Color::Green));
+        let inner = block.inner(rect);
+        frame.render_widget(Clear, rect);
+        frame.render_widget(block, rect);
+        let content = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
+        let hint_area = Rect::new(
+            inner.x,
+            inner.y + inner.height.saturating_sub(1),
+            inner.width,
+            1,
+        );
+        frame.render_widget(Paragraph::new(lines), content);
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled("Enter", key_style),
+                Span::raw(" open in browser   "),
+                Span::styled("Esc", key_style),
+                Span::raw(" close"),
+            ])),
+            hint_area,
+        );
     }
 
     pub fn snapshot(&self) -> String {
@@ -1422,8 +1462,10 @@ mod tests {
             .await
             .expect("enter");
         let frame = app.snapshot();
-        assert!(frame.contains("Created by @octo-personal"), "{frame}");
-        assert!(frame.contains("Assigned: @alice"), "{frame}");
+        assert!(frame.contains("Creator: @octo-personal"), "{frame}");
+        assert!(frame.contains("Assignee: @alice"), "{frame}");
+        assert!(frame.contains("Status: open"), "{frame}");
+        assert!(frame.contains("CI: passing"), "{frame}");
         assert!(frame.contains("Adds the live inbox"), "{frame}");
         let action = app
             .handle_key(key(KeyCode::Enter), &inbox, &core_config())
@@ -1437,6 +1479,24 @@ mod tests {
             .await
             .expect("esc");
         assert!(!app.snapshot().contains("Created by @octo-personal"));
+    }
+
+    #[tokio::test]
+    async fn a_long_pull_request_description_is_truncated_with_an_ellipsis() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let mut pull_request = standalone("acme/api#42");
+        pull_request.description = "word ".repeat(4000);
+        app.view.pull_requests = vec![pull_request];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::Enter), &inbox, &core_config())
+            .await
+            .expect("enter");
+        let frame = app.snapshot();
+        assert!(frame.contains("PR - acme/api#42"), "{frame}");
+        assert!(frame.contains('…'), "description was not truncated: {frame}");
     }
 
     #[tokio::test]
