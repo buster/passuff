@@ -1,4 +1,4 @@
-# Passuff! (☞ﾟヮﾟ)☞
+# Pass uff! (☞ﾟヮﾟ)☞
 
 [![crates.io](https://img.shields.io/crates/v/passuff?logo=rust)](https://crates.io/crates/passuff)
 
