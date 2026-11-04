@@ -81,7 +81,7 @@ pub fn classify(
             }
             let event = ActivityEvent::Comment {
                 author: comment.author.clone(),
-                body_excerpt: excerpt(&comment.body),
+                body: comment.body.clone(),
             };
             match action_filter(&comment.author, login_set, toggles) {
                 ActionFilter::Include => events.push(event),
@@ -95,7 +95,7 @@ pub fn classify(
             }
             let event = ActivityEvent::ReviewComment {
                 author: comment.author.clone(),
-                body_excerpt: excerpt(&comment.body),
+                body: comment.body.clone(),
             };
             match action_filter(&comment.author, login_set, toggles) {
                 ActionFilter::Include => events.push(event),
@@ -113,6 +113,7 @@ pub fn classify(
             let event = ActivityEvent::Review {
                 author: review.author.clone(),
                 state: normalize_review_state(&review.state),
+                body: review.body.clone(),
             };
             match action_filter(&review.author, login_set, toggles) {
                 ActionFilter::Include => events.push(event),
@@ -246,17 +247,6 @@ fn is_bot(author: &str) -> bool {
     author.ends_with("[bot]")
 }
 
-fn excerpt(body: &str) -> String {
-    let single_line = body.split_whitespace().collect::<Vec<_>>().join(" ");
-    let mut chars = single_line.chars();
-    let excerpt: String = chars.by_ref().take(80).collect();
-    if chars.next().is_some() {
-        format!("{excerpt}...")
-    } else {
-        excerpt
-    }
-}
-
 fn normalize_review_state(state: &str) -> String {
     match state.to_ascii_uppercase().as_str() {
         "APPROVED" => "approved".to_string(),
@@ -357,7 +347,7 @@ mod tests {
             second.silent,
             vec![ActivityEvent::Comment {
                 author: "octo".to_string(),
-                body_excerpt: "my own note".to_string()
+                body: "my own note".to_string()
             }]
         );
     }

@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use cucumber::{given, then, when};
+use passuff_core::Comment;
 
 use crate::support::World;
 
@@ -71,6 +72,28 @@ async fn delayed_comment(world: &mut World, author: String, body: String, key: S
         author,
         body,
     ));
+}
+
+#[when(regex = r#"^the pull request "([^"]+)" receives a long comment from "([^"]+)"$"#)]
+async fn long_comment(world: &mut World, key: String, author: String) {
+    world.ensure_baseline().await;
+    let body = (1..=40)
+        .map(|line| format!("comment line {line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let comment = Comment {
+        id: "long-comment".to_string(),
+        author,
+        body,
+        created_at: "2026-11-02T12:00:01Z".to_string(),
+    };
+    world.pr_mut(&key).comments.push(comment.clone());
+    world.pr_mut(&key).updated_at = comment.created_at.clone();
+    if world.e2e {
+        world
+            .e2e_set_comment(&key, &comment.id, &comment.author, &comment.body)
+            .await;
+    }
 }
 
 #[when(regex = r#"^the inbox observes the account three times with no change$"#)]

@@ -1,16 +1,17 @@
+use std::cell::Cell as StdCell;
 use std::collections::BTreeMap;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use passuff_config::{AppConfig, ConfigError, CoreConfig};
 use passuff_core::{
-    ActivityEvent, ActivityRecord, CoreError, InboxService, InboxView, PrState, PullRequestKey,
-    PullRequestView,
+    excerpt, ActivityEvent, ActivityRecord, CoreError, InboxService, InboxView, PrState,
+    PullRequestKey, PullRequestView,
 };
 use ratatui::backend::TestBackend;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span, Text};
-use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, TableState, Wrap};
+use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, TableState};
 use ratatui::{Frame, Terminal};
 
 use crate::transcript::{activity_summary, ci_label, state_label};
@@ -299,30 +300,25 @@ fn people_label(author: &str, assignees: &[String]) -> String {
     }
 }
 
-
 fn event_line(event: &ActivityEvent) -> String {
     match event {
-        ActivityEvent::Comment {
-            author,
-            body_excerpt,
-        } => {
-            if body_excerpt.trim().is_empty() {
+        ActivityEvent::Comment { author, body } => {
+            let preview = excerpt(body);
+            if preview.trim().is_empty() {
                 format!("comment by @{author}")
             } else {
-                format!("comment by @{author}: {body_excerpt}")
+                format!("comment by @{author}: {preview}")
             }
         }
-        ActivityEvent::ReviewComment {
-            author,
-            body_excerpt,
-        } => {
-            if body_excerpt.trim().is_empty() {
+        ActivityEvent::ReviewComment { author, body } => {
+            let preview = excerpt(body);
+            if preview.trim().is_empty() {
                 format!("review comment by @{author}")
             } else {
-                format!("review comment by @{author}: {body_excerpt}")
+                format!("review comment by @{author}: {preview}")
             }
         }
-        ActivityEvent::Review { author, state } => format!("review by @{author}: {state}"),
+        ActivityEvent::Review { author, state, .. } => format!("review by @{author}: {state}"),
         ActivityEvent::CiFailure { failed_checks } if !failed_checks.is_empty() => {
             format!("CI failing: {}", failed_checks.join(", "))
         }
@@ -604,6 +600,217 @@ fn activity_stack(view: &InboxView, key: &PullRequestKey) -> Option<u64> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ScrollAction {
+    Up,
+    Down,
+    PageUp,
+    PageDown,
+    Home,
+    End,
+}
+
+fn scroll_action(code: KeyCode) -> Option<ScrollAction> {
+    match code {
+        KeyCode::Up | KeyCode::Char('k') => Some(ScrollAction::Up),
+        KeyCode::Down | KeyCode::Char('j') => Some(ScrollAction::Down),
+        KeyCode::PageUp => Some(ScrollAction::PageUp),
+        KeyCode::PageDown => Some(ScrollAction::PageDown),
+        KeyCode::Home => Some(ScrollAction::Home),
+        KeyCode::End => Some(ScrollAction::End),
+        _ => None,
+    }
+}
+
+fn apply_scroll(offset: u16, action: ScrollAction, max: u16, page: u16) -> u16 {
+    match action {
+        ScrollAction::Up => offset.saturating_sub(1),
+        ScrollAction::Down => offset.saturating_add(1).min(max),
+        ScrollAction::PageUp => offset.saturating_sub(page.max(1)),
+        ScrollAction::PageDown => offset.saturating_add(page.max(1)).min(max),
+        ScrollAction::Home => 0,
+        ScrollAction::End => max,
+    }
+}
+
+fn activity_popup_width(area: Rect) -> u16 {
+    (area.width * 90 / 100)
+        .min(area.width.saturating_sub(2))
+        .max(20)
+}
+
+fn activity_popup_height(area: Rect, rows: usize) -> u16 {
+    (rows as u16 + 3)
+        .max(7)
+        .min(area.height.saturating_sub(2).max(7))
+}
+
+fn activity_popup_content_height(area: Rect, rows: usize) -> u16 {
+    activity_popup_height(area, rows).saturating_sub(3)
+}
+
+fn pr_popup_width(area: Rect) -> u16 {
+    (area.width * 80 / 100)
+        .min(area.width.saturating_sub(2))
+        .max(20)
+}
+
+fn pr_popup_height(area: Rect, rows: usize) -> u16 {
+    let max_height = (area.height * 80 / 100)
+        .min(area.height.saturating_sub(2))
+        .max(8);
+    (rows as u16 + 3).min(max_height)
+}
+
+fn pr_popup_content_height(area: Rect, rows: usize) -> u16 {
+    pr_popup_height(area, rows).saturating_sub(3)
+}
+
+fn push_wrapped_text(lines: &mut Vec<Line<'static>>, text: &str, width: usize) {
+    for chunk in wrap_text(text, width) {
+        lines.push(Line::from(chunk));
+    }
+}
+
+fn activity_body(event: &ActivityEvent) -> Option<(String, &str)> {
+    let (label, body) = match event {
+        ActivityEvent::Comment { author, body } => (format!("Comment by @{author}"), body.as_str()),
+        ActivityEvent::ReviewComment { author, body } => {
+            (format!("Review comment by @{author}"), body.as_str())
+        }
+        ActivityEvent::Review {
+            author,
+            state,
+            body,
+        } => (format!("Review by @{author} ({state})"), body.as_str()),
+        _ => return None,
+    };
+    if body.trim().is_empty() {
+        None
+    } else {
+        Some((label, body))
+    }
+}
+
+fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'static>> {
+    let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+    let mut lines = vec![Line::from(vec![
+        Span::styled("Activity ", key_style),
+        Span::raw(activity_label(&detail.record)),
+    ])];
+    match detail.pull_request.as_ref() {
+        Some(pull_request) => {
+            push_wrapped_text(
+                &mut lines,
+                &format!("{}   {}", pull_request.key, pull_request.title),
+                width,
+            );
+            let mut state_line = format!(
+                "State: {}   {}",
+                state_label(&pull_request.state),
+                ci_label(&pull_request.ci_state)
+            );
+            if let Some(stack) = pull_request.stack.as_ref() {
+                state_line.push_str(&format!(
+                    "   Stack: {} position {}",
+                    stack.number, stack.position
+                ));
+            }
+            push_wrapped_text(&mut lines, &state_line, width);
+        }
+        None => push_wrapped_text(
+            &mut lines,
+            &format!("{}   pull request not in view", detail.record.key),
+            width,
+        ),
+    }
+    if let Some((label, body)) = activity_body(&detail.record.event) {
+        lines.push(Line::default());
+        lines.push(Line::from(Span::styled(label, key_style)));
+        lines.extend(render_description(body, width));
+    }
+    lines.push(Line::default());
+    push_wrapped_text(
+        &mut lines,
+        &format!("Changes on {}: {}", detail.record.key, detail.changes.len()),
+        width,
+    );
+    for change in &detail.changes {
+        push_wrapped_text(
+            &mut lines,
+            &format!(
+                "{}   {}   {}",
+                short_time(&change.observed_at),
+                event_line(&change.event),
+                if change.read { "read" } else { "unread" }
+            ),
+            width,
+        );
+    }
+    lines
+}
+
+fn pr_detail_lines(pull_request: &PullRequestView, width: usize) -> Vec<Line<'static>> {
+    let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+    let label = |text: &str| Span::styled(text.to_string(), key_style);
+
+    let mut status = state_label(&pull_request.state).to_string();
+    if pull_request.is_draft {
+        status.push_str(", draft");
+    }
+    let ci = ci_label(&pull_request.ci_state);
+    let ci = ci.strip_prefix("CI ").unwrap_or(&ci);
+    let creator = format!(
+        "@{} ({})",
+        pull_request.author,
+        short_time(&pull_request.created_at)
+    );
+    let assignees = if pull_request.assignees.is_empty() {
+        "none".to_string()
+    } else {
+        pull_request
+            .assignees
+            .iter()
+            .map(|login| format!("@{login}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let mut lines = vec![
+        Line::from(vec![label("Status: "), Span::raw(status)]),
+        Line::from(vec![label("CI: "), Span::raw(ci.to_string())]),
+        Line::from(vec![label("Creator: "), Span::raw(creator)]),
+        Line::from(vec![label("Assignee: "), Span::raw(assignees)]),
+    ];
+    if let Some(stack) = pull_request.stack.as_ref() {
+        lines.push(Line::from(vec![
+            label("Stack: "),
+            Span::raw(format!(
+                "{}/{}   base {}",
+                stack.position, stack.size, stack.base
+            )),
+        ]));
+    }
+    lines.push(Line::from(label("Description:")));
+    let description = if pull_request.description.trim().is_empty() {
+        "(no description)".to_string()
+    } else {
+        pull_request.description.clone()
+    };
+    lines.extend(render_description(&description, width));
+    lines
+}
+
+fn popup_hint(key_style: Style) -> Line<'static> {
+    Line::from(vec![
+        Span::styled("Enter", key_style),
+        Span::raw(" open in browser   "),
+        Span::styled("↑↓/PgUp/PgDn", key_style),
+        Span::raw(" scroll   "),
+        Span::styled("Esc", key_style),
+        Span::raw(" close"),
+    ])
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pane {
     Watched,
     Activity,
@@ -629,6 +836,9 @@ pub struct TuiApp {
     pr_detail: Option<PullRequestView>,
     show_ignored: bool,
     save_prompt: bool,
+    viewport: StdCell<(u16, u16)>,
+    popup_scroll: StdCell<u16>,
+    pr_detail_scroll: StdCell<u16>,
 }
 
 impl TuiApp {
@@ -653,6 +863,9 @@ impl TuiApp {
             pr_detail: None,
             show_ignored: false,
             save_prompt: false,
+            viewport: StdCell::new((0, 0)),
+            popup_scroll: StdCell::new(0),
+            pr_detail_scroll: StdCell::new(0),
         }
     }
 
@@ -667,6 +880,53 @@ impl TuiApp {
     pub fn close_popup(&mut self) {
         self.popup = None;
         self.pr_detail = None;
+        self.popup_scroll.set(0);
+        self.pr_detail_scroll.set(0);
+    }
+
+    fn scroll_viewport(&self) -> (u16, u16) {
+        match self.viewport.get() {
+            (0, 0) => (100, 30),
+            size => size,
+        }
+    }
+
+    fn scroll_activity_detail(&self, action: ScrollAction) {
+        let Some(detail) = self.popup.as_ref() else {
+            return;
+        };
+        let (width, height) = self.scroll_viewport();
+        let area = Rect::new(0, 0, width, height);
+        let popup_width = activity_popup_width(area);
+        let inner_width = usize::from(popup_width.saturating_sub(2)).max(1);
+        let rows = activity_detail_lines(detail, inner_width).len();
+        let content_height = activity_popup_content_height(area, rows).max(1);
+        let max_scroll = (rows as u16).saturating_sub(content_height);
+        self.popup_scroll.set(apply_scroll(
+            self.popup_scroll.get(),
+            action,
+            max_scroll,
+            content_height,
+        ));
+    }
+
+    fn scroll_pr_detail(&self, action: ScrollAction) {
+        let Some(pull_request) = self.pr_detail.as_ref() else {
+            return;
+        };
+        let (width, height) = self.scroll_viewport();
+        let area = Rect::new(0, 0, width, height);
+        let popup_width = pr_popup_width(area);
+        let inner_width = usize::from(popup_width.saturating_sub(2)).max(1);
+        let rows = pr_detail_lines(pull_request, inner_width).len();
+        let content_height = pr_popup_content_height(area, rows).max(1);
+        let max_scroll = (rows as u16).saturating_sub(content_height);
+        self.pr_detail_scroll.set(apply_scroll(
+            self.pr_detail_scroll.get(),
+            action,
+            max_scroll,
+            content_height,
+        ));
     }
 
     fn sync_pr_selection(&mut self) {
@@ -928,9 +1188,14 @@ impl TuiApp {
             return Ok(TuiAction::Continue);
         }
         if self.pr_detail.is_some() {
+            if let Some(action) = scroll_action(key.code) {
+                self.scroll_pr_detail(action);
+                return Ok(TuiAction::Continue);
+            }
             return match key.code {
                 KeyCode::Esc => {
                     self.pr_detail = None;
+                    self.pr_detail_scroll.set(0);
                     Ok(TuiAction::Continue)
                 }
                 KeyCode::Enter => Ok(self
@@ -942,9 +1207,14 @@ impl TuiApp {
             };
         }
         if self.popup.is_some() {
+            if let Some(action) = scroll_action(key.code) {
+                self.scroll_activity_detail(action);
+                return Ok(TuiAction::Continue);
+            }
             return match key.code {
                 KeyCode::Esc => {
                     self.popup = None;
+                    self.popup_scroll.set(0);
                     Ok(TuiAction::Continue)
                 }
                 KeyCode::Enter => Ok(self
@@ -1176,6 +1446,7 @@ impl TuiApp {
             KeyCode::Enter if self.focus == Pane::Watched => {
                 if let Some(pull_request) = self.selected_pull_request().cloned() {
                     self.popup = None;
+                    self.pr_detail_scroll.set(0);
                     self.pr_detail = Some(pull_request);
                 }
                 Ok(TuiAction::Continue)
@@ -1203,6 +1474,7 @@ impl TuiApp {
                         .cloned()
                         .collect();
                     self.pr_detail = None;
+                    self.popup_scroll.set(0);
                     self.popup = Some(ActivityDetail {
                         record,
                         changes,
@@ -1256,6 +1528,7 @@ impl TuiApp {
 
     pub fn render(&self, frame: &mut Frame) {
         let area = frame.area();
+        self.viewport.set((area.width, area.height));
         let outer = Block::bordered()
             .title(
                 Line::from(" passuff — Inbox ")
@@ -1604,76 +1877,17 @@ impl TuiApp {
             return;
         };
         let area = frame.area();
-        let width = (area.width * 90 / 100)
-            .min(area.width.saturating_sub(2))
-            .max(20);
-        let key_style = Style::new()
-            .fg(Color::Green)
-            .add_modifier(Modifier::BOLD);
-        let mut lines = vec![Line::from(vec![
-            Span::styled("Activity ", key_style),
-            Span::raw(activity_label(&detail.record)),
-        ])];
-        match detail.pull_request.as_ref() {
-            Some(pull_request) => {
-                lines.push(Line::from(format!(
-                    "{}   {}",
-                    pull_request.key, pull_request.title
-                )));
-                let mut state_line = format!(
-                    "State: {}   {}",
-                    state_label(&pull_request.state),
-                    ci_label(&pull_request.ci_state)
-                );
-                if let Some(stack) = pull_request.stack.as_ref() {
-                    state_line.push_str(&format!(
-                        "   Stack: {} position {}",
-                        stack.number, stack.position
-                    ));
-                }
-                lines.push(Line::from(state_line));
-            }
-            None => lines.push(Line::from(format!(
-                "{}   pull request not in view",
-                detail.record.key
-            ))),
-        }
-        lines.push(Line::from(format!(
-            "Changes on {}: {}",
-            detail.record.key,
-            detail.changes.len()
-        )));
-        for change in &detail.changes {
-            lines.push(Line::from(format!(
-                "{}   {}   {}",
-                short_time(&change.observed_at),
-                event_line(&change.event),
-                if change.read { "read" } else { "unread" }
-            )));
-        }
-        let hint = Line::from(vec![
-            Span::styled("Enter", key_style),
-            Span::raw(" open in browser   "),
-            Span::styled("Esc", key_style),
-            Span::raw(" close"),
-        ]);
+        let width = activity_popup_width(area);
         let inner_width = usize::from(width.saturating_sub(2)).max(1);
-        let rows: usize = lines
-            .iter()
-            .map(|line| {
-                let length: usize = line.spans.iter().map(|span| span.content.chars().count()).sum();
-                length.max(1).div_ceil(inner_width)
-            })
-            .sum();
-        let height = (rows as u16 + 3)
-            .max(7)
-            .min(area.height.saturating_sub(2).max(7));
+        let lines = activity_detail_lines(detail, inner_width);
+        let height = activity_popup_height(area, lines.len());
         let rect = Rect::new(
-            (area.width - width) / 2,
-            (area.height - height) / 2,
+            (area.width.saturating_sub(width)) / 2,
+            (area.height.saturating_sub(height)) / 2,
             width,
             height,
         );
+        let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
         let block = Block::bordered()
             .title(
                 Line::from(" Activity ")
@@ -1683,15 +1897,23 @@ impl TuiApp {
         let inner = block.inner(rect);
         frame.render_widget(Clear, rect);
         frame.render_widget(block, rect);
-        let content = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
+        let content = Rect::new(
+            inner.x,
+            inner.y,
+            inner.width,
+            inner.height.saturating_sub(1),
+        );
         let hint_area = Rect::new(
             inner.x,
             inner.y + inner.height.saturating_sub(1),
             inner.width,
             1,
         );
-        frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), content);
-        frame.render_widget(Paragraph::new(hint), hint_area);
+        let max_scroll = (lines.len() as u16).saturating_sub(content.height);
+        let scroll = self.popup_scroll.get().min(max_scroll);
+        self.popup_scroll.set(scroll);
+        frame.render_widget(Paragraph::new(lines).scroll((scroll, 0)), content);
+        frame.render_widget(Paragraph::new(popup_hint(key_style)), hint_area);
     }
 
     fn render_pr_popup(&self, frame: &mut Frame) {
@@ -1699,91 +1921,14 @@ impl TuiApp {
             return;
         };
         let area = frame.area();
-        let width = (area.width * 80 / 100)
-            .min(area.width.saturating_sub(2))
-            .max(20);
+        let width = pr_popup_width(area);
         let inner_width = usize::from(width.saturating_sub(2)).max(1);
-        let key_style = Style::new()
-            .fg(Color::Green)
-            .add_modifier(Modifier::BOLD);
-        let label = |text: &str| Span::styled(text.to_string(), key_style);
-
-        let mut status = state_label(&pull_request.state).to_string();
-        if pull_request.is_draft {
-            status.push_str(", draft");
-        }
-        let ci = ci_label(&pull_request.ci_state)
-            .strip_prefix("CI ")
-            .unwrap_or(ci_label(&pull_request.ci_state))
-            .to_string();
-        let creator = format!(
-            "@{} ({})",
-            pull_request.author,
-            short_time(&pull_request.created_at)
-        );
-        let assignees = if pull_request.assignees.is_empty() {
-            "none".to_string()
-        } else {
-            pull_request
-                .assignees
-                .iter()
-                .map(|login| format!("@{login}"))
-                .collect::<Vec<_>>()
-                .join(", ")
-        };
-        let mut header = vec![
-            Line::from(vec![label("Status: "), Span::raw(status)]),
-            Line::from(vec![label("CI: "), Span::raw(ci)]),
-            Line::from(vec![label("Creator: "), Span::raw(creator)]),
-            Line::from(vec![label("Assignee: "), Span::raw(assignees)]),
-        ];
-        if let Some(stack) = pull_request.stack.as_ref() {
-            header.push(Line::from(vec![
-                label("Stack: "),
-                Span::raw(format!(
-                    "{}/{}   base {}",
-                    stack.position, stack.size, stack.base
-                )),
-            ]));
-        }
-        header.push(Line::from(label("Description:")));
-        let max_height = (area.height * 80 / 100)
-            .min(area.height.saturating_sub(2))
-            .max(8);
-        let body_capacity = usize::from(
-            max_height
-                .saturating_sub(3)
-                .saturating_sub(header.len() as u16),
-        )
-        .max(1);
-        let description = if pull_request.description.trim().is_empty() {
-            "(no description)".to_string()
-        } else {
-            pull_request.description.clone()
-        };
-        let mut rendered = render_description(&description, inner_width);
-        if rendered.len() > body_capacity {
-            rendered.truncate(body_capacity);
-            if let Some(last) = rendered.last_mut() {
-                let mut truncated: String = last
-                    .spans
-                    .iter()
-                    .map(|span| span.content.as_ref())
-                    .collect();
-                truncated = truncated
-                    .chars()
-                    .take(inner_width.saturating_sub(1))
-                    .collect();
-                truncated.push('…');
-                *last = Line::from(Span::raw(truncated));
-            }
-        }
-        let mut lines = header;
-        lines.extend(rendered);
-        let height = (lines.len() as u16 + 3).min(max_height);
+        let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+        let lines = pr_detail_lines(pull_request, inner_width);
+        let height = pr_popup_height(area, lines.len());
         let rect = Rect::new(
-            (area.width - width) / 2,
-            (area.height - height) / 2,
+            (area.width.saturating_sub(width)) / 2,
+            (area.height.saturating_sub(height)) / 2,
             width,
             height,
         );
@@ -1793,23 +1938,23 @@ impl TuiApp {
         let inner = block.inner(rect);
         frame.render_widget(Clear, rect);
         frame.render_widget(block, rect);
-        let content = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
+        let content = Rect::new(
+            inner.x,
+            inner.y,
+            inner.width,
+            inner.height.saturating_sub(1),
+        );
         let hint_area = Rect::new(
             inner.x,
             inner.y + inner.height.saturating_sub(1),
             inner.width,
             1,
         );
-        frame.render_widget(Paragraph::new(lines), content);
-        frame.render_widget(
-            Paragraph::new(Line::from(vec![
-                Span::styled("Enter", key_style),
-                Span::raw(" open in browser   "),
-                Span::styled("Esc", key_style),
-                Span::raw(" close"),
-            ])),
-            hint_area,
-        );
+        let max_scroll = (lines.len() as u16).saturating_sub(content.height);
+        let scroll = self.pr_detail_scroll.get().min(max_scroll);
+        self.pr_detail_scroll.set(scroll);
+        frame.render_widget(Paragraph::new(lines).scroll((scroll, 0)), content);
+        frame.render_widget(Paragraph::new(popup_hint(key_style)), hint_area);
     }
 
     pub fn snapshot(&self) -> String {
@@ -1941,7 +2086,7 @@ mod tests {
             observed_at: "2026-11-02T10:00:00Z".to_string(),
             event: ActivityEvent::Comment {
                 author: "alice".to_string(),
-                body_excerpt: "hi".to_string(),
+                body: "hi".to_string(),
             },
             read,
         }
@@ -2065,7 +2210,7 @@ mod tests {
             observed_at: "2026-11-02T10:00:00Z".to_string(),
             event: ActivityEvent::Comment {
                 author: "alice".to_string(),
-                body_excerpt: "hi".to_string(),
+                body: "hi".to_string(),
             },
             read,
         }
@@ -2731,10 +2876,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_long_pull_request_description_is_truncated_with_an_ellipsis() {
+    async fn a_long_pull_request_description_scrolls_to_the_end() {
         let mut app = TuiApp::new(view(Vec::new()));
         let mut pull_request = standalone("acme/api#42");
-        pull_request.description = "word ".repeat(4000);
+        pull_request.description = (1..=40)
+            .map(|line| format!("line {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
         app.view.pull_requests = vec![pull_request];
         let inbox = FakeInbox::new(Vec::new());
         app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
@@ -2745,7 +2893,100 @@ mod tests {
             .expect("enter");
         let frame = app.snapshot();
         assert!(frame.contains("PR - acme/api#42"), "{frame}");
-        assert!(frame.contains('…'), "description was not truncated: {frame}");
+        assert!(frame.contains("line 1"), "{frame}");
+        assert!(!frame.contains("line 40"), "{frame}");
+        app.handle_key(key(KeyCode::End), &inbox, &core_config())
+            .await
+            .expect("end");
+        let frame = app.snapshot();
+        assert!(frame.contains("line 40"), "{frame}");
+        app.handle_key(key(KeyCode::Home), &inbox, &core_config())
+            .await
+            .expect("home");
+        let frame = app.snapshot();
+        assert!(frame.contains("line 1"), "{frame}");
+        assert!(!frame.contains("line 40"), "{frame}");
+    }
+
+    #[test]
+    fn the_activity_detail_shows_the_comment_body() {
+        let mut record = record("a1", false);
+        record.event = ActivityEvent::Comment {
+            author: "alice".to_string(),
+            body: "## Summary\n\nThe full body mentions the zebra marker.".to_string(),
+        };
+        let mut app = TuiApp::new(view(vec![record.clone()]));
+        app.popup = Some(ActivityDetail {
+            record: record.clone(),
+            changes: vec![record],
+            pull_request: None,
+            url: None,
+        });
+        let frame = app.snapshot();
+        assert!(
+            frame.contains("The full body mentions the zebra marker."),
+            "{frame}"
+        );
+        assert!(frame.contains("Comment by @alice"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn scrolling_works_before_the_first_render() {
+        let mut record = record("a1", false);
+        record.event = ActivityEvent::Comment {
+            author: "alice".to_string(),
+            body: (1..=40)
+                .map(|line| format!("comment line {line}"))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        };
+        let mut app = TuiApp::new(view(vec![record.clone()]));
+        app.popup = Some(ActivityDetail {
+            record: record.clone(),
+            changes: vec![record],
+            pull_request: None,
+            url: None,
+        });
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::End), &inbox, &core_config())
+            .await
+            .expect("end");
+        let frame = app.snapshot();
+        assert!(frame.contains("comment line 40"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn the_activity_detail_scrolls_through_a_long_comment() {
+        let mut record = record("a1", false);
+        record.event = ActivityEvent::Comment {
+            author: "alice".to_string(),
+            body: (1..=40)
+                .map(|line| format!("comment line {line}"))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        };
+        let mut app = TuiApp::new(view(vec![record.clone()]));
+        app.popup = Some(ActivityDetail {
+            record: record.clone(),
+            changes: vec![record],
+            pull_request: None,
+            url: None,
+        });
+        let frame = app.snapshot();
+        assert!(frame.contains("comment line 1"), "{frame}");
+        assert!(!frame.contains("comment line 40"), "{frame}");
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::End), &inbox, &core_config())
+            .await
+            .expect("end");
+        let frame = app.snapshot();
+        assert!(frame.contains("comment line 40"), "{frame}");
+        app.handle_key(key(KeyCode::Home), &inbox, &core_config())
+            .await
+            .expect("home");
+        let frame = app.snapshot();
+        assert!(frame.contains("comment line 1"), "{frame}");
+        assert!(!frame.contains("comment line 40"), "{frame}");
     }
 
     #[tokio::test]

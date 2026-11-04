@@ -132,9 +132,10 @@ list to the selected pull request or its stack, while `u` limits it to unread
 records. `c` clears the filters and `C` resets the whole view. With the activity
 list focused, `r` marks the selected record read and `a` marks the visible
 records read (with no filter, all of them); `enter` opens a detail overlay
-listing every recorded change for that
-pull request; `esc` closes it, and `enter` in the overlay opens the pull
-request in your browser. `h`/`F1` shows the keys for the focused pane. Sort and
+listing every recorded change for that pull request together with the selected
+comment or review in full; `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and
+`Home`/`End` scroll the overlay and the watched pull request dialog; `esc`
+closes it, and `enter` in the overlay opens the pull request in your browser. `h`/`F1` shows the keys for the focused pane. Sort and
 filter settings are saved to `ui.json` next to the state file when you confirm
 the save prompt on exit. Press `p` to open the
 watch-scope picker: `j`/`k` move,

@@ -266,7 +266,7 @@ use chrono::DateTime;
                     observed_at: "2026-11-02T10:00:00Z".to_string(),
                     event: ActivityEvent::Comment {
                         author: "alice".to_string(),
-                        body_excerpt: "hi".to_string(),
+                        body: "hi".to_string(),
                     },
                     read: false,
                 },
@@ -373,7 +373,7 @@ use chrono::DateTime;
                 observed_at: "2026-11-02T10:00:00Z".to_string(),
                 event: crate::domain::ActivityEvent::Comment {
                     author: "alice".to_string(),
-                    body_excerpt: "hi".to_string(),
+                    body: "hi".to_string(),
                 },
                 read: false,
             },
@@ -383,7 +383,7 @@ use chrono::DateTime;
                 observed_at: "2026-11-02T10:00:00Z".to_string(),
                 event: crate::domain::ActivityEvent::Comment {
                     author: "bob".to_string(),
-                    body_excerpt: "hi".to_string(),
+                    body: "hi".to_string(),
                 },
                 read: false,
             },

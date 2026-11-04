@@ -255,15 +255,19 @@ impl WatchedPullRequest {
 pub enum ActivityEvent {
     Comment {
         author: String,
-        body_excerpt: String,
+        #[serde(default, alias = "body_excerpt")]
+        body: String,
     },
     ReviewComment {
         author: String,
-        body_excerpt: String,
+        #[serde(default, alias = "body_excerpt")]
+        body: String,
     },
     Review {
         author: String,
         state: String,
+        #[serde(default)]
+        body: String,
     },
     CiFailure {
         failed_checks: Vec<String>,
@@ -277,6 +281,18 @@ pub enum ActivityEvent {
     Opened {
         author: String,
     },
+}
+
+/// The single-line preview of a comment stored in an activity record.
+pub fn excerpt(body: &str) -> String {
+    let single_line = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut chars = single_line.chars();
+    let excerpt: String = chars.by_ref().take(80).collect();
+    if chars.next().is_some() {
+        format!("{excerpt}...")
+    } else {
+        excerpt
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -405,5 +421,34 @@ impl LoginSet {
 
     pub fn contains(&self, login: &str) -> bool {
         self.0.contains(&login.to_ascii_lowercase())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{excerpt, ActivityEvent};
+
+    #[test]
+    fn an_activity_comment_loads_a_legacy_body_excerpt() {
+        let event: ActivityEvent = serde_json::from_str(
+            r#"{"Comment":{"author":"alice","body_excerpt":"a stored preview"}}"#,
+        )
+        .expect("legacy event");
+        assert_eq!(
+            event,
+            ActivityEvent::Comment {
+                author: "alice".to_string(),
+                body: "a stored preview".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn the_excerpt_collapses_lines_and_caps_its_length() {
+        assert_eq!(excerpt("one\n\ntwo"), "one two");
+        let long = "word ".repeat(40);
+        let preview = excerpt(&long);
+        assert!(preview.ends_with("..."), "{preview}");
+        assert_eq!(preview.chars().count(), 83);
     }
 }
