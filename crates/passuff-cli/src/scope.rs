@@ -359,7 +359,7 @@ impl ScopePicker {
         }
         frame.render_widget(Paragraph::new(lines), chunks[1]);
         let entries = [
-            ("j/k", "move"),
+            ("↑↓", "move"),
             ("type", "owner/name"),
             ("enter", "add"),
             ("space", "toggle"),

@@ -1056,10 +1056,7 @@ impl TuiApp {
     }
 
     fn row_highlight_style(&self) -> Style {
-        Style::new()
-            .fg(Color::Black)
-            .bg(theme::GOLD)
-            .add_modifier(Modifier::BOLD)
+        theme::gold_bold()
     }
 
     fn visible_activity(&self) -> Vec<&ActivityRecord> {
@@ -1575,7 +1572,7 @@ impl TuiApp {
         let entries: &[(&str, &str)] = match self.focus {
             Pane::Watched => &[
                 ("Tab", "activity"),
-                ("j/k", "move"),
+                ("↑↓", "move"),
                 ("enter", "detail"),
                 ("x", "ignore"),
                 ("◀/▶", "all|filtered"),
@@ -1584,7 +1581,7 @@ impl TuiApp {
             ],
             Pane::Activity => &[
                 ("Tab", "PRs"),
-                ("j/k", "move"),
+                ("↑↓", "move"),
                 ("enter", "detail"),
                 ("r", "read"),
                 ("a", "all"),
@@ -1899,7 +1896,7 @@ impl TuiApp {
         let entries: &[(&str, &str)] = match pane {
             Pane::Watched => &[
                 ("Tab", "switch pane"),
-                ("j/k, up/down", "move selection"),
+                ("↑↓", "move selection"),
                 ("PgUp/PgDn", "move by ten"),
                 ("Home/End", "first / last row"),
                 ("Enter", "pull request detail"),
@@ -1915,7 +1912,7 @@ impl TuiApp {
             ],
             Pane::Activity => &[
                 ("Tab", "switch pane"),
-                ("j/k, up/down", "move selection"),
+                ("↑↓", "move selection"),
                 ("PgUp/PgDn", "move by ten"),
                 ("Home/End", "first / last row"),
                 ("Enter", "activity detail"),
@@ -2418,8 +2415,8 @@ mod tests {
         assert!(buffer[(x, y)].modifier.contains(Modifier::BOLD));
 
         let (x, y) = find("▶");
-        assert_eq!(buffer[(x, y)].bg, theme::GOLD);
-        assert_eq!(buffer[(x, y)].fg, Color::Black);
+        assert_eq!(buffer[(x, y)].fg, theme::GOLD);
+        assert_eq!(buffer[(x, y)].bg, Color::Reset);
         assert!(buffer[(x, y)].modifier.contains(Modifier::BOLD));
 
         let (x, y) = find("1 unread of 1");
