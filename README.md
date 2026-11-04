@@ -1,9 +1,20 @@
-# passuff
+# Passuff! (☞ﾟヮﾟ)☞
 
 <!-- givn:begin:coverage-badge -->
 [![Line Coverage: 88%](https://img.shields.io/badge/line%20coverage-88%25-brightgreen)](coverage/cobertura-coverage.xml)
 [![Branch Coverage: 45%](https://img.shields.io/badge/branch%20coverage-45%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
+
+```text
+╭────────────╮
+│ pass uff!  │
+╰────┬───────╯
+  (☞ﾟヮﾟ)☞
+```
+
+
+Multi-account GitHub PR inbox and desktop notifier for your terminal.
+
 
 `passuff` watches the GitHub pull requests you authored, are assigned to, or
 are asked to review across several accounts and notifies you only when
