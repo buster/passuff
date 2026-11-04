@@ -84,6 +84,8 @@ The developer starts the watcher, or runs a single check pass.
 - R37: An account configured with only an environment variable or a helper command, with no declared mode, remains a personal access token account.
 - R38: A failed or abandoned browser login is reported as an account failure and is attempted at most once per gh login per process; the remaining accounts are still observed.
 - R39: When a repository scope excludes a repository, an authored pull request outside it is not observed or notified; already watched pull requests and activity are hidden from the inbox and status but retained in state.
+- R40: Activity on an already-merged or already-closed watched pull request does not notify. The transition that made it terminal, a short-lived pull request (R27), and a reopen (R28) are still reported.
+- R41: A check cycle observes only the pull requests selected from the change probe and the discovery search; a reconciliation pass observes every watched open pull request and every open assigned or review-requested pull request.
 
 ## Examples
 

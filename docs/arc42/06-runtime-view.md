@@ -17,9 +17,12 @@ sequenceDiagram
     participant Sound
 
     CLI->>Config: load and validate
-    CLI->>Core: refresh
+    CLI->>Core: refresh_reconciliation
     Core->>State: load observations
-    Core->>GitHub: observe each account
+    Core->>GitHub: probe each account
+    GitHub-->>Core: fingerprints and allowance
+    Core->>Core: select observation targets
+    Core->>GitHub: observe selected ids
     GitHub-->>Core: pull request snapshots
     Core->>Classifier: classify new activity
     Classifier-->>Core: grouped notifications
@@ -34,15 +37,20 @@ sequenceDiagram
 **Steps:**
 
 1. The CLI loads and validates configuration.
-2. The CLI calls `PassuffCore::refresh`.
+2. The CLI calls `PassuffCore::refresh_reconciliation`.
 3. The core loads the persisted state.
-4. Each account is observed independently.
-5. The classifier compares snapshots with the recorded observation.
-6. Events are grouped by pull request; empty groups are discarded.
-7. The core persists state before returning the report.
-8. The CLI prints the transcript block and invokes the delivery adapter once per
+4. The core probes each account, compares the fingerprint with the accepted one,
+   and selects changed open, new open, transitioned, short-lived, and
+   discovery targets; the reconciliation pass adds every watched open id and
+   every open assigned/review-requested id.
+5. Each account's selected ids are observed independently.
+6. The classifier compares snapshots with the recorded observation.
+7. Events are grouped by pull request; empty groups are discarded. A target that
+   was not observed keeps its previous probe baseline and is retried.
+8. The core persists state before returning the report.
+9. The CLI prints the transcript block and invokes the delivery adapter once per
    group.
-9. The sound plays once per notification when enabled.
+10. The sound plays once per notification when enabled.
 
 **Notes:** The core has no delivery dependency. A state write failure returns an
 error before a report exists. A delivery failure is reported but not retried;
@@ -252,18 +260,21 @@ repository or switches the mode.
 
 **Trigger:** The terminal inbox is open; the observation task's delay expires.
 
-1. `PassuffCore::probe` queries the open authored pull requests of each account
-   and compares their identity, update time, head commit, and CI state with the
-   last successful cycle. The probe reports the GraphQL allowance.
-2. No change: `ObservationSession` schedules the next probe from the remaining
-   allowance and the reset time; no check cycle runs.
-3. Change: a deferred check cycle runs when the allowance can afford it;
-   `PassuffCore::refresh` records activity, `CliRuntime` delivers the
-   notifications, and `ObservationSession` commits the probe as the new
-   baseline.
-4. The terminal loop reloads `InboxService::view`, redraws, and preserves focus
+1. `PassuffCore::probe` queries every authored pull request of each account,
+   compares identity, update time, creation time, state, head commit, and CI
+   state with the accepted probe, and reports the GraphQL allowance.
+2. A known terminal pull request whose only change is its update time is not a
+   target; no cycle runs for activity after the terminal state.
+3. A relevant change starts a deferred targeted pass when the allowance can
+   afford it; `PassuffCore::refresh_targeted` observes only the selected ids,
+   records activity, `CliRuntime` delivers the notifications, and the account's
+   probe baseline advances only after its observation succeeded.
+4. When the configured reconciliation interval elapses, a reconciliation pass
+   observes every watched open id and every open assigned/review-requested id,
+   even without a probe signal.
+5. The terminal loop reloads `InboxService::view`, redraws, and preserves focus
    and the selected pull request.
-5. A failed probe or cycle backs off and keeps the current view; the program
+6. A failed probe or pass backs off and keeps the current view; the program
    continues.
 
 ## Scenario: Open an activity detail and its pull request

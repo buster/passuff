@@ -28,9 +28,15 @@
   terminal UI; it validates the configuration, never stores a token, and writes
   atomically. See [chapter 06](06-runtime-view.md).
 - Let the open terminal inbox act as a watcher: a cheap change probe paces
-  against the account's allowance, a check cycle runs only when the probe
-  reports a change, and the view updates without a keypress while preserving
-  the selected pull request. See [ADR-0007](adr/ADR-0007-probe-before-observing.md).
+  against the account's allowance and selects the changed open pull requests,
+  a check cycle observes only those targets, and an hourly (configurable)
+  reconciliation pass refreshes every watched open pull request. The view
+  updates without a keypress while preserving the selected pull request. See
+  [ADR-0007](adr/ADR-0007-probe-before-observing.md).
+- Retire terminal pull requests from observation: once a watched pull request
+  is merged or closed, only the transition itself, a short-lived pull request,
+  and a reopen are observed; comments and reviews after the terminal state do
+  not notify and do not cost an observation.
 - Let an activity open a detail overlay and its pull request: `TuiApp` returns
   an open intent, and a small opener adapter launches the platform browser;
   the key interpreter never spawns a process. See [chapter 06](06-runtime-view.md).

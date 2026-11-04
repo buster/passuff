@@ -58,9 +58,9 @@ flowchart TB
 |---|---|
 | `passuff-config` | Shared TOML schema, validation, `AppConfig`, `CoreConfig`, and `NotificationsConfig`. No UI or terminal dependency. |
 | `passuff-core` | UI-agnostic observation, classification, credential resolution, state, `InboxService`, and the `RefreshReport` contract. |
-| `PassuffCore` | Expose `with_ports`, `probe`, and `refresh`; compare a cheap change probe with the last successful cycle, run one cycle over all accounts, validate expected logins, and return notifications, account failures, and baselines. |
+| `PassuffCore` | Expose `with_ports`, `probe`, `refresh_targeted`, and `refresh_reconciliation`; compare a cheap change probe with the last successful cycle, select changed, new, transitioned, and short-lived targets, run the selected pass over all accounts, validate expected logins, and return notifications, account failures, and baselines. |
 | `ActivityClassifier` | Pure classification of comments, reviews, review comments, CI transitions, state transitions, short-lived PRs, and reopen resets. |
-| `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for one account observation and for the cheap change probe, including GitHub-reported stack membership and the GraphQL allowance. |
+| `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for the cheap change probe, the observation of selected node ids, and the assigned/review-requested discovery search, including GitHub-reported stack membership and the GraphQL allowance. |
 | `PullRequestStack` | Value object carrying the stack number, size, position, and ultimate base on a watched pull request; absent means standalone. |
 | `WatchMode` / `WatchConfig` | Explicit all/selected scope; an empty selected set observes none. |
 | `ScopeEditor` | Edit the watch scope atomically and preserve unrelated configuration; the watcher derives catch-up from the previous scope and retained records. |
@@ -73,7 +73,7 @@ flowchart TB
 | `InboxCli` | Render `status`, `inbox`, and `read` from `InboxService`; no GitHub calls. |
 | `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, show an activity detail overlay, return an open intent for the pull request URL, handle keys, and mark records read; a blocking input thread feeds keys, and `--snapshot` prints one frame. |
 | `SystemBrowserOpener` | Launch the platform browser with a pull request URL; report a missing or failing opener as a status line. |
-| `ObservationSession` | Decide when to probe and when to run a check cycle from the reported allowance, deliver the cycle's notifications, keep the last view on failure, and hand updates to the terminal loop. |
+| `ObservationSession` | Decide when to probe, when to run a targeted pass, and when the reconciliation interval has elapsed; deliver the cycle's notifications, keep the last view on failure, and hand updates to the terminal loop. |
 | `TranscriptRenderer` | Render notifications, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real `notify-rust` delivery; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |
@@ -89,7 +89,8 @@ depending on any UI or delivery adapter.
 
 | Element | Responsibility |
 |---|---|
-| Account cycle | Resolve the login and credential, observe pull requests, classify, and update the account's observations. |
+| Target selection | Diff the accepted and pending probes; select changed open, new open, transitions, short-lived, and discovery targets. |
+| Account cycle | Resolve the login and credential, observe the selected targets, classify, and merge the observations into the account's records. |
 | Account isolation | Convert an account failure into a reported failure while other accounts continue. |
 | Baseline rule | Record a baseline on the first observation of every pull request. |
 | Grouping | Create at most one notification per pull request per cycle. |

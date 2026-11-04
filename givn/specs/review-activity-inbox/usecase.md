@@ -53,7 +53,7 @@ The developer lists the inbox or marks activity read.
 - T7: The screen contains no token, no more than the recorded 80-character event excerpt, no helper command text, and no enum name.
 - T8: `Tab`/`Shift-Tab` cycles focus between the watched pull request pane and the activity pane; the footer names the focused pane.
 - T9: `j`/`k` and the arrow keys move the selected row in the focused pane; the watched table scrolls to keep the selection visible, including large stacks; the activity selection clamps.
-- T10: The terminal inbox observes the configured accounts while it is open and shows the result without a keypress or another command; it probes GitHub for a change and performs the full observation only when the probe reports one, preserving the selected pull request and clamping a vanished selection.
+- T10: The terminal inbox observes the configured accounts while it is open and shows the result without a keypress or another command; it probes GitHub for a change, observes only the selected target pull requests, and preserves the selected pull request and clamps a vanished selection. A configured reconciliation interval also observes every watched open pull request and every open assigned or review-requested pull request, and defaults to one hour.
 - T11: A refresh never changes focus or replays a notification.
 - T12: The inbox paces observation against the account's remaining API allowance; it never spends the allowance faster than it is replenished.
 - T13: A failed observation keeps the last view and is retried without ending the program.

@@ -37,7 +37,7 @@ Release note for every batch commit: `Observe only changed open pull requests an
         produce no events; a terminal transition still produces `StateChange`.
 
 - [x] Scenario: `Activity on a merged or closed pull request does not notify`
-  - [ ] **Design constraints:** a known watched pull request already in the
+  - [x] **Design constraints:** a known watched pull request already in the
         merged or closed state receives a comment; run one check; the
         transcript reports no notifications. The terminal transition itself
         remains covered by the permanent scenarios. D1: terminal records stay
@@ -45,13 +45,13 @@ Release note for every batch commit: `Observe only changed open pull requests an
   - [x] COMMIT: `4dc4695` -- Batch: `terminal-retirement`
 
 - [x] Scenario: `A review on a merged pull request does not notify`
-  - [ ] **Design constraints:** the same retirement rule applies to the
+  - [x] **Design constraints:** the same retirement rule applies to the
         reviews event family; a submitted review on a terminal pull request
         produces no notification.
   - [x] COMMIT: `4dc4695` -- Batch: `terminal-retirement`
 
 - [x] Scenario: `A comment on a merged pull request reaches the inbox` (removed)
-  - [ ] **Design constraints:** the permanent `inbox-navigation` scenario is
+  - [x] **Design constraints:** the permanent `inbox-navigation` scenario is
         removed by the delta; the runner skips the `@givn.removed`
         placeholder. No notification or inbox activity for post-terminal
         comments.
@@ -59,83 +59,83 @@ Release note for every batch commit: `Observe only changed open pull requests an
 
 ### Batch: `observation-targets`
 
-- [ ] Probe: account-isolated failures and relevant-change signal.
-  - [ ] `ChangeSignal` carries `failures: Vec<AccountFailure>`; `probe`
+- [x] Probe: account-isolated failures and relevant-change signal.
+  - [x] `ChangeSignal` carries `failures: Vec<AccountFailure>`; `probe`
         continues past a failed account and keeps the minimum allowance across
         successful accounts.
-  - [ ] `PassuffCore` caches the last `WatchSnapshot` (per-account
+  - [x] `PassuffCore` caches the last `WatchSnapshot` (per-account
         `last_check_at` and watched open node ids) from every refresh; `probe`
         reports `changed` only for a changed or new open id, a state
         transition, or a short-lived id. A known terminal pull request whose
         only change is `updatedAt` reports no change.
-  - [ ] Unit tests: terminal `updatedAt`-only change is not relevant; open
+  - [x] Unit tests: terminal `updatedAt`-only change is not relevant; open
         change, transition, reopen, and short-lived are relevant; a failed
         account keeps the other accounts' signal.
 
-- [ ] Gateway: observe selected ids and discovery.
-  - [ ] Replace `GitHubGateway::observe(known_node_ids)` with
+- [x] Gateway: observe selected ids and discovery.
+  - [x] Replace `GitHubGateway::observe(known_node_ids)` with
         `observe(target_ids, discovery)`; `Discovery::{None, New, All}` fetches
         discovered open assigned/review-requested ids per mode. Remove
         `MAIN_QUERY`; keep the stack-field retry on `NODES_QUERY`.
-  - [ ] The two search queries gain `is:open`.
-  - [ ] `AccountObservation` exposes the ids actually observed so the core can
+  - [x] The two search queries gain `is:open`.
+  - [x] `AccountObservation` exposes the ids actually observed so the core can
         tell a missing node from an observed one.
 
-- [ ] Core: targeted pass and per-account baseline commitment.
-  - [ ] `refresh_targeted` selects changed open, new open, transitions, and
+- [x] Core: targeted pass and per-account baseline commitment.
+  - [x] `refresh_targeted` selects changed open, new open, transitions, and
         short-lived ids, applies the watch scope and ignore list, observes with
         `Discovery::New`, merges, and classifies.
-  - [ ] `refresh_reconciliation` selects all watched open ids plus the probe
+  - [x] `refresh_reconciliation` selects all watched open ids plus the probe
         targets, observes with `Discovery::All`, and classifies.
-  - [ ] Commit the probe baseline per account only after its observation
+  - [x] Commit the probe baseline per account only after its observation
         succeeded; a failed account keeps its previous entry; a requested id
         missing from the response keeps its previous entry or stays absent.
-  - [ ] `ObservationSession::tick` calls `refresh_targeted` when the signal is
+  - [x] `ObservationSession::tick` calls `refresh_targeted` when the signal is
         relevant; the headless `run_watch_cycle` and the watch loop call
         `refresh_reconciliation`.
-  - [ ] Unit tests: target selection matrix, missing-id retention, failed
+  - [x] Unit tests: target selection matrix, missing-id retention, failed
         account retention, scope filtering.
 
-- [ ] Harness: `FakeGateway` records observation id sets, supports
+- [x] Harness: `FakeGateway` records observation id sets, supports
       `fail_next_observe`, and returns probe fingerprints with `state` and
       `createdAt`; config builders carry the new fields; the World exposes the
       recorded observation sets.
 
-- [ ] Scenario: `The inbox observes only the open pull request that changed`
-  - [ ] **Design constraints:** two watched open pull requests; a comment on
+- [x] Scenario: `The inbox observes only the open pull request that changed`
+  - [x] **Design constraints:** two watched open pull requests; a comment on
         `acme/api#42`; the startup reconciliation observes both once; the
         probe-targeted pass observes only `acme/api#42`. The assertion inspects
         the observation request after the startup pass.
-  - [ ] COMMIT: `<pending>` -- Batch: `observation-targets`
+  - [x] COMMIT: `3d9bcb0` -- Batch: `observation-targets`
 
-- [ ] Scenario: `A failed observation keeps the change pending`
-  - [ ] **Design constraints:** a comment arrives; the next observation fails;
+- [x] Scenario: `A failed observation keeps the change pending`
+  - [x] **Design constraints:** a comment arrives; the next observation fails;
         the transcript reports `account personal failed`; the following check
         reports `New comment`. The probe baseline for the failed account must
         not advance (per-account commitment).
-  - [ ] COMMIT: `<pending>` -- Batch: `observation-targets`
+  - [x] COMMIT: `3d9bcb0` -- Batch: `observation-targets`
 
 ### Batch: `reconciliation`
 
-- [ ] Config: `reconciliation_interval_secs`.
-  - [ ] Top-level `u64`, default `3600`, validated to be at least `1`;
+- [x] Config: `reconciliation_interval_secs`.
+  - [x] Top-level `u64`, default `3600`, validated to be at least `1`;
         `FileConfig`, `AppConfig`, and `CoreConfig` plumbing; configuration
         unit tests for the default, an explicit value, and zero.
-- [ ] Live session: startup reconciliation, interval scheduling, below-100
+- [x] Live session: startup reconciliation, interval scheduling, below-100
       deferral. `ObservationUpdate` carries the interval conflict handling when
       the configuration changes.
-- [ ] Scenario: `The inbox reconciles open pull requests when the interval
+- [x] Scenario: `The inbox reconciles open pull requests when the interval
       elapses`
-  - [ ] **Design constraints:** an assigned (non-authored) open pull request
+  - [x] **Design constraints:** an assigned (non-authored) open pull request
         with a comment that the probe cannot see; `reconciliation_interval_secs
         = 2`; the comment is served after the startup pass; the TUI runs for 6
         seconds and shows the comment. The startup pass must not be the pass
         under test.
-  - [ ] COMMIT: `<pending>` -- Batch: `reconciliation`
+  - [x] COMMIT: `3d9bcb0` -- Batch: `reconciliation`
 
 ### Closeout
 
-- [ ] Merge every delta step phrase into the permanent
+- [x] Merge every delta step phrase into the permanent
       `crates/passuff-cli/tests/steps/{pr_activity_notification,inbox_navigation}.rs`.
-- [ ] Run `GIVN_FEATURES=$PWD/givn/specs ./scripts/verify.sh`,
+- [x] Run `GIVN_FEATURES=$PWD/givn/specs ./scripts/verify.sh`,
       `./scripts/verify.sh --e2e`, and the delta scope; record the totals.

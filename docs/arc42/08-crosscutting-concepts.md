@@ -113,10 +113,19 @@ apply to the focused pane; the watched table uses a `TableState` and scrolls to
 the selected PR, while activity keeps its clamp. Observation runs independently
 of input: the probe delay is `clamp(time_to_reset / max(remaining / 2, 1),
 1s, time_to_reset)`, so the inbox spends at most half the remaining allowance
-across the window and never schedules past the reset. A check cycle is deferred
-below 100 remaining points. A failed probe backs off exponentially and keeps
-the view. Updates preserve the selected PR key and never change focus. The
-`--keys` and `--observe` snapshot surfaces drive the same handler for E2E.
+across the window and never schedules past the reset. A targeted or
+reconciliation pass is deferred below 100 remaining points. A failed probe
+backs off exponentially and keeps the view. Updates preserve the selected PR
+key and never change focus. The `--keys` and `--observe` snapshot surfaces
+drive the same handler for E2E.
+
+Observation targeting is the other crosscutting rule: the probe fingerprint
+selects changed open, new open, transitioned, and short-lived pull requests; a
+known terminal pull request whose update time changed alone is ignored. The
+live inbox reconciles every watched open id and every open
+assigned/review-requested id on startup and every `reconciliation_interval_secs`
+(default one hour), which bounds staleness for signals the fingerprint cannot
+see. The headless watcher reconciles on its `poll_interval_secs` cadence.
 
 ## Activity detail and browser launch
 

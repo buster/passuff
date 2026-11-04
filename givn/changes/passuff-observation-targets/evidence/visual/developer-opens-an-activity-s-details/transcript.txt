@@ -16,7 +16,7 @@
 ││   │  Can you split this migration?                                                         │   ││
 ││   │                                                                                        │   ││
 ││   │Changes on acme/api#42: 1                                                               │   ││
-││   │11-04 13:28 comment by @alice: Can you split this migration? unread                     │   ││
+││   │11-04 13:39 comment by @alice: Can you split this migration? unread                     │   ││
 ││   │Enter open in browser   ↑↓/PgUp/PgDn scroll   Esc close                                 │   ││
 ││   └────────────────────────────────────────────────────────────────────────────────────────┘   ││
 ││                                                                                                ││

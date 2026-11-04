@@ -11,7 +11,7 @@ merging), delivery channels other than the local desktop surface, and
 organization-level policy.
 
 This model covers the implemented watch, status, activity-review, stack-review,
-and watch-scope capabilities through the `passuff-watch-scope` change. The core is UI-agnostic: a notification is a
+and watch-scope capabilities through the `passuff-observation-targets` change. The core is UI-agnostic: a notification is a
 grouped report, and a UI adapter delivers it. Delivery is an external
 relationship, not part of the Notification value. An account's credential mode
 and expected login are configuration and validation attributes, not separate
@@ -23,7 +23,11 @@ enter the model.
 
 Account failure is a report condition, not a domain entity. Event-family
 settings are configuration, not domain structure; both are defined in the
-glossary and design.
+glossary and design. Observation targets and the reconciliation pass are
+transient selections over the existing aggregates, not new entities: the
+Watched Pull Request aggregate keeps its baseline and observations, and a
+terminal watched pull request remains recorded while leaving the observation
+target set.
 
 ## Diagram notation and legend
 
