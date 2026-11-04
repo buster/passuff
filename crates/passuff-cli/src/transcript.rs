@@ -183,6 +183,7 @@ fn render_event(event: &ActivityEvent) -> String {
         }
         ActivityEvent::CiFailure { .. } => "CI failing".to_string(),
         ActivityEvent::CiRecovery => "CI recovered".to_string(),
+        ActivityEvent::Opened { author } => format!("New pull request by @{author}"),
         ActivityEvent::StateChange { state, .. } => match state {
             PrState::Merged => "Merged".to_string(),
             PrState::Closed => "Closed".to_string(),

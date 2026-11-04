@@ -264,6 +264,9 @@ pub enum ActivityEvent {
         #[serde(default)]
         actor: Option<String>,
     },
+    Opened {
+        author: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
