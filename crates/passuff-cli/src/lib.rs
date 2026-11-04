@@ -3,6 +3,7 @@ pub mod delivery;
 pub mod gh_login;
 pub mod inbox_cli;
 pub mod live;
+pub mod notify_cli;
 pub mod scope;
 pub mod setup;
 pub mod theme;

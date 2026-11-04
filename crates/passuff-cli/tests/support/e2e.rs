@@ -609,6 +609,10 @@ impl World {
         self.e2e_run_subcommand(&["read", "--all"]).await;
     }
 
+    pub async fn e2e_run_notify_test(&mut self) {
+        self.e2e_run_subcommand(&["notify-test"]).await;
+    }
+
     async fn e2e_run_subcommand(&mut self, args: &[&str]) {
         let config = self
             .e2e_config_dir

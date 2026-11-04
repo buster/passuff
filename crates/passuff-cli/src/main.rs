@@ -76,6 +76,10 @@ async fn main() {
         Some(Command::Status) => inbox_cli().status(config).await,
         Some(Command::Inbox { all }) => inbox_cli().inbox(config, all).await,
         Some(Command::Read { id, all }) => inbox_cli().read(config, id, all).await,
+        Some(Command::NotifyTest) => {
+            let sound = Arc::new(SystemSoundPlayer::new());
+            passuff_cli::notify_cli::notify_test(config, build_delivery(sound)).await
+        }
         None => build_runtime(interactive).run_watch(config).await,
     };
     if !outcome.emitted && !outcome.transcript.is_empty() {

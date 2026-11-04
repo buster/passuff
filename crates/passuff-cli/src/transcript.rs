@@ -52,6 +52,17 @@ impl TranscriptRenderer {
         "passuff: no notifications".to_string()
     }
 
+    pub fn render_test_notification(&self, sound: bool) -> RenderedNotification {
+        let title = "passuff: notify test".to_string();
+        let body = "If you can read this, passuff notifications are working.".to_string();
+        RenderedNotification {
+            transcript: format!("{title}\n{body}"),
+            title,
+            body,
+            sound,
+        }
+    }
+
     pub fn render_watching(&self) -> String {
         "passuff: watching".to_string()
     }
