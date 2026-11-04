@@ -275,6 +275,7 @@ pub struct TuiApp {
     pr_selected: usize,
     selected_pr: Option<PullRequestKey>,
     status: Option<String>,
+    countdown: Option<std::time::Duration>,
     popup: Option<ActivityDetail>,
     pr_detail: Option<PullRequestView>,
     show_ignored: bool,
@@ -289,6 +290,7 @@ impl TuiApp {
             pr_selected: 0,
             selected_pr: None,
             status: None,
+            countdown: None,
             popup: None,
             pr_detail: None,
             show_ignored: false,
@@ -326,6 +328,11 @@ impl TuiApp {
     /// Show a failure line in the footer until the next successful update.
     pub fn set_status(&mut self, status: Option<String>) {
         self.status = status;
+    }
+
+    /// Show the time until the next observation.
+    pub fn set_countdown(&mut self, countdown: Option<std::time::Duration>) {
+        self.countdown = countdown;
     }
 
     pub fn focus(&self) -> Pane {
@@ -627,11 +634,16 @@ impl TuiApp {
             )),
             chunks[0],
         );
+        let countdown = self
+            .countdown
+            .map(|remaining| format!("   |   ↻ {}s", remaining.as_secs().max(1)))
+            .unwrap_or_default();
         frame.render_widget(
             Paragraph::new(format!(
-                "{} unread of {}   |   Focus: activity",
+                "{} unread of {}   |   Focus: activity{}",
                 self.view.unread,
-                self.view.activity.len()
+                self.view.activity.len(),
+                countdown
             ))
             .style(Style::new().fg(Color::Yellow)),
             chunks[1],
@@ -1254,6 +1266,14 @@ mod tests {
             },
             read,
         }
+    }
+
+    #[test]
+    fn snapshot_shows_the_next_update_countdown() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.set_countdown(Some(std::time::Duration::from_secs(42)));
+        let frame = app.snapshot();
+        assert!(frame.contains("↻ 42s"), "{frame}");
     }
 
     #[test]

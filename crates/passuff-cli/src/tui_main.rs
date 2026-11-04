@@ -413,6 +413,8 @@ async fn run_terminal(
     let mut observation = spawn_observation(session);
     let mut known = known_repositories(editor, &config, store).await;
     let mut picker = start_picker.then(|| ScopePicker::new(&config, known.clone()));
+    let mut next_update_at: Option<std::time::Instant> = None;
+    app.set_status(Some("observing...".to_string()));
     let outcome = loop {
         let drawn = match picker.as_mut() {
             Some(active) => terminal.draw(|frame| active.render(frame)),
@@ -477,6 +479,8 @@ async fn run_terminal(
             }
             maybe_update = observation.recv() => {
                 let Some(update) = maybe_update else { continue };
+                next_update_at = Some(std::time::Instant::now() + update.next_delay);
+                app.set_countdown(Some(update.next_delay));
                 config = update.config;
                 if update.changed {
                     known = known_repositories(editor, &config, store).await;
@@ -490,6 +494,13 @@ async fn run_terminal(
                     }
                 }
                 app.set_status(update.failure);
+            }
+            _ = tokio::time::sleep(Duration::from_secs(1)) => {
+                if let Some(at) = next_update_at {
+                    app.set_countdown(Some(
+                        at.saturating_duration_since(std::time::Instant::now()),
+                    ));
+                }
             }
         }
     };
