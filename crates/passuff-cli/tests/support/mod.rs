@@ -844,6 +844,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
     pub fn set_observation_allowance(&mut self, remaining: u32, reset_in_secs: i64) {
         self.observation_allowance = Some(ApiAllowance {
             cost: 1,
+            limit: 5_000,
             remaining,
             reset_at: (chrono::Utc::now() + chrono::Duration::seconds(reset_in_secs))
                 .to_rfc3339(),

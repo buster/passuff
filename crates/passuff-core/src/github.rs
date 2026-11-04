@@ -377,15 +377,18 @@ impl GitHubApiAdapter {
                 .ok_or_else(|| GitHubError::Malformed("missing data".to_string()))?;
             if let Some(rate) = data.rate_limit {
                 let cost = rate.cost.min(u64::from(u32::MAX)) as u32;
+                let limit = rate.limit.min(u64::from(u32::MAX)) as u32;
                 let remaining = rate.remaining.min(u64::from(u32::MAX)) as u32;
                 allowance = Some(match allowance {
                     Some(previous) => ApiAllowance {
                         cost: previous.cost.saturating_add(cost),
+                        limit,
                         remaining,
                         reset_at: rate.reset_at,
                     },
                     None => ApiAllowance {
                         cost,
+                        limit,
                         remaining,
                         reset_at: rate.reset_at,
                     },
@@ -680,7 +683,7 @@ query($ids: [ID!]!) {
 
 const PROBE_QUERY: &str = r#"
 query($after: String) {
-  rateLimit { cost remaining resetAt }
+  rateLimit { cost limit remaining resetAt }
   viewer {
     login
     pullRequests(first: 100, after: $after, states: [OPEN, MERGED, CLOSED], orderBy: {field: UPDATED_AT, direction: DESC}) {
@@ -947,6 +950,7 @@ struct GqlProbeData {
 #[derive(Debug, Deserialize)]
 struct GqlRateLimit {
     cost: u64,
+    limit: u64,
     remaining: u64,
     #[serde(rename = "resetAt")]
     reset_at: String,
