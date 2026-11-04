@@ -21,6 +21,15 @@ Feature: Pull request activity notification
     And  passuff runs one check
     Then  the transcript reports a notification for "acme/api#42"
 
+  @pr-activity-notification
+  Scenario: A pull request opened after the last check is an activity
+    Given  a configured account "personal" with login "octo-personal"
+    When  passuff runs one check
+    And  an authored pull request "acme/api#42" by "octo-personal" is created after the last check
+    And  passuff runs one check
+    Then  the transcript reports a notification for "acme/api#42"
+    And  the transcript reports "New pull request by @octo-personal"
+
   @e2e @pr-activity-notification
   Scenario: Developer runs a single check and sees the current activity
     Given  a configured account "personal" with login "octo-personal"
@@ -630,7 +639,7 @@ Feature: Pull request activity notification
     And  a state already watches "acme/web#7"
     When  "alice" comments "Please update the changelog" on "acme/web#7"
     And  passuff runs one check
-    Then  the transcript reports no notifications
+    Then  the transcript reports no notification for "acme/web#7"
     When  the developer asks for status
     Then  the transcript reports "acme/api#42 open CI passing"
     And  the transcript does not report "acme/web#7"

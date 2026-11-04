@@ -22,9 +22,9 @@ pub fn classify(
     last_check_at: Option<&str>,
 ) -> Classification {
     let Some(previous) = previous else {
-        let short_lived = account_has_prior_cycle
-            && current.state.is_terminal()
+        let created_since_last_check = account_has_prior_cycle
             && last_check_at.is_some_and(|last| created_after(&current.created_at, last));
+        let short_lived = created_since_last_check && current.state.is_terminal();
         let mut observation = current_observation(current);
         let mut events = Vec::new();
         if short_lived {
@@ -35,6 +35,13 @@ pub fn classify(
                     actor: current.merged_by.clone(),
                 });
             }
+        } else if created_since_last_check
+            && current.state == PrState::Open
+            && toggles.state_changes
+        {
+            events.push(ActivityEvent::Opened {
+                author: current.author.clone(),
+            });
         }
         return Classification {
             events,
@@ -304,6 +311,29 @@ mod tests {
                 actor: None
             }]
         );
+    }
+
+    #[test]
+    fn a_pull_request_opened_since_the_last_check_is_reported() {
+        let toggles = EventToggles::default();
+        let last = "2026-11-02T10:00:00Z";
+        let opened = pull_request(PrState::Open, "2026-11-02T10:00:01Z");
+        let classification = classify(None, &opened, &toggles, &login_set(), true, Some(last));
+        assert_eq!(
+            classification.events,
+            vec![ActivityEvent::Opened {
+                author: "octo".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn a_pull_request_created_before_the_last_check_is_a_baseline() {
+        let toggles = EventToggles::default();
+        let last = "2026-11-02T10:00:00Z";
+        let existing = pull_request(PrState::Open, "2026-11-02T09:00:00Z");
+        let classification = classify(None, &existing, &toggles, &login_set(), true, Some(last));
+        assert!(classification.events.is_empty());
     }
 
     #[test]

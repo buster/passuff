@@ -262,6 +262,13 @@ async fn short_lived(world: &mut World, key: String, author: String, state: Stri
     }
 }
 
+#[when(regex = r#"^an authored pull request "([^"]+)" by "([^"]+)" is created after the last check$"#)]
+async fn created_after_last_check(world: &mut World, key: String, author: String) {
+    let pull_request = world.add_pr(&key, &author);
+    pull_request.created_at = "2026-11-02T12:00:02Z".to_string();
+    pull_request.updated_at = "2026-11-02T12:00:02Z".to_string();
+}
+
 #[when(regex = r#"^passuff runs one check$"#)]
 async fn runs_one_check(world: &mut World) {
     if world.e2e {

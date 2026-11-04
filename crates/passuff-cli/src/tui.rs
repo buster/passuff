@@ -185,6 +185,7 @@ fn event_line(event: &ActivityEvent) -> String {
         }
         ActivityEvent::CiFailure { .. } => "CI failing".to_string(),
         ActivityEvent::CiRecovery => "CI recovered".to_string(),
+        ActivityEvent::Opened { author } => format!("opened by @{author}"),
         ActivityEvent::StateChange { state, actor } => match state {
             PrState::Merged => actor
                 .as_ref()
