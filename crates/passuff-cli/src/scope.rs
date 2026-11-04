@@ -364,7 +364,7 @@ impl ScopePicker {
             ("enter", "add"),
             ("space", "toggle"),
             ("m", "mode"),
-            ("esc", "close"),
+            ("esc/q", "close"),
         ];
         let mut footer = Vec::new();
         for (index, (key, label)) in entries.iter().enumerate() {

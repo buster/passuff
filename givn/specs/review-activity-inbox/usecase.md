@@ -45,7 +45,7 @@ The developer lists the inbox or marks activity read.
 - R8: A missing state file is an empty inbox and exit 0.
 - R9: Recording history never replays a notification.
 - T1: The terminal UI shows the unread and total activity counts, configured accounts, watch scope, watched pull requests, and the activity list on one screen.
-- T2: `j`/down and `k`/up move the selection and clamp at the list ends; Home and End jump to the first and last row; `q` quits; Escape closes the detail popup or quits when none is open.
+- T2: `j`/down and `k`/up move the selection and clamp at the list ends; Home and End jump to the first and last row; `q` quits, and Escape or `q` closes the focused dialog.
 - T3: `r` marks the selected activity record read and refreshes the view; `a` marks every record read and refreshes.
 - T4: An empty inbox shows "no activity yet".
 - T5: A configuration error exits 2 and a state error exits 3 before the interface starts; the message names the failure.
@@ -58,18 +58,19 @@ The developer lists the inbox or marks activity read.
 - T12: The inbox paces observation against the account's remaining API allowance; it never spends the allowance faster than it is replenished.
 - T13: A failed observation keeps the last view and is retried without ending the program.
 - T14: Enter on the focused activity opens a detail popup with the recorded id, event summary, observation time, read state, the pull request's key, title, state, CI result, and stack position, and the selected comment or review body in full, rendered as Markdown; the metadata values are muted, a rule separates them from the indented body, and `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and `Home`/`End` scroll it.
-- T15: Escape closes the detail popup and returns to the unchanged inbox.
+- T15: Escape or `q` closes the detail popup and returns to the unchanged inbox.
 - T16: Enter in the detail popup opens the pull request's URL in the system browser and closes the popup; a launch failure keeps the popup open and reports the failure.
 - T17: Enter outside the activity pane, or with no selected activity, changes nothing.
 - T18: `s` cycles the watched sort between updated, name, state, and age; `S` reverses the direction; stacks keep their members in position order.
 - T19: `f`/`F` filter the activity list to the selected pull request or its stack, and `u` filters it to unread records; `c` clears both filters; the count shows the filtered unread and total plus the unfiltered total.
 - T20: `a` marks the visible activity records read; with no filter it marks all records.
-- T21: `h`/`H`/`F1` shows the key reference for the focused pane; Escape closes it.
+- T21: `h`/`H`/`F1` shows the key reference for the focused pane; Escape or `q` closes it.
 - T22: `C` resets the sort, direction, activity filters, and ignored view. Sort, direction, filters, ignored view, and notification settings persist across runs when the developer confirms saving on exit.
 - T23: The watched table shows a pull request key with its significant end (a leading ellipsis when the column truncates it) and its creator and assignees; when the creator is also an assignee or none is assigned, one login is shown. The `☰` stack column appears only when a visible pull request is stacked, and the `☺` people column is as wide as its longest label.
-- T24: Enter on the focused watched pull request opens its metadata dialog; the status, CI, creator, and assignee share two rows with muted values, a rule separates the metadata from the indented description, and the description keeps its line and paragraph breaks (consecutive blank lines collapse to one), renders a Markdown subset (headings green and bold without markers, bullet and numbered lists with hanging indents, task boxes, code fences dimmed without the fences, horizontal rules, inline emphasis and code markers removed, links reduced to their text, HTML comments removed), and scrolls with `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and `Home`/`End`, which jump to its top and bottom.
+- T24: Enter on the focused watched pull request opens its metadata dialog; the status, CI, creator, and assignee share two rows with muted values, a rule separates the metadata from the indented description, and the description keeps its line and paragraph breaks (consecutive blank lines collapse to one), renders a Markdown subset (headings green and bold without markers, bullet and numbered lists with hanging indents, task boxes, code fences dimmed without the fences, horizontal rules, inline emphasis and code markers removed, links reduced to their text, HTML comments removed), and scrolls with `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and `Home`/`End`, which jump to its top and bottom; Escape or `q` closes it.
 - T25: The terminal interface follows watn's palette: dim borders; cyan-blue labels, key hints, and table headers; bold key hints; gold selected rows and attention text; green focus borders and Markdown headings; muted metadata values; bright-gray description and activity body text.
-- T26: `,` opens the settings dialog; `j`/`k` or the arrow keys select desktop notifications or sound, `space`/`Enter` toggles the selected surface, and `esc` closes it. The settings persist in `ui.json`, default to on, and apply immediately to the live inbox delivery.
+- T27: An ignored pull request remains in the watched list in both views, prefixed with `⊘` and dimmed, while its activity is hidden in the filtered view and shown in the all view. The footer's `x` control reads `unignore` while the selected row is ignored.
+- T26: `,` opens the settings dialog; `j`/`k` or the arrow keys select desktop notifications or sound, `space`/`Enter` toggles the selected surface, and `esc` closes it. The settings persist in `ui.json`, default to on, and apply immediately to the live inbox delivery; Escape or `q` closes the dialog.
 
 ## Examples
 

@@ -30,6 +30,7 @@ pub struct PullRequestView {
     pub is_draft: bool,
     pub updated_at: String,
     pub stack: Option<PullRequestStack>,
+    pub ignored: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,14 +96,10 @@ impl Inbox {
                 is_draft: pr.is_draft,
                 updated_at: pr.updated_at.clone(),
                 stack: pr.stack.clone(),
+                ignored: config.watch.ignores(&pr.repository, pr.number),
             })
             .collect();
-        pull_requests.retain(|pr| {
-            config.watch.allows_repository(&pr.key.repository)
-                && !config
-                    .watch
-                    .ignores(&pr.key.repository, pr.key.number)
-        });
+        pull_requests.retain(|pr| config.watch.allows_repository(&pr.key.repository));
         pull_requests.sort_by(|a, b| a.key.cmp(&b.key));
         let mut activity: Vec<(usize, ActivityRecord)> = state
             .activity
@@ -341,6 +338,20 @@ use chrono::DateTime;
         assert_eq!(outcome.changed, 0);
         assert!(!path.exists());
     }
+    #[tokio::test]
+    async fn ignored_pull_requests_stay_visible_without_their_activity() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.json");
+        let inbox = Inbox::new(store(&path));
+        let mut config = config();
+        config.watch.ignored_pull_requests = vec!["acme/api#42".to_string()];
+        let view = inbox.view(&config).await.unwrap();
+        assert_eq!(view.pull_requests.len(), 1);
+        assert!(view.pull_requests[0].ignored);
+        assert!(view.activity.is_empty());
+        assert_eq!(view.unread, 0);
+    }
+
     #[tokio::test]
     async fn view_hides_out_of_scope_records_and_counts_visible_unread() {
         let dir = tempfile::tempdir().unwrap();

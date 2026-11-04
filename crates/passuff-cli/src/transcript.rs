@@ -95,11 +95,16 @@ impl TranscriptRenderer {
             lines.push(format!("  {} {} last check {}", account.label, login, last));
         }
         lines.push(format!("passuff: watch scope: {}", view.scope_label));
-        if view.pull_requests.is_empty() {
+        let watched: Vec<_> = view
+            .pull_requests
+            .iter()
+            .filter(|pull_request| !pull_request.ignored)
+            .collect();
+        if watched.is_empty() {
             lines.push("passuff: no watched pull requests".to_string());
         } else {
             lines.push("passuff: watched pull requests".to_string());
-            for pull_request in &view.pull_requests {
+            for pull_request in watched {
                 lines.push(format!(
                     "  {} {} {} {}",
                     pull_request.key,
