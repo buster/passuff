@@ -610,7 +610,13 @@ impl World {
     }
 
     pub async fn e2e_run_notify_test(&mut self) {
-        self.e2e_run_subcommand(&["notify-test"]).await;
+        self.e2e_run_notify_test_with(&[]).await;
+    }
+
+    pub async fn e2e_run_notify_test_with(&mut self, flags: &[&str]) {
+        let mut args = vec!["notify-test"];
+        args.extend(flags.iter().copied());
+        self.e2e_run_subcommand(&args).await;
     }
 
     async fn e2e_run_subcommand(&mut self, args: &[&str]) {

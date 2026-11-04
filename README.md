@@ -67,7 +67,9 @@ interactive watch, starts `gh auth login --web` once when no session exists.
 
 `passuff notify-test` sends one notification and plays the configured sound,
 reporting each enabled surface. It exits 1 if a surface fails and 2 when both
-surfaces are disabled. On macOS the desktop notification goes through
+surfaces are disabled. The `[notifications]` `desktop` and `sound` booleans
+mute persistently; `--no-desktop` and `--no-sound` mute one run without
+changing the configuration, including the `passuff-tui` live inbox. On macOS the desktop notification goes through
 Notification Center via `osascript`; allow notifications for the app that runs
 the script (usually Script Editor or the terminal) in System Settings.
 
@@ -155,6 +157,8 @@ add, and `esc` closes. Scripted snapshots accept `--picker`,
 passuff --config PATH       use a specific configuration file
 passuff --state PATH        use a specific state file
 passuff --verbose           enable diagnostic logs on stderr
+passuff --no-desktop        suppress desktop notifications for this run
+passuff --no-sound          suppress the notification sound for this run
 passuff --help              show usage
 passuff --version           show the version
 ```

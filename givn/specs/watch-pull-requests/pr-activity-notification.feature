@@ -73,6 +73,22 @@ Feature: Pull request activity notification
     And  the exit status is 0
 
   @pr-activity-notification
+  Scenario: The notification test can mute the sound
+    Given  a configured account "personal" with login "octo-personal"
+    When  the developer runs the notification test with "--no-sound"
+    Then  the transcript reports "desktop notification sent"
+    And  the transcript reports "sound is disabled"
+    And  the exit status is 0
+
+  @pr-activity-notification
+  Scenario: The notification test can mute the desktop notification
+    Given  a configured account "personal" with login "octo-personal"
+    When  the developer runs the notification test with "--no-desktop"
+    Then  the transcript reports "desktop notifications are disabled"
+    And  the transcript reports "sound played"
+    And  the exit status is 0
+
+  @pr-activity-notification
   Scenario: The notification test reports an unavailable surface
     Given  a configured account "personal" with login "octo-personal"
     And  the desktop notification surface is unavailable

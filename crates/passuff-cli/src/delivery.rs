@@ -209,6 +209,56 @@ impl NotificationDelivery for FailingDelivery {
     }
 }
 
+/// Suppress desktop notifications and/or sound for one run without changing configuration.
+#[derive(Clone)]
+pub struct MutedDelivery {
+    inner: Arc<dyn NotificationDelivery>,
+    desktop: bool,
+    sound: bool,
+}
+
+impl MutedDelivery {
+    pub fn new(inner: Arc<dyn NotificationDelivery>, desktop: bool, sound: bool) -> Self {
+        Self {
+            inner,
+            desktop,
+            sound,
+        }
+    }
+}
+
+#[async_trait]
+impl NotificationDelivery for MutedDelivery {
+    async fn deliver(
+        &self,
+        rendered: &RenderedNotification,
+        config: &NotificationsConfig,
+    ) -> DeliveryReport {
+        if self.desktop && self.sound {
+            return self.inner.deliver(rendered, config).await;
+        }
+        let mut config = config.clone();
+        if !self.desktop {
+            config.desktop = false;
+        }
+        if !self.sound {
+            config.sound = false;
+        }
+        self.inner.deliver(rendered, &config).await
+    }
+}
+
+pub fn mute_delivery(
+    delivery: Arc<dyn NotificationDelivery>,
+    desktop: bool,
+    sound: bool,
+) -> Arc<dyn NotificationDelivery> {
+    if desktop && sound {
+        delivery
+    } else {
+        Arc::new(MutedDelivery::new(delivery, desktop, sound))
+    }
+}
 
 /// Build the delivery adapter shared by the watch command and the terminal inbox.
 pub fn build_delivery(sound: Arc<crate::sound::SystemSoundPlayer>) -> Arc<dyn NotificationDelivery> {
@@ -243,5 +293,65 @@ mod tests {
             "If you can read this, passuff notifications are working."
         );
         assert_eq!(args[args.len() - 1], "passuff: notify test");
+    }
+}
+
+#[cfg(test)]
+mod mute_tests {
+    use super::{DeliveryReport, MutedDelivery, NotificationDelivery};
+    use crate::transcript::RenderedNotification;
+    use async_trait::async_trait;
+    use passuff_config::NotificationsConfig;
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Default)]
+    struct Capture {
+        seen: Mutex<Option<NotificationsConfig>>,
+    }
+
+    #[async_trait]
+    impl NotificationDelivery for Capture {
+        async fn deliver(
+            &self,
+            _rendered: &RenderedNotification,
+            config: &NotificationsConfig,
+        ) -> DeliveryReport {
+            *self.seen.lock().expect("seen") = Some(config.clone());
+            DeliveryReport::default()
+        }
+    }
+
+    fn rendered() -> RenderedNotification {
+        RenderedNotification {
+            title: "title".to_string(),
+            body: "body".to_string(),
+            transcript: "title\nbody".to_string(),
+            sound: true,
+        }
+    }
+
+    async fn seen(desktop: bool, sound: bool) -> (bool, bool) {
+        let capture = Arc::new(Capture::default());
+        let inner: Arc<dyn NotificationDelivery> = capture.clone();
+        MutedDelivery::new(inner, desktop, sound)
+            .deliver(&rendered(), &NotificationsConfig::default())
+            .await;
+        let config = capture.seen.lock().expect("seen").clone().expect("config");
+        (config.desktop, config.sound)
+    }
+
+    #[tokio::test]
+    async fn muting_the_desktop_keeps_the_sound() {
+        assert_eq!(seen(false, true).await, (false, true));
+    }
+
+    #[tokio::test]
+    async fn muting_the_sound_keeps_the_desktop() {
+        assert_eq!(seen(true, false).await, (true, false));
+    }
+
+    #[tokio::test]
+    async fn leaving_both_enabled_passes_the_config_through() {
+        assert_eq!(seen(true, true).await, (true, true));
     }
 }

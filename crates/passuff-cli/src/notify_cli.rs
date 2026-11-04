@@ -12,9 +12,11 @@ use crate::RunOutcome;
 pub async fn notify_test(
     config: Result<AppConfig, ConfigError>,
     delivery: Arc<dyn NotificationDelivery>,
+    no_desktop: bool,
+    no_sound: bool,
 ) -> RunOutcome {
     let renderer = TranscriptRenderer;
-    let config = match config {
+    let mut config = match config {
         Ok(config) => config,
         Err(error) => {
             return RunOutcome {
@@ -26,6 +28,12 @@ pub async fn notify_test(
             };
         }
     };
+    if no_desktop {
+        config.notifications.desktop = false;
+    }
+    if no_sound {
+        config.notifications.sound = false;
+    }
 
     let rendered = renderer.render_test_notification(config.notifications.sound);
     let report = delivery.deliver(&rendered, &config.notifications).await;
@@ -52,7 +60,7 @@ pub async fn notify_test(
             }
         }
     } else {
-        lines.push("passuff: desktop notifications are disabled in configuration".to_string());
+        lines.push("passuff: desktop notifications are disabled".to_string());
     }
 
     if config.notifications.sound {
@@ -73,7 +81,7 @@ pub async fn notify_test(
             }
         }
     } else {
-        lines.push("passuff: sound is disabled in configuration".to_string());
+        lines.push("passuff: sound is disabled".to_string());
     }
 
     if !enabled {
@@ -163,8 +171,13 @@ mod tests {
             sound: Some(SoundOutcome::Played),
             errors: Vec::new(),
         });
-        let outcome =
-            notify_test(Ok(config(NotificationsConfig::default())), delivery.clone()).await;
+        let outcome = notify_test(
+            Ok(config(NotificationsConfig::default())),
+            delivery.clone(),
+            false,
+            false,
+        )
+        .await;
         assert_eq!(outcome.status, 0);
         assert!(outcome.transcript.contains("desktop notification sent"));
         assert!(outcome.transcript.contains("sound played"));
@@ -183,7 +196,13 @@ mod tests {
             sound: Some(SoundOutcome::Unavailable),
             errors: vec!["desktop notification failed: permission denied".to_string()],
         });
-        let outcome = notify_test(Ok(config(NotificationsConfig::default())), delivery).await;
+        let outcome = notify_test(
+            Ok(config(NotificationsConfig::default())),
+            delivery,
+            false,
+            false,
+        )
+        .await;
         assert_eq!(outcome.status, 1);
         assert!(outcome
             .transcript
@@ -201,6 +220,8 @@ mod tests {
                 ..NotificationsConfig::default()
             })),
             delivery,
+            false,
+            false,
         )
         .await;
         assert_eq!(outcome.status, 2);
@@ -215,6 +236,8 @@ mod tests {
         let outcome = notify_test(
             Err(ConfigError::Validation("invalid configuration".to_string())),
             delivery(DeliveryReport::default()),
+            false,
+            false,
         )
         .await;
         assert_eq!(outcome.status, 2);

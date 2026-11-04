@@ -64,6 +64,11 @@ async fn runs_notification_test(world: &mut World) {
     world.run_notify_test().await;
 }
 
+#[when(regex = r#"^the developer runs the notification test with "([^"]+)"$"#)]
+async fn runs_notification_test_with(world: &mut World, flag: String) {
+    world.run_notify_test_with(&[flag.as_str()]).await;
+}
+
 fn record_lines(transcript: &str) -> Vec<&str> {
     let pattern = Regex::new(r"^\s+a\d+\s+\d{4}-\d{2}-\d{2}T").expect("record regex");
     transcript
