@@ -6,16 +6,16 @@ mod activity_inbox_steps;
 mod activity_inbox_tui_steps;
 #[path = "steps/pr_activity_notification_e2e.rs"]
 mod e2e_steps;
+#[path = "steps/inbox_navigation.rs"]
+mod inbox_navigation_steps;
 #[path = "steps/pr_activity_notification.rs"]
 mod regular_steps;
+#[path = "steps/setup.rs"]
+mod setup_steps;
 #[path = "steps/stacked_inbox.rs"]
 mod stacked_inbox_steps;
 #[path = "steps/watch_scope.rs"]
 mod watch_scope_steps;
-#[path = "steps/setup.rs"]
-mod setup_steps;
-#[path = "steps/inbox_navigation.rs"]
-mod inbox_navigation_steps;
 #[path = "steps/watch_status.rs"]
 mod watch_status_steps;
 

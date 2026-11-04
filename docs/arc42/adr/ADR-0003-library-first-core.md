@@ -32,12 +32,12 @@ does not want.
 - One binary with domain, delivery, and CLI concerns mixed together.
 - One package with `src/lib.rs` and `src/main.rs`, sharing one dependency graph.
 - A Cargo workspace with `passuff-config` and `passuff-core` as libraries and
-  `passuff-cli` as the first binary adapter; a future `passuff-tui` member.
+  `passuff` as the first binary adapter; a future `passuff-tui` member.
 
 ## Decision Outcome
 
 Chosen option: "A Cargo workspace with `passuff-config` and `passuff-core` as
-libraries and `passuff-cli` as the first binary adapter; a future `passuff-tui`
+libraries and `passuff` as the first binary adapter; a future `passuff-tui`
 member", because it gives the core a UI-neutral contract while keeping the CLI's
 terminal and notification dependencies out of the libraries.
 
@@ -50,7 +50,7 @@ terminal and notification dependencies out of the libraries.
 - Good, because `PassuffCore::refresh` returns a `RefreshReport`, so a UI decides
   how to present and deliver notifications.
 - Bad, because the workspace adds crate boundaries, a public core API, and
-  runner and coverage commands that target `-p passuff-cli`.
+  runner and coverage commands that target `-p passuff`.
 - Bad, because the core API and config schema become contracts that must be
   maintained as the inbox and TUI arrive.
 
@@ -82,7 +82,7 @@ the contracts when they are designed.
 - Bad, because a future TUI would either join the same package or need a
   dependency feature split.
 
-### Workspace with `passuff-config`, `passuff-core`, and `passuff-cli`
+### Workspace with `passuff-config`, `passuff-core`, and `passuff`
 
 - Good, because the dependency direction is explicit and enforced by Cargo.
 - Good, because the config schema and core can be tested and consumed without a
@@ -100,7 +100,7 @@ the contracts when they are designed.
 
 ## Refinement (2026-11-02)
 
-The TUI ships as a second binary (`passuff-tui`) in the `passuff-cli` package
+The TUI ships as a second binary (`passuff-tui`) in the `passuff` package
 rather than a sibling workspace member. The decision outcome is unchanged: the
 core stays UI-agnostic and the TUI consumes `passuff-config`, `passuff-core`,
 and `InboxService`. The package choice shares the Gherkin runner and the

@@ -78,8 +78,8 @@ impl InboxCli {
         id: Option<String>,
         all: bool,
     ) -> RunOutcome {
-        if config.is_err() {
-            return self.config_error(config.unwrap_err());
+        if let Err(error) = config {
+            return self.config_error(error);
         }
         match (id, all) {
             (Some(id), false) => match self.inbox.mark_read(&id).await {

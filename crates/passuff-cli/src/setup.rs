@@ -54,7 +54,8 @@ impl<'a, R: BufRead, W: Write> SetupSession<'a, R, W> {
         let mut accounts = Vec::new();
         loop {
             let label = self.required("Account label: ")?;
-            let auth = self.required("Auth (gh_oauth|token_env|token_command|token_file) [gh_oauth]: ")?;
+            let auth =
+                self.required("Auth (gh_oauth|token_env|token_command|token_file) [gh_oauth]: ")?;
             let auth = if auth.is_empty() {
                 "gh_oauth".to_string()
             } else {
@@ -99,10 +100,7 @@ impl<'a, R: BufRead, W: Write> SetupSession<'a, R, W> {
                 token,
             });
             let another = self.optional("Add another account? [y/N]: ")?;
-            if !matches!(
-                another.to_ascii_lowercase().as_str(),
-                "y" | "yes"
-            ) {
+            if !matches!(another.to_ascii_lowercase().as_str(), "y" | "yes") {
                 break;
             }
         }
@@ -214,8 +212,7 @@ impl<'a, R: BufRead, W: Write> SetupSession<'a, R, W> {
     }
 
     fn say(&mut self, text: impl AsRef<str>) -> Result<(), SetupError> {
-        writeln!(self.output, "{}", text.as_ref())
-            .map_err(|error| self.fail(error.to_string(), 3))
+        writeln!(self.output, "{}", text.as_ref()).map_err(|error| self.fail(error.to_string(), 3))
     }
 
     fn fail(&mut self, message: impl Into<String>, exit: i32) -> SetupError {
@@ -279,11 +276,7 @@ fn expand_home(path: &str) -> PathBuf {
     PathBuf::from(path)
 }
 
-pub fn run_scripted(
-    path: &Path,
-    answers: &[&str],
-    output: &mut Vec<u8>,
-) -> Result<(), SetupError> {
+pub fn run_scripted(path: &Path, answers: &[&str], output: &mut Vec<u8>) -> Result<(), SetupError> {
     let input = std::io::Cursor::new(format!("{}\n", answers.join("\n")));
     SetupSession::new(path, input, output).run()
 }
@@ -334,7 +327,14 @@ mod tests {
         let path = dir.path().join("config.toml");
         let (result, _) = run(
             &path,
-            &["personal", "gh_oauth", "octo-personal", "no", "selected", "acme"],
+            &[
+                "personal",
+                "gh_oauth",
+                "octo-personal",
+                "no",
+                "selected",
+                "acme",
+            ],
         );
         let error = result.expect_err("invalid repository");
         assert_eq!(error.message, "must be owner/repo");
@@ -380,7 +380,14 @@ mod tests {
         let token = token.to_string_lossy().to_string();
         let (result, _) = run(
             &path,
-            &["personal", "token_file", "octo-personal", &token, "no", "all"],
+            &[
+                "personal",
+                "token_file",
+                "octo-personal",
+                &token,
+                "no",
+                "all",
+            ],
         );
         let error = result.expect_err("insecure");
         assert!(error.message.contains("insecure"), "{error:?}");
@@ -403,7 +410,10 @@ mod tests {
             &["personal", "gh_oauth", "octo-personal", "no", "all"],
         );
         let error = result.expect_err("write failure");
-        assert!(error.message.contains("cannot write configuration"), "{error:?}");
+        assert!(
+            error.message.contains("cannot write configuration"),
+            "{error:?}"
+        );
         assert!(!path.exists());
         #[cfg(unix)]
         {

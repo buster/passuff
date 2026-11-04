@@ -26,6 +26,12 @@ pub struct SystemSoundPlayer {
     bundled_path: PathBuf,
 }
 
+impl Default for SystemSoundPlayer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemSoundPlayer {
     pub fn new() -> Self {
         let bundled_path = cache_path();

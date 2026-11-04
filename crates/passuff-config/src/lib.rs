@@ -90,13 +90,12 @@ struct FileWatchConfig {
 
 impl FileWatchConfig {
     fn resolve(self) -> WatchConfig {
-        let mode = self.mode.unwrap_or_else(|| {
-            if self.repositories.is_empty() {
-                WatchMode::All
-            } else {
-                WatchMode::Selected
-            }
-        });
+        let default_mode = if self.repositories.is_empty() {
+            WatchMode::All
+        } else {
+            WatchMode::Selected
+        };
+        let mode = self.mode.unwrap_or(default_mode);
         WatchConfig {
             mode,
             repositories: self.repositories,
@@ -615,10 +614,9 @@ mod tests {
 
     #[test]
     fn an_explicit_reconciliation_interval_is_accepted() {
-        let config = parse(
-            "reconciliation_interval_secs = 120\n[accounts.personal]\ntoken_env = \"A\"\n",
-        )
-        .unwrap();
+        let config =
+            parse("reconciliation_interval_secs = 120\n[accounts.personal]\ntoken_env = \"A\"\n")
+                .unwrap();
         assert_eq!(config.reconciliation_interval_secs, 120);
     }
 

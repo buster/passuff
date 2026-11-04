@@ -3,11 +3,17 @@ name = "passuff-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "../../README.md"
+publish = ["crates-io"]
+description = "UI-agnostic GitHub pull request observation and notification core for passuff"
+keywords = ["github", "pull-requests", "notifications"]
 
 [dependencies]
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
-passuff-config = { path = "../passuff-config" }
+passuff-config = { path = "../passuff-config", version = "0.1.0" }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -50,4 +50,4 @@ if [[ "$scope" != "e2e" ]]; then
   cargo test --workspace --lib
 fi
 
-cargo test -p passuff-cli --features test-support --test features_runner
+cargo test -p passuff --features test-support --test features_runner

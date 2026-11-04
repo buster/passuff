@@ -26,6 +26,16 @@ terminal transcript, raises a desktop notification, and plays a sound.
 
 ![passuff inbox demo](passuff.gif)
 
+## Installation
+
+```sh
+cargo install passuff
+```
+
+This installs both `passuff` (the watcher) and `passuff-tui` (the terminal
+inbox). Releases are source-only: `passuff-config`, `passuff-core`, and `passuff` are published to crates.io in dependency order, and a GitHub
+release is created with the changelog. No prebuilt executables are attached.
+
 ## Quick start
 
 ```sh
@@ -102,7 +112,7 @@ When `github_user` is present, the resolved token must belong to that login
 Run the tool:
 
 ```sh
-cargo run --release -p passuff-cli -- --help
+cargo run --release -p passuff -- --help
 ```
 
 <!-- givn:end:run -->

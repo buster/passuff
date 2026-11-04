@@ -121,10 +121,8 @@ impl Inbox {
                 .then_with(|| right.observed_at.cmp(&left.observed_at))
                 .then_with(|| right_index.cmp(left_index))
         });
-        let activity: Vec<ActivityRecord> = activity
-            .into_iter()
-            .map(|(_, record)| record)
-            .collect();
+        let activity: Vec<ActivityRecord> =
+            activity.into_iter().map(|(_, record)| record).collect();
         let unread = activity.iter().filter(|record| !record.read).count();
         InboxView {
             accounts,
@@ -200,7 +198,6 @@ mod tests {
     use passuff_config::{AccountConfig, CredentialSpec, EventToggles, WatchConfig};
     use std::collections::BTreeMap;
 
-use chrono::DateTime;
     use std::sync::Arc;
     use url::Url;
 
@@ -356,8 +353,10 @@ use chrono::DateTime;
     async fn view_hides_out_of_scope_records_and_counts_visible_unread() {
         let dir = tempfile::tempdir().unwrap();
         let store = JsonStateStore::new(dir.path().join("state.json"));
-        let mut state = WatcherState::default();
-        state.version = 2;
+        let mut state = WatcherState {
+            version: 2,
+            ..WatcherState::default()
+        };
         let mut account = crate::domain::AccountState {
             login: "octo".to_string(),
             last_check_at: None,

@@ -49,7 +49,7 @@
   interactive watch. See [ADR-0004](adr/ADR-0004-gh-delegated-authentication.md).
 - Keep the core UI-agnostic: `passuff-config` owns the shared configuration
   schema; `passuff-core` owns observation, classification, and state;
-  `passuff-cli` is the adapter package; its `passuff-tui` binary is the terminal adapter over
+  `passuff` is the adapter package; its `passuff-tui` binary is the terminal adapter over
   the same contracts. See [ADR-0003](adr/ADR-0003-library-first-core.md).
 - Use ports for GitHub and state in the core, and for notification and sound in
   the CLI. The test suite replaces the external surfaces with local digital
@@ -62,7 +62,7 @@
 | Concern | Choice | Rationale (see ADR) |
 |---|---|---|
 | Language and runtime | Rust stable + Tokio | Single distributable CLI, predictable resource use, strong typing at the GitHub boundary. |
-| Workspace boundary | `passuff-config` library, `passuff-core` library, `passuff-cli` binary | Shared config schema; UI and delivery dependencies stay out of the core; the TUI binary reuses config and core. |
+| Workspace boundary | `passuff-config` library, `passuff-core` library, `passuff` binary | Shared config schema; UI and delivery dependencies stay out of the core; the TUI binary reuses config and core. |
 | GitHub access | GraphQL via `reqwest` with rustls | One query returns authored pull requests, comments, reviews, and CI state. |
 | Configuration | TOML via `serde` | Readable, typed, with unknown-key rejection. |
 | Authentication | gh CLI session, environment, helper command, or token file | Reuses existing OAuth sessions, keeps tokens out of config, and leaves a headless path. |
@@ -71,7 +71,7 @@
 | Sound | Bundled WAV + system player | Avoids ALSA/CoreAudio build dependencies. |
 | CLI | `clap` derive | Stable help, version, and error handling. |
 | Tests | `cucumber` + `wiremock` + `FakeGateway` + Linux D-Bus fake + recording delivery | Real CLI in E2E; real `notify-rust` path on Linux; core tested without a process. |
-| Terminal UI | `ratatui` 0.30 + `crossterm` 0.29 | Matches the watn terminal design language; a second binary in `passuff-cli`. |
+| Terminal UI | `ratatui` 0.30 + `crossterm` 0.29 | Matches the watn terminal design language; a second binary in `passuff`. |
 | Coverage | `cargo-llvm-cov` with separate scopes | Produces the required non-E2E and E2E Cobertura reports. |
 
 ## Approach to quality goals

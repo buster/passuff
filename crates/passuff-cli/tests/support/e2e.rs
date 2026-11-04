@@ -59,6 +59,7 @@ struct FakeNotifications {
 #[zbus::interface(name = "org.freedesktop.Notifications")]
 impl FakeNotifications {
     #[zbus(name = "Notify")]
+    #[allow(clippy::too_many_arguments)]
     async fn notify(
         &self,
         _app_name: String,
@@ -264,8 +265,7 @@ impl World {
         let Some(server) = self.e2e_server.as_ref() else {
             return;
         };
-        let reset_at =
-            (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
+        let reset_at = (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
         let probe_body = json!({
             "data": {
                 "rateLimit": { "cost": 1, "limit": 5000, "remaining": 5000, "resetAt": reset_at },
@@ -584,7 +584,9 @@ impl World {
         let child = command.spawn().expect("spawn passuff-tui observe-for");
         tokio::time::sleep(Duration::from_millis(1500)).await;
         self.e2e_apply_pending_comment().await;
-        let output = child.wait_with_output().expect("wait passuff-tui observe-for");
+        let output = child
+            .wait_with_output()
+            .expect("wait passuff-tui observe-for");
         self.last_status = output.status.code().unwrap_or(3);
         self.last_transcript = String::from_utf8_lossy(&output.stdout).to_string();
         self.e2e_write_evidence();

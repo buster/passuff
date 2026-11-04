@@ -1,0 +1,49 @@
+[changelog]
+header = """
+# Changelog
+
+All notable changes to passuff are documented in this file.
+
+The release sections are generated with [git-cliff](https://git-cliff.org/).
+Versions are selected manually and use annotated `vX.Y.Z` Git tags.
+"""
+body = """
+{% if version %}\
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits | unique(attribute="message") %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}
+{% endfor %}
+{% endfor %}
+"""
+footer = """
+{% for release in releases %}
+{% if release.version and release.previous.version %}
+[{{ release.version | trim_start_matches(pat="v") }}]: https://github.com/buster/passuff/compare/{{ release.previous.version }}...{{ release.version }}
+{% endif %}
+{% endfor %}
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+tag_pattern = '^v[0-9]+\.[0-9]+\.[0-9]+$'
+sort_commits = "oldest"
+protect_breaking_commits = true
+
+commit_parsers = [
+    { body = '.*BREAKING CHANGE.*', group = "Breaking Changes" },
+    { message = '^[a-z]+(\([^)]*\))?!:', group = "Breaking Changes" },
+    { message = '^fix\(e2e\)', skip = true },
+    { message = '^feat', group = "Features" },
+    { message = '^fix', group = "Bug Fixes" },
+    { message = '^perf', group = "Performance" },
+    { message = '^revert', group = "Reverts" },
+    { message = '.*', skip = true },
+]

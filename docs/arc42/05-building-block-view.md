@@ -20,7 +20,7 @@ flowchart TB
         Inbox["Inbox / InboxService"]
     end
 
-    subgraph cliBoundary["passuff-cli (binary)"]
+    subgraph cliBoundary["passuff (binary)"]
         CLI["CLI"]
         InboxCli["InboxCli"]
         Renderer["TranscriptRenderer"]
@@ -68,7 +68,7 @@ flowchart TB
 | `SetupSession` | Line-based first-run prompts, validation, and atomic configuration creation; never stores a token. |
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
 | `CredentialSource` / `SystemCredentialSource` | Port and environment/command/file/gh credential resolution; tokens never persisted. |
-| `passuff-cli` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |
+| `passuff` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |
 | `InboxService` / `Inbox` | Build the status and activity read model over the state store and mark activity read. |
 | `InboxCli` | Render `status`, `inbox`, and `read` from `InboxService`; no GitHub calls. |
 | `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, show an activity detail overlay, return an open intent for the pull request URL, handle keys, and mark records read; a blocking input thread feeds keys, and `--snapshot` prints one frame. |

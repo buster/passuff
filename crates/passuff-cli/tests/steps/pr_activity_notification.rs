@@ -68,8 +68,7 @@ async fn pull_request_description(world: &mut World, key: String, description: S
 
 #[given(regex = r#"^the pull request "([^"]+)" has a multi-line description$"#)]
 async fn pull_request_multiline_description(world: &mut World, key: String) {
-    world.pr_mut(&key).description =
-        "Summary\nFirst paragraph\n\nSecond paragraph".to_string();
+    world.pr_mut(&key).description = "Summary\nFirst paragraph\n\nSecond paragraph".to_string();
 }
 
 #[given(regex = r#"^the pull request "([^"]+)" has a markdown description$"#)]
@@ -292,7 +291,9 @@ async fn short_lived(world: &mut World, key: String, author: String, state: Stri
     }
 }
 
-#[when(regex = r#"^an authored pull request "([^"]+)" by "([^"]+)" is created after the last check$"#)]
+#[when(
+    regex = r#"^an authored pull request "([^"]+)" by "([^"]+)" is created after the last check$"#
+)]
 async fn created_after_last_check(world: &mut World, key: String, author: String) {
     let pull_request = world.add_pr(&key, &author);
     pull_request.created_at = "2026-11-02T12:00:02Z".to_string();

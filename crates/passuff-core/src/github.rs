@@ -87,6 +87,12 @@ pub struct GitHubApiAdapter {
     client: reqwest::Client,
 }
 
+impl Default for GitHubApiAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GitHubApiAdapter {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()
@@ -239,8 +245,8 @@ impl GitHubApiAdapter {
             }
         }
 
-        let login = login
-            .ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
+        let login =
+            login.ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
         tracing::debug!(
             pull_requests = pull_requests.len(),
             "GitHub observation parsed"
@@ -1388,10 +1394,6 @@ mod tests {
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
                     "errors": [{ "message": "Field 'stackEntry' doesn't exist on type 'PullRequest'" }]
                 }))
-            } else if is_nodes {
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "data": { "viewer": { "login": "octo" }, "nodes": [node()] }
-                }))
             } else {
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
                     "data": { "viewer": { "login": "octo" }, "nodes": [node()] }
@@ -1411,7 +1413,13 @@ mod tests {
             .mount(&server)
             .await;
         let observation = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &["node-1".to_string()], Discovery::None, &[])
+            .observe(
+                "token",
+                &endpoint(&server),
+                &["node-1".to_string()],
+                Discovery::None,
+                &[],
+            )
             .await
             .expect("retry observation");
         assert_eq!(observation.login, "octo");

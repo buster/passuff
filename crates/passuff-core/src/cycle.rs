@@ -247,7 +247,13 @@ impl PassuffCore {
             };
             let observation = match self
                 .gateway
-                .observe(&token, &account.graphql_url, &targets, discovery, &known_ids)
+                .observe(
+                    &token,
+                    &account.graphql_url,
+                    &targets,
+                    discovery,
+                    &known_ids,
+                )
                 .await
             {
                 Ok(observation) => observation,
@@ -316,8 +322,7 @@ impl PassuffCore {
                 let key = pull_request.key.clone();
                 let key_string = key.to_string();
                 let previous = entry.pull_requests.get(&key_string);
-                let retired = previous
-                    .is_some_and(|watched| watched.current.state.is_terminal())
+                let retired = previous.is_some_and(|watched| watched.current.state.is_terminal())
                     && pull_request.state.is_terminal();
                 let catch_up = previous_scope.as_ref().is_some_and(|scope| {
                     !scope.allows_repository(&pull_request.key.repository)
@@ -345,10 +350,8 @@ impl PassuffCore {
                 let current = classification.current;
                 let watched = match baseline {
                     Some(_) => {
-                        let mut watched = WatchedPullRequest::from_baseline(
-                            &pull_request,
-                            checked_at.clone(),
-                        );
+                        let mut watched =
+                            WatchedPullRequest::from_baseline(&pull_request, checked_at.clone());
                         watched.current = current;
                         if events.is_empty() {
                             report.baselines_recorded.push(key.clone());
@@ -404,13 +407,7 @@ impl PassuffCore {
                 }
             }
             entry.last_check_at = Some(checked_at);
-            observed.insert(
-                label.clone(),
-                ObservedAccount {
-                    targets,
-                    seen,
-                },
-            );
+            observed.insert(label.clone(), ObservedAccount { targets, seen });
         }
 
         if report.account_failures.is_empty() {
@@ -429,7 +426,10 @@ impl PassuffCore {
             .map(|label| {
                 (
                     label.clone(),
-                    state.accounts.get(label).and_then(|account| account.last_check_at.clone()),
+                    state
+                        .accounts
+                        .get(label)
+                        .and_then(|account| account.last_check_at.clone()),
                 )
             })
             .collect();
@@ -504,7 +504,10 @@ impl PassuffCore {
 }
 
 fn merge_probe_failures(report: &mut RefreshReport, failures: Vec<AccountFailure>) {
-    let labels: BTreeSet<String> = failures.iter().map(|failure| failure.label.clone()).collect();
+    let labels: BTreeSet<String> = failures
+        .iter()
+        .map(|failure| failure.label.clone())
+        .collect();
     report
         .account_failures
         .retain(|failure| !labels.contains(&failure.label));
@@ -541,9 +544,8 @@ fn relevant_targets(
             None => {
                 pull_request.state == PrState::Open
                     || (pull_request.state.is_terminal()
-                        && last_check_at.is_some_and(|last| {
-                            created_after(&pull_request.created_at, last)
-                        }))
+                        && last_check_at
+                            .is_some_and(|last| created_after(&pull_request.created_at, last)))
             }
             Some(previous) => {
                 if previous.state != pull_request.state {
@@ -565,12 +567,13 @@ fn relevant_targets(
 mod tests {
     use super::*;
     use crate::credential::CredentialError;
-    use crate::domain::{ApiAllowance, CiResult, CiState, Comment, ProbePullRequest, PullRequestKey, StateError, WatcherState};
+    use crate::domain::{
+        ApiAllowance, CiResult, CiState, Comment, ProbePullRequest, PullRequestKey, StateError,
+        WatcherState,
+    };
     use crate::github::{AccountObservation, AccountProbe, GitHubError};
     use async_trait::async_trait;
-    use passuff_config::{
-        AccountConfig, CredentialSpec, EventToggles, WatchConfig, WatchMode,
-    };
+    use passuff_config::{AccountConfig, CredentialSpec, EventToggles, WatchConfig, WatchMode};
     use std::collections::{BTreeMap, BTreeSet};
     use std::sync::Mutex;
     use url::Url;
@@ -814,7 +817,10 @@ mod tests {
         }
     }
 
-    fn authored(state: crate::domain::PrState, comments: Vec<Comment>) -> crate::domain::AuthoredPullRequest {
+    fn authored(
+        state: crate::domain::PrState,
+        comments: Vec<Comment>,
+    ) -> crate::domain::AuthoredPullRequest {
         let merged = matches!(state, crate::domain::PrState::Merged);
         crate::domain::AuthoredPullRequest {
             key: PullRequestKey::new("acme/api".to_string(), 42),
@@ -859,7 +865,12 @@ mod tests {
         ))));
         let store = Arc::new(MemoryStore(Arc::new(Mutex::new(WatcherState::default()))));
         let mut core = core(config(WatchMode::All, Vec::new()), gateway.clone(), store);
-        assert!(core.refresh_reconciliation().await.expect("baseline").notifications.is_empty());
+        assert!(core
+            .refresh_reconciliation()
+            .await
+            .expect("baseline")
+            .notifications
+            .is_empty());
         gateway.set(observation(authored(
             crate::domain::PrState::Merged,
             vec![Comment {
@@ -869,7 +880,12 @@ mod tests {
                 created_at: "2026-11-03T12:30:00Z".to_string(),
             }],
         )));
-        assert!(core.refresh_reconciliation().await.expect("retired").notifications.is_empty());
+        assert!(core
+            .refresh_reconciliation()
+            .await
+            .expect("retired")
+            .notifications
+            .is_empty());
     }
 
     fn probe(pull_requests: Vec<ProbePullRequest>) -> ChangeProbe {
@@ -935,9 +951,7 @@ mod tests {
             relevant_targets(None, &pending, Some("2026-11-03T10:00:00Z")),
             vec!["n1"]
         );
-        assert!(
-            relevant_targets(None, &pending, Some("2026-11-03T13:00:00Z")).is_empty()
-        );
+        assert!(relevant_targets(None, &pending, Some("2026-11-03T13:00:00Z")).is_empty());
     }
 
     #[test]
@@ -1000,5 +1014,4 @@ mod tests {
             "t2"
         );
     }
-
 }

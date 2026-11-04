@@ -179,7 +179,7 @@ async fn opens_picker(world: &mut World) {
         let editor = world.scope_editor();
         let state = world.state_store().load().await.unwrap_or_default();
         let known = editor.known_repositories(&config, &state);
-        world.last_transcript = passuff_cli::scope::ScopePicker::new(&config, known).snapshot();
+        world.last_transcript = passuff::scope::ScopePicker::new(&config, known).snapshot();
     }
 }
 

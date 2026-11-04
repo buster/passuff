@@ -38,7 +38,7 @@ flowchart TB
 | Hardware / VM | Any macOS or Linux machine that runs the developer's desktop session. |
 | OS | macOS or a Linux desktop with a notification daemon and a sound player. |
 | Middleware / Runtime | Rust stable binary; Tokio runtime; no database, queue, or container. |
-| Key software deployed | `passuff` from the `passuff-cli` crate, linking the `passuff-core` and `passuff-config` libraries; on macOS, the `Passuff.app` bundle for a stable notification identity. |
+| Key software deployed | `passuff` from the `passuff` crate, linking the `passuff-core` and `passuff-config` libraries; on macOS, the `Passuff.app` bundle for a stable notification identity. |
 | Configuration | `~/.config/passuff/config.toml` on Linux; `~/Library/Application Support/passuff/config.toml` on macOS. |
 | State | `~/.local/state/passuff/state.json` on Linux; `~/Library/Application Support/passuff/state.json` on macOS. |
 | Sound cache | Platform cache directory, written from the embedded WAV. |

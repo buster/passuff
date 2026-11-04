@@ -116,12 +116,7 @@ impl ScopeEditor {
         self.update_ignored(repository, number, false)
     }
 
-    fn update_ignored(
-        &self,
-        repository: &str,
-        number: u64,
-        add: bool,
-    ) -> Result<(), ScopeError> {
+    fn update_ignored(&self, repository: &str, number: u64, add: bool) -> Result<(), ScopeError> {
         let entry = format!("{repository}#{number}");
         let text = fs::read_to_string(&self.config_path)
             .map_err(|error| ScopeError::new(format!("cannot read configuration: {error}")))?;
@@ -305,7 +300,10 @@ impl ScopePicker {
             Span::styled("   (m switches all/selected)", theme::dim()),
         ];
         if self.mode == WatchMode::All {
-            mode_line.push(Span::styled("   every known repository is observed", theme::dim()));
+            mode_line.push(Span::styled(
+                "   every known repository is observed",
+                theme::dim(),
+            ));
         } else if self.repositories.is_empty() {
             mode_line.push(Span::styled("   watching nothing", theme::dim()));
         }
@@ -327,7 +325,11 @@ impl ScopePicker {
                 Span::styled(cursor, theme::gold_bold()),
                 Span::styled(
                     format!("{marker} "),
-                    if checked { theme::green() } else { theme::dim() },
+                    if checked {
+                        theme::green()
+                    } else {
+                        theme::dim()
+                    },
                 ),
                 Span::styled(
                     repository.clone(),
@@ -563,30 +565,34 @@ mod tests {
         let editor = editor(dir.path());
         let config = editor.config().expect("config");
         let mut picker = ScopePicker::new(&config, vec!["acme/api".to_string()]);
-        picker.handle_key(key(KeyCode::Char('m')), &editor).expect("mode");
+        picker
+            .handle_key(key(KeyCode::Char('m')), &editor)
+            .expect("mode");
         assert_eq!(picker.mode, WatchMode::Selected);
-        picker.handle_key(key(KeyCode::Char(' ')), &editor).expect("toggle");
+        picker
+            .handle_key(key(KeyCode::Char(' ')), &editor)
+            .expect("toggle");
         assert!(picker.selected.contains("acme/api"));
-        picker.handle_key(key(KeyCode::Char('i')), &editor).expect("insert");
+        picker
+            .handle_key(key(KeyCode::Char('i')), &editor)
+            .expect("insert");
         for character in "acme/j".chars() {
             picker
                 .handle_key(key(KeyCode::Char(character)), &editor)
                 .expect("type");
         }
-        picker.handle_key(key(KeyCode::Enter), &editor).expect("add");
-        assert!(
-            editor
-                .snapshot()
-                .expect("snapshot")
-                .repositories
-                .iter()
-                .any(|repository| repository == "acme/j")
-        );
+        picker
+            .handle_key(key(KeyCode::Enter), &editor)
+            .expect("add");
+        assert!(editor
+            .snapshot()
+            .expect("snapshot")
+            .repositories
+            .iter()
+            .any(|repository| repository == "acme/j"));
         assert_eq!(
             picker.handle_key(key(KeyCode::Esc), &editor).expect("esc"),
             PickerOutcome::Close
         );
     }
-
 }
-

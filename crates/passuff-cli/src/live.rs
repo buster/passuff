@@ -65,18 +65,16 @@ impl ObservationSession {
     /// Reload configuration, probe GitHub, and run one check cycle on a change.
     pub async fn tick(&mut self) -> ObservationUpdate {
         match ConfigLoader::load(&self.config_path) {
-            Ok(config) if config != self.config => {
-                match self.runtime.build_core(&config).await {
-                    Ok(core) => {
-                        self.core = core;
-                        self.config = config;
-                        self.last_full = None;
-                    }
-                    Err(outcome) => {
-                        return self.failed(outcome.transcript);
-                    }
+            Ok(config) if config != self.config => match self.runtime.build_core(&config).await {
+                Ok(core) => {
+                    self.core = core;
+                    self.config = config;
+                    self.last_full = None;
                 }
-            }
+                Err(outcome) => {
+                    return self.failed(outcome.transcript);
+                }
+            },
             Ok(_) => {}
             Err(error) => {
                 return self.failed(format!("configuration error: {error}"));
@@ -101,9 +99,7 @@ impl ObservationSession {
             };
             match refreshed {
                 Ok(refreshed) => {
-                    self.runtime
-                        .deliver_report(&self.config, &refreshed)
-                        .await;
+                    self.runtime.deliver_report(&self.config, &refreshed).await;
                     if let Some(account_failure) = format_failures(&refreshed.account_failures) {
                         failure = Some(account_failure);
                     }
@@ -144,7 +140,10 @@ fn format_failures(failures: &[passuff_core::AccountFailure]) -> Option<String> 
     let first = failures.first()?;
     let extra = failures.len().saturating_sub(1);
     Some(if extra > 0 {
-        format!("account {} failed: {} (+{extra})", first.label, first.detail)
+        format!(
+            "account {} failed: {} (+{extra})",
+            first.label, first.detail
+        )
     } else {
         format!("account {} failed: {}", first.label, first.detail)
     })
@@ -221,10 +220,7 @@ mod tests {
     fn a_missing_allowance_uses_the_default_delay() {
         assert_eq!(next_delay(None, now()), DEFAULT_DELAY);
         assert_eq!(
-            next_delay(
-                Some(&allowance(10, "not-a-date")),
-                now()
-            ),
+            next_delay(Some(&allowance(10, "not-a-date")), now()),
             DEFAULT_DELAY
         );
     }

@@ -39,7 +39,10 @@ async fn desktop_notification_is_enabled(world: &mut World) {
         .as_ref()
         .expect("tui opened")
         .notification_switches();
-    assert!(switches.desktop(), "expected the desktop notification to be enabled");
+    assert!(
+        switches.desktop(),
+        "expected the desktop notification to be enabled"
+    );
 }
 
 #[then(regex = r#"^the focused pane is "(PRs|activity)"$"#)]
@@ -86,12 +89,7 @@ async fn opens_observing(world: &mut World, seconds: u64) {
 
 #[given(regex = r#"^"([^"]+)" comments "(.*)" on "([^"]+)" after the first observation$"#)]
 async fn delayed_comment(world: &mut World, author: String, body: String, key: String) {
-    world.e2e_pending_comment = Some((
-        key,
-        "comment-delayed".to_string(),
-        author,
-        body,
-    ));
+    world.e2e_pending_comment = Some((key, "comment-delayed".to_string(), author, body));
 }
 
 #[when(regex = r#"^the pull request "([^"]+)" receives a long comment from "([^"]+)"$"#)]
@@ -146,7 +144,9 @@ async fn change_signals(world: &mut World, count: usize) {
     );
 }
 
-#[given(regex = r#"^the account has "(\d+)" API points left until the allowance resets in "(\d+)" seconds$"#)]
+#[given(
+    regex = r#"^the account has "(\d+)" API points left until the allowance resets in "(\d+)" seconds$"#
+)]
 async fn allowance(world: &mut World, remaining: u32, reset: i64) {
     world.set_observation_allowance(remaining, reset);
 }

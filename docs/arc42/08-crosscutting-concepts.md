@@ -48,7 +48,7 @@ is the deliberate priority.
 terminal dependency. `passuff-core` is UI-agnostic. It exposes `PassuffCore::with_ports` and
 `refresh`, and returns a `RefreshReport` containing notifications, account failures, and
 baselines recorded. It has no `clap`, `notify-rust`, `ratatui`, `crossterm`,
-terminal formatting, or delivery dependency. `passuff-cli` is the first adapter;
+terminal formatting, or delivery dependency. `passuff` is the first adapter;
 it owns the transcript, desktop delivery, sound, signals, and exit codes. A
 `passuff-tui` consumes `passuff-config` and the same core contract. The
 regular Gherkin scenarios call `CliRuntime::run_check` with injected ports; the

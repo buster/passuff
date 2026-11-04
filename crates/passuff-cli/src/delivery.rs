@@ -310,7 +310,9 @@ pub fn mute_delivery(
 }
 
 /// Build the delivery adapter shared by the watch command and the terminal inbox.
-pub fn build_delivery(sound: Arc<crate::sound::SystemSoundPlayer>) -> Arc<dyn NotificationDelivery> {
+pub fn build_delivery(
+    sound: Arc<crate::sound::SystemSoundPlayer>,
+) -> Arc<dyn NotificationDelivery> {
     #[cfg(feature = "test-support")]
     {
         if let Ok(sink) = std::env::var("PASSUFF_NOTIFICATION_SINK") {
@@ -414,10 +416,7 @@ mod mute_tests {
         delivery
             .deliver(&rendered(), &NotificationsConfig::default())
             .await;
-        assert_eq!(
-            capture.seen.lock().expect("seen").clone().unwrap().sound,
-            true
-        );
+        assert!(capture.seen.lock().expect("seen").clone().unwrap().sound);
 
         switches.set_sound(false);
         delivery

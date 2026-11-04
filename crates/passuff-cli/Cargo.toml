@@ -1,8 +1,15 @@
 [package]
-name = "passuff-cli"
+name = "passuff"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "../../README.md"
+publish = ["crates-io"]
+description = "Multi-account GitHub pull request inbox and desktop notifier"
+keywords = ["github", "pull-requests", "notifications", "cli", "tui"]
+categories = ["command-line-utilities"]
 
 [features]
 test-support = []
@@ -24,8 +31,8 @@ notify-rust = "4.18"
 ratatui = "0.30"
 toml_edit = "0.25"
 crossterm = "0.29"
-passuff-config = { path = "../passuff-config" }
-passuff-core = { path = "../passuff-core" }
+passuff-config = { path = "../passuff-config", version = "0.1.0" }
+passuff-core = { path = "../passuff-core", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

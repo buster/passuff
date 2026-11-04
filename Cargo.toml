@@ -10,6 +10,8 @@ resolver = "2"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
+repository = "https://github.com/buster/passuff"
+homepage = "https://github.com/buster/passuff"
 
 [profile.dev]
 debug = 0

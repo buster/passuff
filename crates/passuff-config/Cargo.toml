@@ -3,6 +3,13 @@ name = "passuff-config"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "../../README.md"
+publish = ["crates-io"]
+description = "Configuration model and validation for the passuff GitHub pull request watcher"
+keywords = ["github", "pull-requests", "configuration"]
+categories = ["config"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

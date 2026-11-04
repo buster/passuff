@@ -9,6 +9,12 @@ pub struct SystemGhLogin {
     program: PathBuf,
 }
 
+impl Default for SystemGhLogin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemGhLogin {
     pub fn new() -> Self {
         Self {

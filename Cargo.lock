@@ -2189,7 +2189,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "passuff-cli"
+name = "passuff"
 version = "0.1.0"
 dependencies = [
  "async-trait",

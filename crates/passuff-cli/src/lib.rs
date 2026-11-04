@@ -6,8 +6,8 @@ pub mod live;
 pub mod notify_cli;
 pub mod scope;
 pub mod setup;
-pub mod theme;
 pub mod sound;
+pub mod theme;
 pub mod transcript;
 pub mod tui;
 
@@ -35,7 +35,7 @@ pub fn init_logging(verbose: bool) {
     let filter = match std::env::var("RUST_LOG") {
         Ok(_) => tracing_subscriber::EnvFilter::from_default_env(),
         Err(_) => tracing_subscriber::EnvFilter::new(
-            "passuff=debug,passuff_cli=debug,passuff_core=debug,passuff_config=debug",
+            "passuff=debug,passuff_core=debug,passuff_config=debug",
         ),
     };
     let _ = tracing_subscriber::fmt()
@@ -683,6 +683,4 @@ mod tests {
             .iter()
             .any(|key| key.to_string() == "acme/web#1"));
     }
-
 }
-

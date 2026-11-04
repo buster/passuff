@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::Parser;
-use passuff_cli::inbox_cli::InboxCli;
-use passuff_cli::sound::SystemSoundPlayer;
-use passuff_cli::{system_credentials, CliPorts, CliRuntime};
+use passuff::inbox_cli::InboxCli;
+use passuff::sound::SystemSoundPlayer;
+use passuff::{system_credentials, CliPorts, CliRuntime};
 use passuff_config::ConfigLoader;
 use passuff_core::{GitHubApiAdapter, Inbox, JsonStateStore};
 
@@ -16,7 +16,7 @@ use crate::cli::{Cli, Command};
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
-    passuff_cli::init_logging(args.verbose);
+    passuff::init_logging(args.verbose);
 
     let dirs = directories::ProjectDirs::from("dev", "passuff", "passuff");
     let config_path = args.config.unwrap_or_else(|| {
@@ -43,7 +43,7 @@ async fn main() {
         args.command.is_none() && std::io::stdin().is_terminal() && std::io::stdout().is_terminal();
     if matches!(args.command, Some(Command::Setup)) {
         let mut output = std::io::stdout();
-        let result = passuff_cli::setup::SetupSession::new(
+        let result = passuff::setup::SetupSession::new(
             config_path.clone(),
             std::io::stdin().lock(),
             &mut output,
@@ -63,7 +63,7 @@ async fn main() {
         let credentials = system_credentials(interactive_credentials);
         let sound = Arc::new(SystemSoundPlayer::new());
         let delivery =
-            passuff_cli::delivery::mute_delivery(build_delivery(sound), desktop, sound_enabled);
+            passuff::delivery::mute_delivery(build_delivery(sound), desktop, sound_enabled);
         CliRuntime::new(CliPorts {
             gateway: Arc::new(GitHubApiAdapter::new()),
             store: state_store.clone(),
@@ -81,7 +81,7 @@ async fn main() {
         Some(Command::Read { id, all }) => inbox_cli().read(config, id, all).await,
         Some(Command::NotifyTest) => {
             let sound = Arc::new(SystemSoundPlayer::new());
-            passuff_cli::notify_cli::notify_test(
+            passuff::notify_cli::notify_test(
                 config,
                 build_delivery(sound),
                 args.no_desktop,
@@ -99,6 +99,6 @@ async fn main() {
 
 fn build_delivery(
     sound: Arc<SystemSoundPlayer>,
-) -> Arc<dyn passuff_cli::delivery::NotificationDelivery> {
-    passuff_cli::delivery::build_delivery(sound)
+) -> Arc<dyn passuff::delivery::NotificationDelivery> {
+    passuff::delivery::build_delivery(sound)
 }

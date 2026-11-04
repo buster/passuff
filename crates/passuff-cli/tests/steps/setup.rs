@@ -81,7 +81,12 @@ fn answers(step: &Step, world: &World) -> Vec<String> {
         }
     }
     answers.push(values.get("label").cloned().unwrap_or_default());
-    answers.push(values.get("auth").cloned().unwrap_or_else(|| "gh_oauth".to_string()));
+    answers.push(
+        values
+            .get("auth")
+            .cloned()
+            .unwrap_or_else(|| "gh_oauth".to_string()),
+    );
     answers.push(values.get("login").cloned().unwrap_or_default());
     if let Some(variable) = values.get("variable") {
         answers.push(variable.clone());
@@ -101,7 +106,12 @@ fn answers(step: &Step, world: &World) -> Vec<String> {
         }
     }
     answers.push("no".to_string());
-    answers.push(values.get("watch").cloned().unwrap_or_else(|| "all".to_string()));
+    answers.push(
+        values
+            .get("watch")
+            .cloned()
+            .unwrap_or_else(|| "all".to_string()),
+    );
     if let Some(repos) = values.get("repos") {
         answers.push(repos.clone());
     }
@@ -170,7 +180,10 @@ async fn contains_login(world: &mut World, expected: String) {
 #[then(regex = r#"^the configuration does not contain "([^"]+)"$"#)]
 async fn does_not_contain(world: &mut World, unexpected: String) {
     let text = world.setup_config_text();
-    assert!(!text.contains(&unexpected), "unexpected {unexpected:?} in {text}");
+    assert!(
+        !text.contains(&unexpected),
+        "unexpected {unexpected:?} in {text}"
+    );
 }
 
 #[then(regex = r#"^the configuration is unchanged$"#)]
@@ -211,4 +224,3 @@ async fn tui_without_terminal(world: &mut World) {
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     world.last_transcript = format!("{stdout}{stderr}");
 }
-

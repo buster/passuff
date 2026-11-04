@@ -7,14 +7,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use passuff_cli::delivery::{FailingDelivery, NotificationDelivery, RecordingDelivery};
-use passuff_cli::inbox_cli::InboxCli;
-use passuff_cli::live::{next_delay, ObservationSession, ObservationUpdate};
-use passuff_cli::scope::ScopeEditor;
-use passuff_cli::sound::{RecordingSoundPlayer, SoundPlayer, UnavailableSoundPlayer};
-use passuff_cli::transcript::activity_summary;
-use passuff_cli::tui::{load_view, TuiAction, TuiApp};
-use passuff_cli::{CliPorts, CliRuntime, StopAfter};
+use passuff::delivery::{FailingDelivery, NotificationDelivery, RecordingDelivery};
+use passuff::inbox_cli::InboxCli;
+use passuff::live::{next_delay, ObservationSession, ObservationUpdate};
+use passuff::scope::ScopeEditor;
+use passuff::sound::{RecordingSoundPlayer, SoundPlayer, UnavailableSoundPlayer};
+use passuff::transcript::activity_summary;
+use passuff::tui::{load_view, TuiAction, TuiApp};
+use passuff::{CliPorts, CliRuntime, StopAfter};
 use passuff_config::{
     AccountConfig, AppConfig, ConfigError, ConfigLoader, CoreConfig, CredentialSpec, EventToggles,
     NotificationsConfig, SoundFile,
@@ -868,8 +868,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             cost: 1,
             limit: 5_000,
             remaining,
-            reset_at: (chrono::Utc::now() + chrono::Duration::seconds(reset_in_secs))
-                .to_rfc3339(),
+            reset_at: (chrono::Utc::now() + chrono::Duration::seconds(reset_in_secs)).to_rfc3339(),
         });
     }
 
@@ -974,7 +973,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             Arc::new(RecordingDelivery::new(sound, self.notification_log.clone()))
         };
         let outcome =
-            passuff_cli::notify_cli::notify_test(config, delivery, no_desktop, no_sound).await;
+            passuff::notify_cli::notify_test(config, delivery, no_desktop, no_sound).await;
         self.last_report = outcome.report;
         self.last_transcript = outcome.transcript;
         self.last_status = outcome.status;
@@ -1072,7 +1071,8 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                     .iter()
                     .any(|existing| existing.eq_ignore_ascii_case(&entry))
                 {
-                    self.ignored_pull_requests.retain(|existing| !existing.eq_ignore_ascii_case(&entry));
+                    self.ignored_pull_requests
+                        .retain(|existing| !existing.eq_ignore_ascii_case(&entry));
                 } else {
                     self.ignored_pull_requests.push(entry);
                 }
@@ -1143,8 +1143,8 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
     pub fn assert_focus(&self, expected: &str) {
         let app = self.tui_app.as_ref().expect("tui opened");
         let actual = match app.focus() {
-            passuff_cli::tui::Pane::Watched => "PRs",
-            passuff_cli::tui::Pane::Activity => "activity",
+            passuff::tui::Pane::Watched => "PRs",
+            passuff::tui::Pane::Activity => "activity",
         };
         assert_eq!(actual, expected, "focus");
     }
@@ -1362,7 +1362,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         } else {
             let mut output = Vec::new();
             let refs: Vec<&str> = answers.iter().map(String::as_str).collect();
-            let result = passuff_cli::setup::run_scripted(&path, &refs, &mut output);
+            let result = passuff::setup::run_scripted(&path, &refs, &mut output);
             self.last_transcript = String::from_utf8_lossy(&output).to_string();
             self.last_status = match result {
                 Ok(()) => 0,
@@ -1493,9 +1493,11 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
 
 mod e2e;
 
+type LivePullRequests = BTreeMap<String, (String, Vec<AuthoredPullRequest>)>;
+
 #[derive(Debug, Clone)]
 struct FakeGateway {
-    live: Arc<Mutex<BTreeMap<String, (String, Vec<AuthoredPullRequest>)>>>,
+    live: Arc<Mutex<LivePullRequests>>,
     clock: Arc<Mutex<u64>>,
     probe_calls: Arc<AtomicUsize>,
     observe_calls: Arc<AtomicUsize>,

@@ -36,20 +36,20 @@ run_scope() {
   cargo "+$toolchain" llvm-cov clean --profraw-only >/dev/null
   if [[ "$scope" == "regular" ]]; then
     cargo "+$toolchain" llvm-cov --no-report --branch \
-      -p passuff-config -p passuff-core -p passuff-cli \
+      -p passuff-config -p passuff-core -p passuff \
       --features test-support --lib
   fi
   GIVN_FEATURES="$scope_features" \
   GIVN_RESULT_SCOPE="$scope" \
   GIVN_RESULT_FILE="$root/target/coverage-$scope-result.json" \
     cargo "+$toolchain" llvm-cov --no-report --branch \
-      -p passuff-cli --features test-support --test features_runner
+      -p passuff --features test-support --test features_runner
   if [[ "$scope" == "e2e" && "$scope_features" != "$root/givn/specs" ]]; then
     GIVN_FEATURES="$root/givn/specs" \
     GIVN_RESULT_SCOPE=e2e \
     GIVN_RESULT_FILE="$root/target/coverage-e2e-permanent-result.json" \
       cargo "+$toolchain" llvm-cov --no-report --branch \
-        -p passuff-cli --features test-support --test features_runner
+        -p passuff --features test-support --test features_runner
   fi
   local json="$root/target/coverage-$scope.json"
   cargo "+$toolchain" llvm-cov report --json --output-path "$json"

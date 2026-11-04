@@ -209,7 +209,7 @@ fn stack_groups(view: &InboxView) -> (Vec<StackGroup<'_>>, Vec<&PullRequestView>
     }
     result.sort_by(|left, right| {
         newest(left.members.iter().copied())
-            .cmp(&newest(right.members.iter().copied()))
+            .cmp(newest(right.members.iter().copied()))
             .reverse()
             .then_with(|| left.repository.cmp(&right.repository))
             .then_with(|| left.number.cmp(&right.number))
@@ -809,7 +809,7 @@ fn pr_detail_lines(pull_request: &PullRequestView, width: usize) -> Vec<Line<'st
         status.push_str(", draft");
     }
     let ci = ci_label(&pull_request.ci_state);
-    let ci = ci.strip_prefix("CI ").unwrap_or(&ci).to_string();
+    let ci = ci.strip_prefix("CI ").unwrap_or(ci).to_string();
     let creator = format!(
         "@{} ({})",
         pull_request.author,
@@ -1187,7 +1187,10 @@ impl TuiApp {
         self.save_prompt = true;
     }
 
-    fn sort_units<'a>(&self, units: Vec<Vec<&'a PullRequestView>>) -> Vec<Vec<&'a PullRequestView>> {
+    fn sort_units<'a>(
+        &self,
+        units: Vec<Vec<&'a PullRequestView>>,
+    ) -> Vec<Vec<&'a PullRequestView>> {
         let mut units = units;
         units.sort_by(|left, right| {
             let left = left[0];
@@ -1230,15 +1233,28 @@ impl TuiApp {
         let (index, key) = {
             let ordered = self.ordered_pull_requests();
             if let Some(key) = preserve {
-                if let Some(index) = ordered.iter().position(|pull_request| pull_request.key == key) {
+                if let Some(index) = ordered
+                    .iter()
+                    .position(|pull_request| pull_request.key == key)
+                {
                     (index, Some(key))
                 } else {
                     let index = self.pr_selected.min(ordered.len().saturating_sub(1));
-                    (index, ordered.get(index).map(|pull_request| pull_request.key.clone()))
+                    (
+                        index,
+                        ordered
+                            .get(index)
+                            .map(|pull_request| pull_request.key.clone()),
+                    )
                 }
             } else {
                 let index = self.pr_selected.min(ordered.len().saturating_sub(1));
-                (index, ordered.get(index).map(|pull_request| pull_request.key.clone()))
+                (
+                    index,
+                    ordered
+                        .get(index)
+                        .map(|pull_request| pull_request.key.clone()),
+                )
             }
         };
         self.pr_selected = index;
@@ -1371,7 +1387,10 @@ impl TuiApp {
                         let next = {
                             let ordered = self.ordered_pull_requests();
                             if self.pr_selected + 1 < ordered.len() {
-                                Some((self.pr_selected + 1, ordered[self.pr_selected + 1].key.clone()))
+                                Some((
+                                    self.pr_selected + 1,
+                                    ordered[self.pr_selected + 1].key.clone(),
+                                ))
                             } else {
                                 None
                             }
@@ -1512,14 +1531,9 @@ impl TuiApp {
                         .stack
                         .as_ref()
                         .map(|stack| {
-                            ActivityFilter::Stack(
-                                pull_request.key.repository.clone(),
-                                stack.number,
-                            )
+                            ActivityFilter::Stack(pull_request.key.repository.clone(), stack.number)
                         })
-                        .unwrap_or_else(|| {
-                            ActivityFilter::PullRequest(pull_request.key.clone())
-                        })
+                        .unwrap_or_else(|| ActivityFilter::PullRequest(pull_request.key.clone()))
                 });
                 if let Some(filter) = filter {
                     if self.activity_filter.as_ref() == Some(&filter) {
@@ -1990,7 +2004,7 @@ impl TuiApp {
         };
         let area = frame.area();
         let width = 56.min(area.width.saturating_sub(2)).max(24);
-        let height = 5.min(area.height.saturating_sub(2)).max(5);
+        let height = 5;
         let rect = Rect::new(
             (area.width.saturating_sub(width)) / 2,
             (area.height.saturating_sub(height)) / 2,
@@ -2027,7 +2041,9 @@ impl TuiApp {
     }
 
     fn render_help(&self, frame: &mut Frame) {
-        let Some(pane) = self.help else { return; };
+        let Some(pane) = self.help else {
+            return;
+        };
         let area = frame.area();
         let width = (area.width * 70 / 100)
             .min(area.width.saturating_sub(2))
@@ -2087,7 +2103,11 @@ impl TuiApp {
         let rows: usize = lines
             .iter()
             .map(|line| {
-                let length: usize = line.spans.iter().map(|span| span.content.chars().count()).sum();
+                let length: usize = line
+                    .spans
+                    .iter()
+                    .map(|span| span.content.chars().count())
+                    .sum();
                 length.max(1).div_ceil(inner_width)
             })
             .sum();
@@ -2403,7 +2423,8 @@ mod tests {
             .expect("hint line");
         assert!(
             lines[hint_row + 1].contains("└"),
-            "hint is not on the bottom line: {}", lines[hint_row + 1]
+            "hint is not on the bottom line: {}",
+            lines[hint_row + 1]
         );
         let backend = TestBackend::new(100, 30);
         let mut terminal = Terminal::new(backend).expect("terminal");
@@ -2727,7 +2748,8 @@ mod tests {
             .expect("end");
         assert_eq!(app.pr_selected, 2);
         assert_eq!(
-            app.selected_pull_request().map(|pull_request| pull_request.key.to_string()),
+            app.selected_pull_request()
+                .map(|pull_request| pull_request.key.to_string()),
             Some("acme/api#3".to_string())
         );
         app.handle_key(key(KeyCode::Home), &inbox, &core_config())
@@ -2735,7 +2757,8 @@ mod tests {
             .expect("home");
         assert_eq!(app.pr_selected, 0);
         assert_eq!(
-            app.selected_pull_request().map(|pull_request| pull_request.key.to_string()),
+            app.selected_pull_request()
+                .map(|pull_request| pull_request.key.to_string()),
             Some("acme/api#1".to_string())
         );
     }
@@ -2829,7 +2852,10 @@ mod tests {
             .await
             .expect("sort");
         let frame = app.snapshot();
-        assert!(frame.find("Alpha").unwrap() < frame.find("Zebra").unwrap(), "{frame}");
+        assert!(
+            frame.find("Alpha").unwrap() < frame.find("Zebra").unwrap(),
+            "{frame}"
+        );
         assert!(frame.contains("sort: name ↑"), "{frame}");
     }
 
@@ -2839,10 +2865,7 @@ mod tests {
             record_on("acme/api#42", "a1", false),
             record_on("acme/api#43", "a2", false),
         ]));
-        app.view.pull_requests = vec![
-            standalone("acme/api#42"),
-            standalone("acme/api#43"),
-        ];
+        app.view.pull_requests = vec![standalone("acme/api#42"), standalone("acme/api#43")];
         let inbox = FakeInbox::new(Vec::new());
         app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
             .await
@@ -3055,10 +3078,7 @@ mod tests {
             .handle_key(key(KeyCode::Char('x')), &inbox, &core_config())
             .await
             .expect("x");
-        assert_eq!(
-            action,
-            TuiAction::ToggleIgnore(pr_key("acme/api#42"))
-        );
+        assert_eq!(action, TuiAction::ToggleIgnore(pr_key("acme/api#42")));
     }
 
     #[tokio::test]
@@ -3101,22 +3121,14 @@ mod tests {
     #[tokio::test]
     async fn reload_moves_the_pull_request_cursor_with_the_selected_activity() {
         let mut app = TuiApp::new(view(vec![record_on("acme/api#42", "a1", false)]));
-        app.view.pull_requests = vec![
-            standalone("acme/api#42"),
-            standalone("acme/api#43"),
-        ];
+        app.view.pull_requests = vec![standalone("acme/api#42"), standalone("acme/api#43")];
         let mut next = view(vec![
             record_on("acme/api#43", "a2", false),
             record_on("acme/api#42", "a1", false),
         ]);
-        next.pull_requests = vec![
-            standalone("acme/api#42"),
-            standalone("acme/api#43"),
-        ];
+        next.pull_requests = vec![standalone("acme/api#42"), standalone("acme/api#43")];
         let inbox = FakeInbox::new(vec![next]);
-        app.reload(&inbox, &core_config())
-            .await
-            .expect("reload");
+        app.reload(&inbox, &core_config()).await.expect("reload");
         assert_eq!(
             app.selected_pull_request().map(|pr| pr.key.to_string()),
             Some("acme/api#43".to_string())
@@ -3126,10 +3138,7 @@ mod tests {
     #[tokio::test]
     async fn reload_does_not_move_the_cursor_while_the_pull_request_pane_is_focused() {
         let mut app = TuiApp::new(view(vec![record_on("acme/api#42", "a1", false)]));
-        app.view.pull_requests = vec![
-            standalone("acme/api#42"),
-            standalone("acme/api#43"),
-        ];
+        app.view.pull_requests = vec![standalone("acme/api#42"), standalone("acme/api#43")];
         let inbox = FakeInbox::new(Vec::new());
         app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
             .await
@@ -3140,14 +3149,9 @@ mod tests {
             record_on("acme/api#43", "a2", false),
             record_on("acme/api#42", "a1", false),
         ]);
-        next.pull_requests = vec![
-            standalone("acme/api#42"),
-            standalone("acme/api#43"),
-        ];
+        next.pull_requests = vec![standalone("acme/api#42"), standalone("acme/api#43")];
         let inbox = FakeInbox::new(vec![next]);
-        app.reload(&inbox, &core_config())
-            .await
-            .expect("reload");
+        app.reload(&inbox, &core_config()).await.expect("reload");
         assert_eq!(
             app.selected_pull_request().map(|pr| pr.key.to_string()),
             Some("acme/api#42".to_string())

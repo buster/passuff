@@ -341,7 +341,14 @@ mod tests {
             body: "my own note".to_string(),
             created_at: "2026-11-02T09:30:00Z".to_string(),
         });
-        let second = classify(Some(&watched), &commented, &toggles, &login_set(), true, None);
+        let second = classify(
+            Some(&watched),
+            &commented,
+            &toggles,
+            &login_set(),
+            true,
+            None,
+        );
         assert!(second.events.is_empty());
         assert_eq!(
             second.silent,

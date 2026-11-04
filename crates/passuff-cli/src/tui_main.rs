@@ -9,13 +9,13 @@ use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
-use passuff_cli::browser::{BrowserOpener, SystemBrowserOpener};
-use passuff_cli::delivery::{build_delivery, mute_delivery, MutedDelivery, NotificationSwitches};
-use passuff_cli::live::{ObservationSession, ObservationUpdate};
-use passuff_cli::scope::{ScopeEditor, ScopePicker};
-use passuff_cli::sound::SystemSoundPlayer;
-use passuff_cli::tui::{load_view, TuiAction, TuiApp, TuiPreferences};
-use passuff_cli::{system_credentials, CliPorts, CliRuntime};
+use passuff::browser::{BrowserOpener, SystemBrowserOpener};
+use passuff::delivery::{build_delivery, mute_delivery, MutedDelivery, NotificationSwitches};
+use passuff::live::{ObservationSession, ObservationUpdate};
+use passuff::scope::{ScopeEditor, ScopePicker};
+use passuff::sound::SystemSoundPlayer;
+use passuff::tui::{load_view, TuiAction, TuiApp, TuiPreferences};
+use passuff::{system_credentials, CliPorts, CliRuntime};
 use passuff_config::{AppConfig, ConfigLoader, WatchMode};
 use passuff_core::{GitHubApiAdapter, Inbox, JsonStateStore, SnapshotStore};
 use ratatui::backend::CrosstermBackend;
@@ -115,7 +115,7 @@ async fn main() {
     if !config_path.exists() {
         if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() {
             let mut output = std::io::stdout();
-            let result = passuff_cli::setup::SetupSession::new(
+            let result = passuff::setup::SetupSession::new(
                 config_path.clone(),
                 std::io::stdin().lock(),
                 &mut output,
@@ -412,14 +412,11 @@ async fn known_repositories(
 
 fn spawn_input() -> tokio::sync::mpsc::UnboundedReceiver<Event> {
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
-    std::thread::spawn(move || loop {
-        match read() {
-            Ok(event) => {
-                if sender.send(event).is_err() {
-                    break;
-                }
+    std::thread::spawn(move || {
+        while let Ok(event) = read() {
+            if sender.send(event).is_err() {
+                break;
             }
-            Err(_) => break,
         }
     });
     receiver
@@ -454,6 +451,7 @@ fn spawn_observation(
     receiver
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn run_terminal(
     app: &mut TuiApp,
     inbox: &Inbox,
@@ -481,10 +479,7 @@ async fn run_terminal(
     };
     let session = ObservationSession::open(runtime, config.clone(), config_path)
         .await
-        .map_err(|message| {
-            restore(&mut terminal);
-            message
-        })?;
+        .inspect_err(|_| restore(&mut terminal))?;
     let mut input = spawn_input();
     let mut observation = spawn_observation(session);
     let mut known = known_repositories(editor, &config, store).await;
@@ -503,10 +498,10 @@ async fn run_terminal(
                 let Some(Event::Key(key)) = maybe_event else { continue };
                 if let Some(active) = picker.as_mut() {
                     match active.handle_key(key, editor) {
-                        Ok(passuff_cli::scope::PickerOutcome::Close) => {
+                        Ok(passuff::scope::PickerOutcome::Close) => {
                             picker = None;
                         }
-                        Ok(passuff_cli::scope::PickerOutcome::Continue) => {}
+                        Ok(passuff::scope::PickerOutcome::Continue) => {}
                         Err(error) => {
                             eprintln!("passuff-tui: {}", error.message);
                         }
