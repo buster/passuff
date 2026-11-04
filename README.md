@@ -127,7 +127,7 @@ than an idle one. Running `passuff` (the watch command) at the same time is
 redundant: both observe and write the same state.
 
 `Tab` switches focus between the watched pull requests and the activity list;
-`j`/`k`, the arrow keys, and `PgUp`/`PgDn` move in the focused pane, `Home`/`End`
+the arrow keys, `j`/`k`, and `PgUp`/`PgDn` move in the focused pane, `Home`/`End`
 jump to the first and last row, and the watched table scrolls. In the pull request pane, `x` ignores the selected pull
 request, `←`/`→` switch between the filtered and all views, `s`/`S` cycle the
 sort (updated, name, state, age) and reverse it, and `f`/`F` filter the activity

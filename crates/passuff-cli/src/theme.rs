@@ -5,7 +5,7 @@ use ratatui::style::{Color, Modifier, Style};
 /// Cyan-blue labels and key hints.
 pub const ACCENT: Color = Color::Indexed(81);
 /// Primary text.
-pub const BRIGHT: Color = Color::Indexed(97);
+pub const BRIGHT: Color = Color::White;
 /// Description and activity body text.
 pub const BODY: Color = Color::Indexed(252);
 /// Amber selection and attention text.
