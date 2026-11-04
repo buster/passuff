@@ -386,17 +386,28 @@ fn spawn_input() -> tokio::sync::mpsc::UnboundedReceiver<Event> {
     receiver
 }
 
+enum ObservationMessage {
+    Fetching,
+    Update(Box<ObservationUpdate>),
+}
+
 fn spawn_observation(
     mut session: ObservationSession,
-) -> tokio::sync::mpsc::UnboundedReceiver<ObservationUpdate> {
+) -> tokio::sync::mpsc::UnboundedReceiver<ObservationMessage> {
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
     tokio::spawn(async move {
         let mut delay = Duration::ZERO;
         loop {
             tokio::time::sleep(delay).await;
+            if sender.send(ObservationMessage::Fetching).is_err() {
+                break;
+            }
             let update = session.tick().await;
             delay = update.next_delay;
-            if sender.send(update).is_err() {
+            if sender
+                .send(ObservationMessage::Update(Box::new(update)))
+                .is_err()
+            {
                 break;
             }
         }
@@ -515,7 +526,17 @@ async fn run_terminal(
                 }
             }
             maybe_update = observation.recv() => {
-                let Some(update) = maybe_update else { continue };
+                let Some(message) = maybe_update else { continue };
+                let update = match message {
+                    ObservationMessage::Fetching => {
+                        app.set_fetching(true);
+                        continue;
+                    }
+                    ObservationMessage::Update(update) => {
+                        app.set_fetching(false);
+                        *update
+                    }
+                };
                 next_update_at = Some(std::time::Instant::now() + update.next_delay);
                 app.set_countdown(Some(update.next_delay));
                 config = update.config;
@@ -532,12 +553,13 @@ async fn run_terminal(
                 }
                 app.set_status(update.failure);
             }
-            _ = tokio::time::sleep(Duration::from_secs(1)) => {
+            _ = tokio::time::sleep(Duration::from_millis(200)) => {
                 if let Some(at) = next_update_at {
                     app.set_countdown(Some(
                         at.saturating_duration_since(std::time::Instant::now()),
                     ));
                 }
+                app.advance_spinner();
             }
         }
     };
