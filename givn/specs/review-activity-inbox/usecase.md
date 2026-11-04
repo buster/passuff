@@ -62,10 +62,10 @@ The developer lists the inbox or marks activity read.
 - T16: Enter in the detail popup opens the pull request's URL in the system browser and closes the popup; a launch failure keeps the popup open and reports the failure.
 - T17: Enter outside the activity pane, or with no selected activity, changes nothing.
 - T18: `s` cycles the watched sort between updated, name, state, and age; `S` reverses the direction; stacks keep their members in position order.
-- T19: `f`/`F` filter the activity list to the selected pull request or its stack; `c` clears the filter; the count shows the filtered unread and total plus the unfiltered total.
+- T19: `f`/`F` filter the activity list to the selected pull request or its stack, and `u` filters it to unread records; `c` clears both filters; the count shows the filtered unread and total plus the unfiltered total.
 - T20: `a` marks the visible activity records read; with no filter it marks all records.
 - T21: `h`/`H`/`F1` shows the key reference for the focused pane; Escape closes it.
-- T22: `C` resets the sort, direction, activity filter, and ignored view. Sort, direction, filter, and ignored view persist across runs when the developer confirms saving on exit.
+- T22: `C` resets the sort, direction, activity filters, and ignored view. Sort, direction, filters, and ignored view persist across runs when the developer confirms saving on exit.
 
 ## Examples
 

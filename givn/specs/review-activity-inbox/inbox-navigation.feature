@@ -88,6 +88,24 @@ Feature: Inbox navigation
     And  the TUI shows "2 unread of 2"
 
   @inbox-navigation
+  Scenario: The developer filters the activity to unread records
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  "alice" comments "Review this" on "acme/api#42"
+    And  "bob" comments "Review that" on "acme/api#42"
+    And  passuff runs one check
+    And  the developer opens the inbox TUI
+    And  the developer presses "r"
+    And  the developer presses "u"
+    Then  the TUI shows "Activity · unread"
+    And  the TUI shows "1 unread of 1"
+    And  the TUI shows "(filtered from 2)"
+    When  the developer presses "c"
+    Then  the TUI shows "1 unread of 2"
+    And  the TUI does not show "(filtered from"
+
+  @inbox-navigation
   Scenario: Marking all read applies to the filtered activity
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
