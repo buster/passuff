@@ -6,10 +6,12 @@ use crossterm::event::{KeyCode, KeyEvent};
 use passuff_config::{AppConfig, ConfigLoader, WatchMode};
 use passuff_core::{ScopeSnapshot, WatcherState};
 use ratatui::layout::{Constraint, Layout};
-use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::Line;
+use ratatui::style::Modifier;
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Paragraph};
 use ratatui::Frame;
+
+use crate::theme;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeError {
@@ -279,11 +281,11 @@ impl ScopePicker {
     pub fn render(&self, frame: &mut Frame) {
         let area = frame.area();
         let block = Block::bordered()
-            .title(
-                Line::from(" passuff — Watch scope ")
-                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            )
-            .border_style(Style::new().fg(Color::Gray));
+            .title(Line::from(vec![
+                Span::styled(" passuff", theme::bright().add_modifier(Modifier::BOLD)),
+                Span::styled(" — Watch scope ", theme::dim()),
+            ]))
+            .border_style(theme::border());
         let inner = block.inner(area);
         frame.render_widget(block, area);
         let chunks = Layout::vertical([
@@ -297,44 +299,82 @@ impl ScopePicker {
             WatchMode::All => "all",
             WatchMode::Selected => "selected",
         };
-        frame.render_widget(
-            Paragraph::new(format!(
-                "Mode: {mode}   (m switches all/selected){}",
-                if self.mode == WatchMode::All {
-                    "   every known repository is observed"
-                } else if self.repositories.is_empty() {
-                    "   watching nothing"
-                } else {
-                    ""
-                }
-            )),
-            chunks[0],
-        );
+        let mut mode_line = vec![
+            Span::styled("Mode: ", theme::dim()),
+            Span::styled(mode.to_string(), theme::accent_bold()),
+            Span::styled("   (m switches all/selected)", theme::dim()),
+        ];
+        if self.mode == WatchMode::All {
+            mode_line.push(Span::styled("   every known repository is observed", theme::dim()));
+        } else if self.repositories.is_empty() {
+            mode_line.push(Span::styled("   watching nothing", theme::dim()));
+        }
+        frame.render_widget(Paragraph::new(Line::from(mode_line)), chunks[0]);
 
-        let mut lines = Vec::new();
+        let mut lines: Vec<Line> = Vec::new();
         if self.known.is_empty() {
-            lines.push("(no known repositories — type owner/name)".to_string());
+            lines.push(Line::from(Span::styled(
+                "(no known repositories — type owner/name)",
+                theme::dim(),
+            )));
         }
         for (index, repository) in self.known.iter().enumerate() {
             let checked = self.mode == WatchMode::All
                 || self.selected.contains(&repository.to_ascii_lowercase());
             let marker = if checked { "[x]" } else { "[ ]" };
-            let cursor = if index == self.cursor { ">" } else { " " };
-            lines.push(format!("{cursor} {marker} {repository}"));
+            let cursor = if index == self.cursor { "▶ " } else { "  " };
+            lines.push(Line::from(vec![
+                Span::styled(cursor, theme::gold_bold()),
+                Span::styled(
+                    format!("{marker} "),
+                    if checked { theme::green() } else { theme::dim() },
+                ),
+                Span::styled(
+                    repository.clone(),
+                    if index == self.cursor {
+                        theme::bright()
+                    } else {
+                        theme::body()
+                    },
+                ),
+            ]));
         }
-        lines.push(String::new());
-        lines.push(format!("Add{}: {}", if self.insert { " (insert)" } else { "" }, self.input));
+        lines.push(Line::default());
+        lines.push(Line::from(vec![
+            Span::styled(
+                if self.insert {
+                    "Add (insert): "
+                } else {
+                    "Add: "
+                },
+                theme::accent(),
+            ),
+            Span::styled(self.input.clone(), theme::bright()),
+        ]));
         if let Some(error) = &self.error {
-            lines.push(format!("Error: {error}"));
+            lines.push(Line::from(vec![
+                Span::styled("Error: ", theme::gold()),
+                Span::styled(error.clone(), theme::gold()),
+            ]));
         }
-        frame.render_widget(Paragraph::new(lines.join("\n")), chunks[1]);
-        frame.render_widget(
-            Paragraph::new(
-                "j/k move   type owner/name   enter add   space toggle   m mode   esc close",
-            )
-            .style(Style::new().fg(Color::Gray)),
-            chunks[2],
-        );
+        frame.render_widget(Paragraph::new(lines), chunks[1]);
+        let entries = [
+            ("j/k", "move"),
+            ("type", "owner/name"),
+            ("enter", "add"),
+            ("space", "toggle"),
+            ("m", "mode"),
+            ("esc", "close"),
+        ];
+        let mut footer = Vec::new();
+        for (index, (key, label)) in entries.iter().enumerate() {
+            if index > 0 {
+                footer.push(Span::styled(" · ", theme::dim()));
+            }
+            footer.push(Span::styled((*key).to_string(), theme::key()));
+            footer.push(Span::styled(format!(" {label}"), theme::dim()));
+        }
+        frame.render_widget(Paragraph::new(Line::from(footer)), chunks[2]);
     }
 
     pub fn snapshot(&self) -> String {

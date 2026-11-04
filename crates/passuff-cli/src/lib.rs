@@ -5,6 +5,7 @@ pub mod inbox_cli;
 pub mod live;
 pub mod scope;
 pub mod setup;
+pub mod theme;
 pub mod sound;
 pub mod transcript;
 pub mod tui;

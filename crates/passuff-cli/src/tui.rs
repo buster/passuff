@@ -14,6 +14,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, TableState};
 use ratatui::{Frame, Terminal};
 
+use crate::theme;
 use crate::transcript::{activity_summary, ci_label, state_label};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -476,8 +477,9 @@ fn push_wrapped(
 
 fn render_description(text: &str, width: usize) -> Vec<Line<'static>> {
     let width = width.max(1);
-    let heading_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
-    let code_style = Style::new().fg(Color::DarkGray);
+    let heading_style = theme::green_bold();
+    let code_style = theme::dim();
+    let body_style = theme::body();
     let mut lines: Vec<Line<'static>> = Vec::new();
     let body = strip_html_comments(text);
     let mut in_code = false;
@@ -512,17 +514,17 @@ fn render_description(text: &str, width: usize) -> Vec<Line<'static>> {
             continue;
         }
         if is_horizontal_rule(start) {
-            lines.push(Line::from(Span::styled("─".repeat(width), code_style)));
+            lines.push(Line::from(Span::styled("─".repeat(width), theme::rule())));
             continue;
         }
         if let Some((prefix, content)) = list_item(start) {
             let text = strip_inline_markdown(content);
-            push_wrapped(&mut lines, &text, &prefix, width, Style::new());
+            push_wrapped(&mut lines, &text, &prefix, width, body_style);
             continue;
         }
         let text = strip_inline_markdown(start);
         for chunk in wrap_text(&text, width) {
-            lines.push(Line::from(chunk));
+            lines.push(Line::from(Span::styled(chunk, body_style)));
         }
     }
     while lines.last().is_some_and(|line| line.spans.is_empty()) {
@@ -665,12 +667,6 @@ fn pr_popup_content_height(area: Rect, rows: usize) -> u16 {
     pr_popup_height(area, rows).saturating_sub(3)
 }
 
-fn push_wrapped_text(lines: &mut Vec<Line<'static>>, text: &str, width: usize) {
-    for chunk in wrap_text(text, width) {
-        lines.push(Line::from(chunk));
-    }
-}
-
 fn push_wrapped_styled(lines: &mut Vec<Line<'static>>, text: &str, width: usize, style: Style) {
     for chunk in wrap_text(text, width) {
         lines.push(Line::from(chunk).style(style));
@@ -694,10 +690,7 @@ fn indent_lines(lines: Vec<Line<'static>>, indent: usize) -> Vec<Line<'static>> 
 }
 
 fn separator(width: usize) -> Line<'static> {
-    Line::from(Span::styled(
-        "─".repeat(width),
-        Style::new().fg(Color::DarkGray),
-    ))
+    Line::from(Span::styled("─".repeat(width), theme::rule()))
 }
 
 fn activity_body(event: &ActivityEvent) -> Option<(String, &str)> {
@@ -721,10 +714,11 @@ fn activity_body(event: &ActivityEvent) -> Option<(String, &str)> {
 }
 
 fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'static>> {
-    let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
-    let value_style = Style::new().fg(Color::Gray);
+    let title_style = theme::accent_bold();
+    let label_style = theme::accent();
+    let value_style = theme::dim();
     let mut lines = vec![Line::from(vec![
-        Span::styled("Activity ", key_style),
+        Span::styled("Activity ", title_style),
         Span::styled(activity_label(&detail.record), value_style),
     ])];
     match detail.pull_request.as_ref() {
@@ -736,15 +730,16 @@ fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'sta
                 value_style,
             );
             let mut state = vec![
-                Span::styled("State: ", key_style),
+                Span::styled("State: ", label_style),
                 Span::styled(state_label(&pull_request.state).to_string(), value_style),
                 Span::raw("   "),
                 Span::styled(ci_label(&pull_request.ci_state).to_string(), value_style),
             ];
             if let Some(stack) = pull_request.stack.as_ref() {
                 state.push(Span::raw("   "));
+                state.push(Span::styled("Stack: ", label_style));
                 state.push(Span::styled(
-                    format!("Stack: {} position {}", stack.number, stack.position),
+                    format!("{} position {}", stack.number, stack.position),
                     value_style,
                 ));
             }
@@ -761,7 +756,7 @@ fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'sta
         lines.push(separator(width));
         lines.push(Line::from(vec![
             Span::raw("  "),
-            Span::styled(label, key_style),
+            Span::styled(label, title_style),
         ]));
         lines.extend(indent_lines(
             render_description(body, width.saturating_sub(2).max(1)),
@@ -769,13 +764,14 @@ fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'sta
         ));
     }
     lines.push(Line::default());
-    push_wrapped_text(
+    push_wrapped_styled(
         &mut lines,
         &format!("Changes on {}: {}", detail.record.key, detail.changes.len()),
         width,
+        theme::dim(),
     );
     for change in &detail.changes {
-        push_wrapped_text(
+        push_wrapped_styled(
             &mut lines,
             &format!(
                 "{}   {}   {}",
@@ -784,15 +780,17 @@ fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'sta
                 if change.read { "read" } else { "unread" }
             ),
             width,
+            theme::dim(),
         );
     }
     lines
 }
 
 fn pr_detail_lines(pull_request: &PullRequestView, width: usize) -> Vec<Line<'static>> {
-    let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
-    let value_style = Style::new().fg(Color::Gray);
-    let label = |text: &str| Span::styled(text.to_string(), key_style);
+    let title_style = theme::accent_bold();
+    let label_style = theme::accent();
+    let value_style = theme::dim();
+    let label = |text: &str| Span::styled(text.to_string(), label_style);
     let value = |text: String| Span::styled(text, value_style);
 
     let mut status = state_label(&pull_request.state).to_string();
@@ -842,7 +840,10 @@ fn pr_detail_lines(pull_request: &PullRequestView, width: usize) -> Vec<Line<'st
         ]));
     }
     lines.push(separator(width));
-    lines.push(Line::from(vec![Span::raw("  "), label("Description:")]));
+    lines.push(Line::from(vec![
+        Span::raw("  "),
+        Span::styled("Description:", title_style),
+    ]));
     let description = if pull_request.description.trim().is_empty() {
         "(no description)".to_string()
     } else {
@@ -855,14 +856,14 @@ fn pr_detail_lines(pull_request: &PullRequestView, width: usize) -> Vec<Line<'st
     lines
 }
 
-fn popup_hint(key_style: Style) -> Line<'static> {
+fn popup_hint() -> Line<'static> {
     Line::from(vec![
-        Span::styled("Enter", key_style),
-        Span::raw(" open in browser   "),
-        Span::styled("↑↓/PgUp/PgDn", key_style),
-        Span::raw(" scroll   "),
-        Span::styled("Esc", key_style),
-        Span::raw(" close"),
+        Span::styled("Enter", theme::key()),
+        Span::styled(" open in browser   ", theme::dim()),
+        Span::styled("↑↓/PgUp/PgDn", theme::key()),
+        Span::styled(" scroll   ", theme::dim()),
+        Span::styled("Esc", theme::key()),
+        Span::styled(" close", theme::dim()),
     ])
 }
 
@@ -1039,27 +1040,23 @@ impl TuiApp {
     }
 
     fn pane_border_style(&self, pane: Pane) -> Style {
-        Style::new().fg(if self.focus == pane {
-            Color::Green
+        if self.focus == pane {
+            Style::new().fg(Color::Green)
         } else {
-            Color::Gray
-        })
+            theme::border()
+        }
     }
 
     fn pane_title_style(&self, pane: Pane) -> Style {
         if self.focus == pane {
             Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)
         } else {
-            Style::new().fg(Color::Gray)
+            theme::dim()
         }
     }
 
-    fn row_highlight_style(&self, pane: Pane) -> Style {
-        if self.focus == pane {
-            Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD)
-        } else {
-            Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD)
-        }
+    fn row_highlight_style(&self) -> Style {
+        theme::gold_bold()
     }
 
     fn visible_activity(&self) -> Vec<&ActivityRecord> {
@@ -1571,26 +1568,48 @@ impl TuiApp {
         }
     }
 
-    fn footer_keys(&self) -> &'static str {
-        match self.focus {
-            Pane::Watched => {
-                "Focus: PRs   Tab activity   j/k move   enter detail   x ignore   ◀/▶ all|filtered   p scope   q quit"
+    fn footer_keys(&self) -> Line<'static> {
+        let entries: &[(&str, &str)] = match self.focus {
+            Pane::Watched => &[
+                ("Tab", "activity"),
+                ("j/k", "move"),
+                ("enter", "detail"),
+                ("x", "ignore"),
+                ("◀/▶", "all|filtered"),
+                ("p", "scope"),
+                ("q", "quit"),
+            ],
+            Pane::Activity => &[
+                ("Tab", "PRs"),
+                ("j/k", "move"),
+                ("enter", "detail"),
+                ("r", "read"),
+                ("a", "all"),
+                ("u", "unread"),
+                ("p", "scope"),
+                ("q", "quit"),
+            ],
+        };
+        let mut spans = Vec::new();
+        for (index, (key, label)) in entries.iter().enumerate() {
+            if index > 0 {
+                spans.push(Span::styled(" · ", theme::dim()));
             }
-            Pane::Activity => {
-                "Focus: activity   Tab PRs   j/k move   enter detail   r read   a all   u unread   p scope   q quit"
-            }
+            spans.push(Span::styled((*key).to_string(), theme::key()));
+            spans.push(Span::styled(format!(" {label}"), theme::dim()));
         }
+        Line::from(spans)
     }
 
     pub fn render(&self, frame: &mut Frame) {
         let area = frame.area();
         self.viewport.set((area.width, area.height));
         let outer = Block::bordered()
-            .title(
-                Line::from(" passuff — Inbox ")
-                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            )
-            .border_style(Style::new().fg(Color::Gray));
+            .title(Line::from(vec![
+                Span::styled(" passuff", theme::bright().add_modifier(Modifier::BOLD)),
+                Span::styled(" — Inbox ", theme::dim()),
+            ]))
+            .border_style(theme::border());
         let inner = outer.inner(area);
         frame.render_widget(outer, area);
 
@@ -1604,65 +1623,64 @@ impl TuiApp {
         ])
         .split(inner);
 
-        let accounts = self
-            .view
-            .accounts
-            .iter()
-            .map(|account| {
-                let login = account
-                    .login
-                    .as_deref()
-                    .map(|login| format!("@{login}"))
-                    .unwrap_or_else(|| "not resolved".to_string());
-                format!("{} {}", account.label, login)
-            })
-            .collect::<Vec<_>>()
-            .join("   |   ");
-        frame.render_widget(
-            Paragraph::new(format!(
-                "{accounts}   |   watch scope: {}",
-                self.view.scope_label
-            )),
-            chunks[0],
-        );
+        let mut header = Vec::new();
+        for (index, account) in self.view.accounts.iter().enumerate() {
+            if index > 0 {
+                header.push(Span::styled("   |   ", theme::dim()));
+            }
+            let login = account
+                .login
+                .as_deref()
+                .map(|login| format!("@{login}"))
+                .unwrap_or_else(|| "not resolved".to_string());
+            header.push(Span::styled(account.label.clone(), theme::bright()));
+            header.push(Span::raw(" "));
+            header.push(Span::styled(login, theme::accent()));
+        }
+        header.push(Span::styled("   |   ", theme::dim()));
+        header.push(Span::styled("watch scope: ", theme::dim()));
+        header.push(Span::styled(self.view.scope_label.clone(), theme::bright()));
+        frame.render_widget(Paragraph::new(Line::from(header)), chunks[0]);
         let visible = self.visible_activity();
         let unread = visible.iter().filter(|record| !record.read).count();
         let filtering = self.activity_filter.is_some() || self.unread_only;
-        let filtered = if filtering {
-            format!("   (filtered from {})", self.view.activity.len())
-        } else {
-            String::new()
-        };
-        let mut spans = vec![Span::raw(format!(
-            "{} unread of {}{}   |   Focus: {}",
-            unread,
-            visible.len(),
-            filtered,
-            self.focus_label()
-        ))];
+        let mut spans = vec![
+            Span::styled(unread.to_string(), theme::gold_bold()),
+            Span::styled(" unread of ", theme::dim()),
+            Span::styled(visible.len().to_string(), theme::bright()),
+        ];
+        if filtering {
+            spans.push(Span::styled(
+                format!("   (filtered from {})", self.view.activity.len()),
+                theme::dim(),
+            ));
+        }
+        spans.push(Span::styled("   |   ", theme::dim()));
+        spans.push(Span::styled("Focus: ", theme::dim()));
+        spans.push(Span::styled(self.focus_label(), theme::accent_bold()));
         if self.fetching {
             const FRAMES: [&str; 4] = ["◇", "◆", "◈", "◆"];
-            spans.push(Span::raw("   |   "));
+            spans.push(Span::styled("   |   ", theme::dim()));
             spans.push(Span::styled(
                 FRAMES[self.spinner % FRAMES.len()],
-                Style::new().fg(Color::Green).add_modifier(Modifier::BOLD),
+                theme::green_bold(),
             ));
-            spans.push(Span::raw(" fetching"));
+            spans.push(Span::styled(" fetching", theme::dim()));
         } else if let Some(remaining) = self.countdown {
             let seconds = if remaining.as_secs() >= 10 {
                 format!("{}s", remaining.as_secs())
             } else {
                 format!("{:.1}s", remaining.as_secs_f64())
             };
-            spans.push(Span::raw(format!("   |   ↻ {seconds}")));
+            spans.push(Span::styled(format!("   |   ↻ {seconds}"), theme::dim()));
         }
         if let Some((remaining, limit)) = self.budget {
-            spans.push(Span::raw(format!("   ·   {remaining}/{limit}")));
+            spans.push(Span::styled(
+                format!("   ·   {remaining}/{limit}"),
+                theme::dim(),
+            ));
         }
-        frame.render_widget(
-            Paragraph::new(Line::from(spans)).style(Style::new().fg(Color::Yellow)),
-            chunks[1],
-        );
+        frame.render_widget(Paragraph::new(Line::from(spans)), chunks[1]);
 
         let watched_mode = if self.show_ignored { "all" } else { "filtered" };
         let direction = if self.descending { "↓" } else { "↑" };
@@ -1733,9 +1751,9 @@ impl TuiApp {
             let table = Table::new(rows, constraints)
                 .header(
                     Row::new(header.into_iter().map(centered_cell).collect::<Vec<_>>())
-                        .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                        .style(theme::accent_bold()),
                 )
-                .row_highlight_style(self.row_highlight_style(Pane::Watched))
+                .row_highlight_style(self.row_highlight_style())
                 .highlight_symbol("▶ ");
             let table = table.block(watched_block);
             let mut state = TableState::default().with_selected(Some(self.pr_selected));
@@ -1799,18 +1817,18 @@ impl TuiApp {
                         .map(centered_cell)
                         .collect::<Vec<_>>(),
                 )
-                .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                .style(theme::accent_bold()),
             )
             .block(activity_block)
-            .row_highlight_style(self.row_highlight_style(Pane::Activity))
+            .row_highlight_style(self.row_highlight_style())
             .highlight_symbol("▶ ");
             let mut state = TableState::default().with_selected(Some(self.selected));
             frame.render_stateful_widget(table, chunks[3], &mut state);
         }
 
         let controls = Block::bordered()
-            .title(" Controls ")
-            .border_style(Style::new().fg(Color::Gray));
+            .title(Line::from(" Controls ").style(theme::accent()))
+            .border_style(theme::border());
         let controls_inner = controls.inner(chunks[4]);
         frame.render_widget(controls, chunks[4]);
         match self.status.as_deref() {
@@ -1818,10 +1836,7 @@ impl TuiApp {
                 let lines = Layout::vertical([Constraint::Length(1), Constraint::Length(1)])
                     .split(controls_inner);
                 frame.render_widget(Paragraph::new(self.footer_keys()), lines[0]);
-                frame.render_widget(
-                    Paragraph::new(status).style(Style::new().fg(Color::Yellow)),
-                    lines[1],
-                );
+                frame.render_widget(Paragraph::new(status).style(theme::gold()), lines[1]);
             }
             None => {
                 frame.render_widget(Paragraph::new(self.footer_keys()), controls_inner);
@@ -1842,10 +1857,19 @@ impl TuiApp {
             let rect = Rect::new((area.width - width) / 2, area.height / 2, width, 3);
             frame.render_widget(Clear, rect);
             frame.render_widget(
-                Paragraph::new("Save sort and filter settings?  y yes  n no  Esc cancel").block(
+                Paragraph::new(Line::from(vec![
+                    Span::styled("Save sort and filter settings?  ", theme::bright()),
+                    Span::styled("y", theme::key()),
+                    Span::styled(" yes  ", theme::dim()),
+                    Span::styled("n", theme::key()),
+                    Span::styled(" no  ", theme::dim()),
+                    Span::styled("Esc", theme::key()),
+                    Span::styled(" cancel", theme::dim()),
+                ]))
+                .block(
                     Block::bordered()
-                        .title(" Leave ")
-                        .border_style(Style::new().fg(Color::Green)),
+                        .title(Line::from(" Leave ").style(theme::accent()))
+                        .border_style(theme::border()),
                 ),
                 rect,
             );
@@ -1858,14 +1882,14 @@ impl TuiApp {
         let width = (area.width * 70 / 100)
             .min(area.width.saturating_sub(2))
             .max(20);
-        let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+        let heading_style = theme::accent_bold();
         let mut lines = vec![
             Line::from(Span::styled(
                 match pane {
                     Pane::Watched => "Pull request pane",
                     Pane::Activity => "Activity pane",
                 },
-                key_style,
+                heading_style,
             )),
             Line::from(""),
         ];
@@ -1902,7 +1926,10 @@ impl TuiApp {
             ],
         };
         for (keys, description) in entries {
-            lines.push(Line::from(format!("{keys:<12} {description}")));
+            lines.push(Line::from(vec![
+                Span::styled(format!("{keys:<12} "), theme::key()),
+                Span::styled((*description).to_string(), theme::dim()),
+            ]));
         }
         let inner_width = usize::from(width.saturating_sub(2)).max(1);
         let rows: usize = lines
@@ -1922,8 +1949,8 @@ impl TuiApp {
             height,
         );
         let block = Block::bordered()
-            .title(Line::from(" Keys ").style(key_style))
-            .border_style(Style::new().fg(Color::Green));
+            .title(Line::from(" Keys ").style(theme::accent_bold()))
+            .border_style(theme::border());
         frame.render_widget(Clear, rect);
         frame.render_widget(Paragraph::new(lines).block(block), rect);
     }
@@ -1943,13 +1970,9 @@ impl TuiApp {
             width,
             height,
         );
-        let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
         let block = Block::bordered()
-            .title(
-                Line::from(" Activity ")
-                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
-            )
-            .border_style(Style::new().fg(Color::Green));
+            .title(Line::from(" Activity ").style(theme::accent_bold()))
+            .border_style(theme::border());
         let inner = block.inner(rect);
         frame.render_widget(Clear, rect);
         frame.render_widget(block, rect);
@@ -1969,7 +1992,7 @@ impl TuiApp {
         let scroll = self.popup_scroll.get().min(max_scroll);
         self.popup_scroll.set(scroll);
         frame.render_widget(Paragraph::new(lines).scroll((scroll, 0)), content);
-        frame.render_widget(Paragraph::new(popup_hint(key_style)), hint_area);
+        frame.render_widget(Paragraph::new(popup_hint()), hint_area);
     }
 
     fn render_pr_popup(&self, frame: &mut Frame) {
@@ -1979,7 +2002,6 @@ impl TuiApp {
         let area = frame.area();
         let width = pr_popup_width(area);
         let inner_width = usize::from(width.saturating_sub(2)).max(1);
-        let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
         let lines = pr_detail_lines(pull_request, inner_width);
         let height = pr_popup_height(area, lines.len());
         let rect = Rect::new(
@@ -1989,8 +2011,13 @@ impl TuiApp {
             height,
         );
         let block = Block::bordered()
-            .title(Line::from(format!(" PR - {} ", pull_request.key)).style(key_style))
-            .border_style(Style::new().fg(Color::Green));
+            .title(Line::from(vec![
+                Span::styled(" PR", theme::bright().add_modifier(Modifier::BOLD)),
+                Span::styled(" - ", theme::dim()),
+                Span::styled(pull_request.key.to_string(), theme::accent_bold()),
+                Span::styled(" ", theme::dim()),
+            ]))
+            .border_style(theme::border());
         let inner = block.inner(rect);
         frame.render_widget(Clear, rect);
         frame.render_widget(block, rect);
@@ -2010,7 +2037,7 @@ impl TuiApp {
         let scroll = self.pr_detail_scroll.get().min(max_scroll);
         self.pr_detail_scroll.set(scroll);
         frame.render_widget(Paragraph::new(lines).scroll((scroll, 0)), content);
-        frame.render_widget(Paragraph::new(popup_hint(key_style)), hint_area);
+        frame.render_widget(Paragraph::new(popup_hint()), hint_area);
     }
 
     pub fn snapshot(&self) -> String {
@@ -2230,13 +2257,15 @@ mod tests {
             .draw(|frame| app.render(frame))
             .expect("draw popup");
         let buffer = terminal.backend().buffer();
-        let green_frame = (0..30).any(|y| {
+        let accent_title = (0..30).any(|y| {
             (0..100).any(|x| {
                 let cell = &buffer[(x, y)];
-                cell.fg == Color::Green && cell.symbol() == "┌"
+                cell.fg == theme::ACCENT
+                    && cell.modifier.contains(Modifier::BOLD)
+                    && cell.symbol() == "A"
             })
         });
-        assert!(green_frame, "the popup frame is not green");
+        assert!(accent_title, "the popup title is not accent");
     }
 
     #[test]
@@ -2318,7 +2347,7 @@ mod tests {
         assert!(frame.contains("comment by @alice"), "{frame}");
     }
 
-    fn pane_border_color(app: &TuiApp, title: &str) -> Color {
+    fn pane_border(app: &TuiApp, title: &str) -> (Color, Modifier) {
         let backend = TestBackend::new(100, 30);
         let mut terminal = Terminal::new(backend).expect("test terminal");
         terminal.draw(|frame| app.render(frame)).expect("draw");
@@ -2336,7 +2365,7 @@ mod tests {
                     .contains(title)
             })
             .expect("pane title");
-        buffer[(1, y)].fg
+        (buffer[(1, y)].fg, buffer[(1, y)].modifier)
     }
 
     #[tokio::test]
@@ -2346,21 +2375,56 @@ mod tests {
         let mut app = TuiApp::new(view);
         let inbox = FakeInbox::new(Vec::new());
 
-        assert_eq!(pane_border_color(&app, " Activity "), Color::Green);
-        assert_eq!(
-            pane_border_color(&app, " Watched pull requests"),
-            Color::Gray
-        );
+        assert_eq!(pane_border(&app, " Activity ").0, Color::Green);
+        let unfocused = pane_border(&app, " Watched pull requests");
+        assert_eq!(unfocused.0, Color::Reset);
+        assert!(unfocused.1.contains(Modifier::DIM));
 
         app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
             .await
             .expect("tab");
 
-        assert_eq!(
-            pane_border_color(&app, " Watched pull requests"),
-            Color::Green
-        );
-        assert_eq!(pane_border_color(&app, " Activity "), Color::Gray);
+        assert_eq!(pane_border(&app, " Watched pull requests").0, Color::Green);
+        let unfocused = pane_border(&app, " Activity ");
+        assert_eq!(unfocused.0, Color::Reset);
+        assert!(unfocused.1.contains(Modifier::DIM));
+    }
+
+    #[test]
+    fn the_tui_uses_the_shared_watn_palette() {
+        let mut view = view(vec![record("a1", false)]);
+        view.pull_requests = vec![standalone("acme/api#42")];
+        let app = TuiApp::new(view);
+        let backend = TestBackend::new(100, 30);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal.draw(|frame| app.render(frame)).expect("draw");
+        let buffer = terminal.backend().buffer();
+        let find = |needle: &str| -> (u16, u16) {
+            for y in 0..30 {
+                let row: String = (0..100).map(|x| buffer[(x, y)].symbol()).collect();
+                if let Some(byte_offset) = row.find(needle) {
+                    let x = row[..byte_offset].chars().count();
+                    return (x as u16, y);
+                }
+            }
+            panic!("missing {needle:?}");
+        };
+
+        let (x, y) = find("Tab");
+        assert_eq!(buffer[(x, y)].fg, theme::ACCENT);
+        assert!(buffer[(x, y)].modifier.contains(Modifier::BOLD));
+
+        let (x, y) = find("▶");
+        assert_eq!(buffer[(x, y)].fg, theme::GOLD);
+        assert!(buffer[(x, y)].modifier.contains(Modifier::BOLD));
+
+        let (x, y) = find("1 unread of 1");
+        assert_eq!(buffer[(x, y)].fg, theme::GOLD);
+        assert!(buffer[(x, y)].modifier.contains(Modifier::BOLD));
+
+        let (x, y) = find("Pull request");
+        assert_eq!(buffer[(x, y)].fg, theme::ACCENT);
+        assert!(buffer[(x, y)].modifier.contains(Modifier::BOLD));
     }
 
     #[tokio::test]
@@ -2631,7 +2695,7 @@ mod tests {
     fn markdown_headings_and_lists_lose_their_markers() {
         let lines = render_description("## Summary\n- one\n- two", 40);
         assert_eq!(rendered(&lines), vec!["Summary", "• one", "• two"]);
-        assert_eq!(lines[0].spans[0].style.fg, Some(Color::Green));
+        assert_eq!(lines[0].spans[0].style.fg, Some(theme::GREEN));
     }
 
     #[test]
@@ -2647,7 +2711,7 @@ mod tests {
     fn markdown_code_fences_render_without_fences() {
         let lines = render_description("```rust\nlet x = 1;\n```", 40);
         assert_eq!(rendered(&lines), vec!["let x = 1;"]);
-        assert_eq!(lines[0].spans[0].style.fg, Some(Color::DarkGray));
+        assert!(lines[0].spans[0].style.add_modifier.contains(Modifier::DIM));
     }
 
     #[test]
@@ -2999,21 +3063,19 @@ mod tests {
         let mut terminal = Terminal::new(backend).expect("terminal");
         terminal.draw(|frame| app.render(frame)).expect("draw");
         let buffer = terminal.backend().buffer();
-        let mut label_is_green = false;
-        let mut value_is_gray = false;
+        let mut label_is_accent = false;
+        let mut value_is_dim = false;
         for y in 0..30 {
-            let row: String = (0..100)
-                .map(|x| buffer[(x, y)].symbol())
-                .collect();
+            let row: String = (0..100).map(|x| buffer[(x, y)].symbol()).collect();
             if let Some(byte_offset) = row.find("Status: ") {
                 let offset = row[..byte_offset].chars().count();
                 let value = offset + "Status: ".chars().count();
-                label_is_green = buffer[(offset as u16, y)].fg == Color::Green;
-                value_is_gray = buffer[(value as u16, y)].fg == Color::Gray;
+                label_is_accent = buffer[(offset as u16, y)].fg == theme::ACCENT;
+                value_is_dim = buffer[(value as u16, y)].modifier.contains(Modifier::DIM);
             }
         }
-        assert!(label_is_green, "the metadata label is not green");
-        assert!(value_is_gray, "the metadata value is not gray");
+        assert!(label_is_accent, "the metadata label is not accent");
+        assert!(value_is_dim, "the metadata value is not dim");
     }
 
     #[test]
