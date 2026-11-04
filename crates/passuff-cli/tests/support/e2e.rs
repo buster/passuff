@@ -248,7 +248,7 @@ impl World {
             (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
         let body = json!({
             "data": {
-                "rateLimit": { "cost": 1, "remaining": 5000, "resetAt": reset_at },
+                "rateLimit": { "cost": 1, "limit": 5000, "remaining": 5000, "resetAt": reset_at },
                 "viewer": {
                     "login": self.e2e_login,
                     "pullRequests": {

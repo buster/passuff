@@ -372,6 +372,7 @@ pub struct TuiApp {
     countdown: Option<std::time::Duration>,
     fetching: bool,
     spinner: usize,
+    budget: Option<(u32, u32)>,
     popup: Option<ActivityDetail>,
     sort: SortMode,
     descending: bool,
@@ -394,6 +395,7 @@ impl TuiApp {
             countdown: None,
             fetching: false,
             spinner: 0,
+            budget: None,
             popup: None,
             sort: SortMode::Updated,
             descending: true,
@@ -454,6 +456,10 @@ impl TuiApp {
         if self.fetching {
             self.spinner = self.spinner.wrapping_add(1);
         }
+    }
+
+    pub fn set_budget(&mut self, remaining: u32, limit: u32) {
+        self.budget = Some((remaining, limit));
     }
 
     pub fn focus(&self) -> Pane {
@@ -986,6 +992,9 @@ impl TuiApp {
                 format!("{:.1}s", remaining.as_secs_f64())
             };
             spans.push(Span::raw(format!("   |   ↻ {seconds}")));
+        }
+        if let Some((remaining, limit)) = self.budget {
+            spans.push(Span::raw(format!("   ·   {remaining}/{limit}")));
         }
         frame.render_widget(
             Paragraph::new(Line::from(spans)).style(Style::new().fg(Color::Yellow)),
@@ -1706,8 +1715,10 @@ mod tests {
         let frame = app.snapshot();
         assert!(frame.contains("↻ 42s"), "{frame}");
         app.set_countdown(Some(std::time::Duration::from_millis(1_440)));
+        app.set_budget(4_840, 5_000);
         let frame = app.snapshot();
         assert!(frame.contains("↻ 1.4s"), "{frame}");
+        assert!(frame.contains("4840/5000"), "{frame}");
     }
 
     #[test]

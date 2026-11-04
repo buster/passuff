@@ -445,6 +445,7 @@ mod tests {
                 pull_requests: self.pull_requests.lock().expect("probe data").clone(),
                 allowance: Some(ApiAllowance {
                     cost: 1,
+                    limit: 5_000,
                     remaining: 5_000,
                     reset_at: "2026-11-03T13:00:00Z".to_string(),
                 }),

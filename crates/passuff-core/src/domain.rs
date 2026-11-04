@@ -289,6 +289,7 @@ pub struct Notification {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ApiAllowance {
     pub cost: u32,
+    pub limit: u32,
     pub remaining: u32,
     pub reset_at: String,
 }
