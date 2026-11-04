@@ -970,6 +970,8 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             "right" => crossterm::event::KeyCode::Right,
             "pageup" => crossterm::event::KeyCode::PageUp,
             "pagedown" => crossterm::event::KeyCode::PageDown,
+            "home" => crossterm::event::KeyCode::Home,
+            "end" => crossterm::event::KeyCode::End,
             "x" => crossterm::event::KeyCode::Char('x'),
             "s" => crossterm::event::KeyCode::Char('s'),
             "S" => crossterm::event::KeyCode::Char('S'),

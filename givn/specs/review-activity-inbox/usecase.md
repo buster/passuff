@@ -45,7 +45,7 @@ The developer lists the inbox or marks activity read.
 - R8: A missing state file is an empty inbox and exit 0.
 - R9: Recording history never replays a notification.
 - T1: The terminal UI shows the unread and total activity counts, configured accounts, watch scope, watched pull requests, and the activity list on one screen.
-- T2: `j`/down and `k`/up move the selection and clamp at the list ends; `q` quits; Escape closes the detail popup or quits when none is open.
+- T2: `j`/down and `k`/up move the selection and clamp at the list ends; Home and End jump to the first and last row; `q` quits; Escape closes the detail popup or quits when none is open.
 - T3: `r` marks the selected activity record read and refreshes the view; `a` marks every record read and refreshes.
 - T4: An empty inbox shows "no activity yet".
 - T5: A configuration error exits 2 and a state error exits 3 before the interface starts; the message names the failure.

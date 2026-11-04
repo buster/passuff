@@ -7,9 +7,9 @@ use passuff_core::{
     PullRequestView,
 };
 use ratatui::backend::TestBackend;
-use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
-use ratatui::text::{Line, Span};
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, TableState, Wrap};
 use ratatui::{Frame, Terminal};
 
@@ -256,6 +256,10 @@ fn newest<'a>(pull_requests: impl Iterator<Item = &'a PullRequestView>) -> &'a s
 
 const PULL_REQUEST_COLUMN_WIDTH: usize = 18;
 const PULL_REQUEST_LABEL_WIDTH: usize = PULL_REQUEST_COLUMN_WIDTH - 2;
+
+fn centered_cell(text: &str) -> Cell<'static> {
+    Cell::new(Text::from(text.to_string()).alignment(Alignment::Center))
+}
 
 fn tail_label(text: &str, width: usize) -> String {
     let characters: Vec<char> = text.chars().collect();
@@ -813,6 +817,45 @@ impl TuiApp {
                 self.show_ignored = !self.show_ignored;
                 Ok(TuiAction::ToggleIgnoredView)
             }
+            KeyCode::Home => {
+                match self.focus {
+                    Pane::Watched => {
+                        self.pr_selected = 0;
+                        self.selected_pr = self
+                            .ordered_pull_requests()
+                            .first()
+                            .map(|pull_request| pull_request.key.clone());
+                    }
+                    Pane::Activity => {
+                        self.selected = 0;
+                        self.sync_pr_selection();
+                    }
+                }
+                Ok(TuiAction::Continue)
+            }
+            KeyCode::End => {
+                match self.focus {
+                    Pane::Watched => {
+                        let (index, key) = {
+                            let ordered = self.ordered_pull_requests();
+                            let index = ordered.len().saturating_sub(1);
+                            (
+                                index,
+                                ordered
+                                    .get(index)
+                                    .map(|pull_request| pull_request.key.clone()),
+                            )
+                        };
+                        self.pr_selected = index;
+                        self.selected_pr = key;
+                    }
+                    Pane::Activity => {
+                        self.selected = self.visible_activity().len().saturating_sub(1);
+                        self.sync_pr_selection();
+                    }
+                }
+                Ok(TuiAction::Continue)
+            }
             KeyCode::PageDown => {
                 match self.focus {
                     Pane::Watched => {
@@ -1183,7 +1226,7 @@ impl TuiApp {
             }
             let table = Table::new(rows, constraints)
                 .header(
-                    Row::new(header)
+                    Row::new(header.into_iter().map(centered_cell).collect::<Vec<_>>())
                         .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
                 )
                 .row_highlight_style(self.row_highlight_style(Pane::Watched))
@@ -1243,8 +1286,14 @@ impl TuiApp {
                     Constraint::Length(6),
                 ],
             )
-            .header(Row::new(["When", "Event", "Stack", "Read"])
-                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            .header(
+                Row::new(
+                    ["When", "Event", "Stack", "Read"]
+                        .into_iter()
+                        .map(centered_cell)
+                        .collect::<Vec<_>>(),
+                )
+                .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
             .block(activity_block)
             .row_highlight_style(self.row_highlight_style(Pane::Activity))
@@ -1319,6 +1368,7 @@ impl TuiApp {
                 ("Tab", "switch pane"),
                 ("j/k, up/down", "move selection"),
                 ("PgUp/PgDn", "move by ten"),
+                ("Home/End", "first / last row"),
                 ("Enter", "pull request detail"),
                 ("x", "ignore or restore"),
                 ("left/right", "filtered / all"),
@@ -1334,6 +1384,7 @@ impl TuiApp {
                 ("Tab", "switch pane"),
                 ("j/k, up/down", "move selection"),
                 ("PgUp/PgDn", "move by ten"),
+                ("Home/End", "first / last row"),
                 ("Enter", "activity detail"),
                 ("r", "mark selected read"),
                 ("a", "mark visible read"),
@@ -1966,6 +2017,68 @@ mod tests {
         view.scope_label = "acme/api, acme/web".to_string();
         let frame = TuiApp::new(view).snapshot();
         assert!(frame.contains("watch scope: acme/api, acme/web"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn home_and_end_jump_to_the_ends_of_the_watched_list() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.view.pull_requests = vec![
+            standalone("acme/api#1"),
+            standalone("acme/api#2"),
+            standalone("acme/api#3"),
+        ];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::End), &inbox, &core_config())
+            .await
+            .expect("end");
+        assert_eq!(app.pr_selected, 2);
+        assert_eq!(
+            app.selected_pull_request().map(|pull_request| pull_request.key.to_string()),
+            Some("acme/api#3".to_string())
+        );
+        app.handle_key(key(KeyCode::Home), &inbox, &core_config())
+            .await
+            .expect("home");
+        assert_eq!(app.pr_selected, 0);
+        assert_eq!(
+            app.selected_pull_request().map(|pull_request| pull_request.key.to_string()),
+            Some("acme/api#1".to_string())
+        );
+    }
+
+    #[tokio::test]
+    async fn home_and_end_jump_to_the_ends_of_the_activity_list() {
+        let mut app = TuiApp::new(view(vec![
+            record_on("acme/api#42", "a1", false),
+            record_on("acme/api#42", "a2", false),
+            record_on("acme/api#42", "a3", false),
+        ]));
+        app.view.pull_requests = vec![standalone("acme/api#42")];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::End), &inbox, &core_config())
+            .await
+            .expect("end");
+        assert_eq!(app.selected, 2);
+        app.handle_key(key(KeyCode::Home), &inbox, &core_config())
+            .await
+            .expect("home");
+        assert_eq!(app.selected, 0);
+    }
+
+    #[tokio::test]
+    async fn the_watched_table_centers_its_headers() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.view.pull_requests = vec![standalone("acme/api#42")];
+        let frame = app.snapshot();
+        let header = frame
+            .lines()
+            .find(|line| line.contains("Pull request"))
+            .expect("header row");
+        assert!(header.contains("  Pull request"), "{frame}");
+        assert!(header.contains("  CI "), "{frame}");
     }
 
     #[tokio::test]

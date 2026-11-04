@@ -178,6 +178,8 @@ async fn main() {
                 "right" => KeyCode::Right,
                 "pageup" => KeyCode::PageUp,
                 "pagedown" => KeyCode::PageDown,
+                "home" => KeyCode::Home,
+                "end" => KeyCode::End,
                 "x" => KeyCode::Char('x'),
                 other => {
                     eprintln!("passuff-tui: unknown key {other}");
