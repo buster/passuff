@@ -336,6 +336,27 @@ fn event_line(event: &ActivityEvent) -> String {
     }
 }
 
+fn wrap_description(text: &str, width: usize) -> Vec<String> {
+    let mut lines: Vec<String> = Vec::new();
+    for line in text.lines() {
+        let line = line.trim_end();
+        if line.trim().is_empty() {
+            if lines.last().is_some_and(|line| !line.is_empty()) {
+                lines.push(String::new());
+            }
+            continue;
+        }
+        lines.extend(wrap_text(line, width));
+    }
+    while lines.last().is_some_and(|line| line.is_empty()) {
+        lines.pop();
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
 fn wrap_text(text: &str, width: usize) -> Vec<String> {
     let width = width.max(1);
     let mut lines = Vec::new();
@@ -1512,7 +1533,7 @@ impl TuiApp {
         } else {
             pull_request.description.clone()
         };
-        let mut wrapped = wrap_text(&description, inner_width);
+        let mut wrapped = wrap_description(&description, inner_width);
         if wrapped.len() > body_capacity {
             wrapped.truncate(body_capacity);
             if let Some(last) = wrapped.last_mut() {
@@ -2088,6 +2109,19 @@ mod tests {
     }
 
     #[test]
+    fn description_wrapping_keeps_line_and_paragraph_structure() {
+        assert_eq!(
+            wrap_description("Summary\nTwo changes\n\n\nFirst\nSecond", 80),
+            vec!["Summary", "Two changes", "", "First", "Second"]
+        );
+        assert_eq!(
+            wrap_description("one long line that wraps", 8),
+            vec!["one long", "line", "that", "wraps"]
+        );
+        assert_eq!(wrap_description("\n\nlead\n\n", 80), vec!["lead"]);
+    }
+
+    #[test]
     fn people_label_collapses_creator_and_assignees() {
         assert_eq!(people_label("alice", &[]), "@alice");
         assert_eq!(people_label("alice", &["alice".to_string()]), "@alice");
@@ -2323,6 +2357,37 @@ mod tests {
             .await
             .expect("esc");
         assert!(!app.snapshot().contains("Created by @octo-personal"));
+    }
+
+    #[tokio::test]
+    async fn the_pull_request_description_keeps_paragraphs_apart() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let mut pull_request = standalone("acme/api#42");
+        pull_request.description =
+            "Summary\nFirst line\nSecond line\n\nSeparate paragraph".to_string();
+        app.view.pull_requests = vec![pull_request];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::Enter), &inbox, &core_config())
+            .await
+            .expect("enter");
+        let frame = app.snapshot();
+        let lines: Vec<&str> = frame.lines().collect();
+        let summary = lines
+            .iter()
+            .find(|line| line.contains("Summary"))
+            .expect("summary line");
+        assert!(!summary.contains("First line"), "{frame}");
+        let second = lines
+            .iter()
+            .position(|line| line.contains("Second line"))
+            .expect("second line");
+        assert!(
+            lines[second + 1].chars().all(|c| c == '│' || c == ' '),
+            "paragraph break missing: {frame}"
+        );
     }
 
     #[tokio::test]
