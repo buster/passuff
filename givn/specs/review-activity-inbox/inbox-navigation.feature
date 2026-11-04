@@ -194,7 +194,8 @@ Feature: Inbox navigation
     When  the developer opens the inbox TUI
     And  the developer presses "tab"
     And  the developer presses "enter"
-    Then  the TUI shows "Creator: @octo-personal"
+    Then  the TUI shows "Status: open   CI: passing"
+    And  the TUI shows "Creator: @octo-personal"
     And  the TUI shows "Assignee: @alice"
     And  the TUI shows "Adds the live inbox"
     And  the TUI shows "CI: passing"
