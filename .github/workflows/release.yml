@@ -363,7 +363,6 @@ jobs:
           for crate in "${publish_crates[@]}"; do
             printf '== %s ==\n' "$crate"
             cargo package --locked -p "$crate" --no-verify --list
-            cargo package --locked -p "$crate" --no-verify
           done
 
       - name: Create and verify annotated release tag
