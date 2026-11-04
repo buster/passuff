@@ -77,6 +77,18 @@ Feature: Inbox navigation
     Then  the TUI does not show "☰"
 
   @inbox-navigation
+  Scenario: The developer jumps to the ends of the watched list
+    Given  a configured account "personal" with login "octo-personal"
+    And  5 authored pull requests in "acme/api" by "octo-personal"
+    And  the watcher has already observed all of them
+    When  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "end"
+    Then  the selected pull request is "acme/api#5"
+    When  the developer presses "home"
+    Then  the selected pull request is "acme/api#1"
+
+  @inbox-navigation
   Scenario: The developer sorts the watched list
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
