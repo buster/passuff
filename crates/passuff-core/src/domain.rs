@@ -141,6 +141,7 @@ pub struct AuthoredPullRequest {
     pub node_id: String,
     pub author: String,
     pub title: String,
+    pub body: String,
     pub url: String,
     pub created_at: String,
     pub updated_at: String,
@@ -194,6 +195,12 @@ pub struct WatchedPullRequest {
     pub created_at: String,
     pub updated_at: String,
     #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub assignees: Vec<String>,
+    #[serde(default)]
+    pub is_draft: bool,
+    #[serde(default)]
     pub merged_by: Option<String>,
     pub baseline: Baseline,
     pub current: CurrentObservation,
@@ -216,6 +223,9 @@ impl WatchedPullRequest {
             url: pr.url.clone(),
             created_at: pr.created_at.clone(),
             updated_at: pr.updated_at.clone(),
+            description: pr.body.clone(),
+            assignees: pr.assignees.clone(),
+            is_draft: pr.is_draft,
             merged_by: pr.merged_by.clone(),
             baseline: Baseline {
                 recorded_at,

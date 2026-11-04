@@ -38,6 +38,21 @@ Feature: Inbox navigation
     And  the TUI shows "Focus: PRs"
 
   @inbox-navigation
+  Scenario: The pull request detail shows its metadata
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the pull request "acme/api#42" has the description "Adds the live inbox"
+    And  the pull request "acme/api#42" is assigned to "alice"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "enter"
+    Then  the TUI shows "Created by @octo-personal"
+    And  the TUI shows "Assigned: @alice"
+    And  the TUI shows "Adds the live inbox"
+    And  the TUI shows "CI passing"
+
+  @inbox-navigation
   Scenario: The developer ignores and restores a pull request
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

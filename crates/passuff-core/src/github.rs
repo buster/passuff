@@ -510,6 +510,7 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             .and_then(|author| author.login)
             .unwrap_or_else(|| "ghost".to_string()),
         title: node.title,
+        body: node.body,
         url: node.url,
         created_at: node.created_at,
         updated_at: node.updated_at,
@@ -625,6 +626,7 @@ query($after: String) {
         id
         number
         title
+        bodyText
         url
         state
         merged
@@ -657,6 +659,7 @@ query($ids: [ID!]!) {
       id
       number
       title
+      bodyText
       url
       state
       merged
@@ -756,6 +759,8 @@ struct GqlPr {
     id: String,
     number: u64,
     title: String,
+    #[serde(default)]
+    body: String,
     url: String,
     state: String,
     #[serde(default)]

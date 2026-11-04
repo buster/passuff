@@ -233,6 +233,7 @@ pub struct TuiApp {
     selected_pr: Option<PullRequestKey>,
     status: Option<String>,
     popup: Option<ActivityDetail>,
+    pr_detail: Option<PullRequestView>,
     show_ignored: bool,
 }
 
@@ -246,6 +247,7 @@ impl TuiApp {
             selected_pr: None,
             status: None,
             popup: None,
+            pr_detail: None,
             show_ignored: false,
         }
     }
@@ -260,6 +262,7 @@ impl TuiApp {
 
     pub fn close_popup(&mut self) {
         self.popup = None;
+        self.pr_detail = None;
     }
 
     fn sync_pr_selection(&mut self) {
@@ -344,6 +347,20 @@ impl TuiApp {
         inbox: &dyn InboxService,
         config: &CoreConfig,
     ) -> Result<TuiAction, CoreError> {
+        if self.pr_detail.is_some() {
+            return match key.code {
+                KeyCode::Esc => {
+                    self.pr_detail = None;
+                    Ok(TuiAction::Continue)
+                }
+                KeyCode::Enter => Ok(self
+                    .pr_detail
+                    .as_ref()
+                    .map(|pull_request| TuiAction::OpenUrl(pull_request.url.clone()))
+                    .unwrap_or(TuiAction::Continue)),
+                _ => Ok(TuiAction::Continue),
+            };
+        }
         if self.popup.is_some() {
             return match key.code {
                 KeyCode::Esc => {
@@ -460,6 +477,13 @@ impl TuiApp {
                 }
                 Ok(TuiAction::Continue)
             }
+            KeyCode::Enter if self.focus == Pane::Watched => {
+                if let Some(pull_request) = self.selected_pull_request().cloned() {
+                    self.popup = None;
+                    self.pr_detail = Some(pull_request);
+                }
+                Ok(TuiAction::Continue)
+            }
             KeyCode::Enter if self.focus == Pane::Activity => {
                 if let Some(record) = self.view.activity.get(self.selected).cloned() {
                     let pull_request = self
@@ -478,6 +502,7 @@ impl TuiApp {
                         .filter(|change| change.key == record.key)
                         .cloned()
                         .collect();
+                    self.pr_detail = None;
                     self.popup = Some(ActivityDetail {
                         record,
                         changes,
@@ -506,7 +531,7 @@ impl TuiApp {
     fn footer_keys(&self) -> &'static str {
         match self.focus {
             Pane::Watched => {
-                "Focus: PRs   Tab activity   j/k move   x ignore   ◀/▶ all|filtered   p scope   q quit"
+                "Focus: PRs   Tab activity   j/k move   enter detail   x ignore   ◀/▶ all|filtered   p scope   q quit"
             }
             Pane::Activity => {
                 "Focus: activity   Tab PRs   j/k move   enter detail   r read   a all   p scope   q quit"
@@ -720,6 +745,106 @@ impl TuiApp {
         if self.popup.is_some() {
             self.render_popup(frame);
         }
+        if self.pr_detail.is_some() {
+            self.render_pr_popup(frame);
+        }
+    }
+
+    fn render_pr_popup(&self, frame: &mut Frame) {
+        let Some(pull_request) = self.pr_detail.as_ref() else {
+            return;
+        };
+        let area = frame.area();
+        let width = (area.width * 90 / 100)
+            .min(area.width.saturating_sub(2))
+            .max(20);
+        let key_style = Style::new()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD);
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled(format!("{} ", pull_request.key), key_style),
+                Span::raw(format!(
+                    "{}   {}",
+                    state_label(&pull_request.state),
+                    ci_label(&pull_request.ci_state)
+                )),
+            ]),
+            Line::from(format!(
+                "Created by @{} on {}",
+                pull_request.author,
+                short_time(&pull_request.created_at)
+            )),
+            Line::from(if pull_request.assignees.is_empty() {
+                "Assigned: nobody".to_string()
+            } else {
+                format!(
+                    "Assigned: {}",
+                    pull_request
+                        .assignees
+                        .iter()
+                        .map(|login| format!("@{login}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            }),
+        ];
+        if let Some(stack) = pull_request.stack.as_ref() {
+            lines.push(Line::from(format!(
+                "Stack {} position {} of {}",
+                stack.number, stack.position, stack.size
+            )));
+        }
+        if pull_request.is_draft {
+            lines.push(Line::from("Draft"));
+        }
+        lines.push(Line::from(Span::styled("Description:", key_style)));
+        if pull_request.description.trim().is_empty() {
+            lines.push(Line::from("(no description)"));
+        } else {
+            lines.push(Line::from(pull_request.description.clone()));
+        }
+        let hint = Line::from(vec![
+            Span::styled("Enter", key_style),
+            Span::raw(" open in browser   "),
+            Span::styled("Esc", key_style),
+            Span::raw(" close"),
+        ]);
+        let inner_width = usize::from(width.saturating_sub(2)).max(1);
+        let rows: usize = lines
+            .iter()
+            .map(|line| {
+                let length: usize = line.spans.iter().map(|span| span.content.chars().count()).sum();
+                length.max(1).div_ceil(inner_width)
+            })
+            .sum();
+        let height = (rows as u16 + 3)
+            .max(8)
+            .min(area.height.saturating_sub(2).max(8));
+        let rect = Rect::new(
+            (area.width - width) / 2,
+            (area.height - height) / 2,
+            width,
+            height,
+        );
+        let block = Block::bordered()
+            .title(
+                Line::from(" Pull request ")
+                    .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            )
+            .border_style(Style::new().fg(Color::Green));
+        let inner = block.inner(rect);
+        frame.render_widget(Clear, rect);
+        frame.render_widget(block, rect);
+        let content = Rect::new(inner.x, inner.y, inner.width, inner.height.saturating_sub(1));
+        let hint_area = Rect::new(
+            inner.x,
+            inner.y + inner.height.saturating_sub(1),
+            inner.width,
+            1,
+        );
+        frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: false }), content);
+        frame.render_widget(Paragraph::new(hint), hint_area);
     }
 
     fn render_popup(&self, frame: &mut Frame) {
@@ -975,6 +1100,11 @@ mod tests {
             ci_state: CiState::Success,
             title: format!("Pull request {key}"),
             url: format!("https://github.com/{key}"),
+            author: "octo-personal".to_string(),
+            created_at: "2026-11-02T11:00:00Z".to_string(),
+            description: String::new(),
+            assignees: Vec::new(),
+            is_draft: false,
             updated_at: "2026-11-02T11:00:00Z".to_string(),
             stack: Some(PullRequestStack {
                 number,
@@ -992,6 +1122,11 @@ mod tests {
             ci_state: CiState::Success,
             title: format!("Pull request {key}"),
             url: format!("https://github.com/{key}"),
+            author: "octo-personal".to_string(),
+            created_at: "2026-11-02T11:00:00Z".to_string(),
+            description: String::new(),
+            assignees: Vec::new(),
+            is_draft: false,
             updated_at: "2026-11-02T11:00:00Z".to_string(),
             stack: None,
         }
@@ -1210,6 +1345,38 @@ mod tests {
             .await
             .expect("page up");
         assert_eq!(app.pr_selected, 0);
+    }
+
+    #[tokio::test]
+    async fn the_pull_request_detail_shows_metadata_and_closes() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let mut pull_request = standalone("acme/api#42");
+        pull_request.description = "Adds the live inbox".to_string();
+        pull_request.assignees = vec!["alice".to_string()];
+        app.view.pull_requests = vec![pull_request];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::Enter), &inbox, &core_config())
+            .await
+            .expect("enter");
+        let frame = app.snapshot();
+        assert!(frame.contains("Created by @octo-personal"), "{frame}");
+        assert!(frame.contains("Assigned: @alice"), "{frame}");
+        assert!(frame.contains("Adds the live inbox"), "{frame}");
+        let action = app
+            .handle_key(key(KeyCode::Enter), &inbox, &core_config())
+            .await
+            .expect("open");
+        assert_eq!(
+            action,
+            TuiAction::OpenUrl("https://github.com/acme/api#42".to_string())
+        );
+        app.handle_key(key(KeyCode::Esc), &inbox, &core_config())
+            .await
+            .expect("esc");
+        assert!(!app.snapshot().contains("Created by @octo-personal"));
     }
 
     #[tokio::test]

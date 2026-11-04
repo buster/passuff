@@ -258,6 +258,9 @@ impl PassuffCore {
                         watched.url = pull_request.url.clone();
                         watched.created_at = pull_request.created_at.clone();
                         watched.updated_at = pull_request.updated_at.clone();
+                        watched.description = pull_request.body.clone();
+                        watched.assignees = pull_request.assignees.clone();
+                        watched.is_draft = pull_request.is_draft;
                         watched.merged_by = pull_request.merged_by.clone();
                         watched.stack = pull_request.stack.clone();
                         watched.current = classification.current;
