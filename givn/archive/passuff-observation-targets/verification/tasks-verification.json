@@ -2,12 +2,12 @@
   "schema": 2,
   "change": "passuff-observation-targets",
   "status": "passed",
-  "head": "99e642944d577176b07e97492c5ce2cdefe1d2c6",
+  "head": "c810983752cad5ab4f677ee9e21b82bc0cf80e66",
   "features_path": "givn/changes/passuff-observation-targets/specs",
   "features_digest": "310c55235865578f324b4c7a6caa715f13c887fd5f17c70668f1155b260a680d",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
   "command": "./scripts/verify.sh",
-  "tested_content_digest": "260ab776fe0b3d3ab5c30ce223472f0ac8359aabc7476064345104b427147f60",
+  "tested_content_digest": "a4576e3480003899ca7e5c25cab7fa9804f0fed0b4fcbeb55f40795798fe018b",
   "content_scope": "change-proof/v1",
   "runner_exit": 0,
   "result": {
@@ -17,5 +17,5 @@
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1793799664
+  "finished_at_unix": 1793799870
 }

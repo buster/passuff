@@ -1,18 +1,18 @@
 ┌ passuff — Inbox ─────────────────────────────────────────────────────────────────────────────────┐
-│personal @octo-personal   |   watch scope: acme/web                                               │
+│personal @octo-personal   |   watch scope: all authored pull requests                             │
 │                                                                                                  │
-│0 unread of 0   |   Focus: activity                                                               │
+│1 unread of 1   |   Focus: activity                                                               │
 │┌ Watched pull requests · filtered · sort: updated ↓ ────────────────────────────────────────────┐│
-││no watched pull requests                                                                        ││
-││                                                                                                ││
-││                                                                                                ││
+││     Pull request    State       CI      ☰         ☺                       Title                ││
+││▶ acme/api#42        open   CI passing   1/2 @octo-personal Pull request acme/api#42            ││
+││  acme/api#43        open   CI passing   2/2 @octo-personal Pull request acme/api#43            ││
 ││                                                                                                ││
 ││                                                                                                ││
 ││                                                                                                ││
 │└────────────────────────────────────────────────────────────────────────────────────────────────┘│
 │┌ Activity ──────────────────────────────────────────────────────────────────────────────────────┐│
-││no activity yet                                                                                 ││
-││                                                                                                ││
+││      When                                  Event                                Stack     Read ││
+││▶ 11-04 13:44  comment by @alice: Can you split this migration?                stack 7    unread││
 ││                                                                                                ││
 ││                                                                                                ││
 ││                                                                                                ││
@@ -25,7 +25,7 @@
 ││                                                                                                ││
 │└────────────────────────────────────────────────────────────────────────────────────────────────┘│
 │┌ Controls ──────────────────────────────────────────────────────────────────────────────────────┐│
-││Focus: activity   Tab PRs   j/k move   enter detail   r read   a all   u unread   p scope   q qu││
+││Tab PRs · j/k move · enter detail · r read · a all · u unread · p scope · q quit                ││
 │└────────────────────────────────────────────────────────────────────────────────────────────────┘│
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 exit status: 0

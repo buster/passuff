@@ -280,19 +280,6 @@ Feature: Inbox navigation
     Then  the TUI shows "acme/api#42"
 
   @inbox-navigation
-  Scenario: A comment on a merged pull request reaches the inbox
-    Given  a configured account "personal" with login "octo-personal"
-    And  an authored pull request "acme/api#42" by "octo-personal"
-    And  the watcher has already observed "acme/api#42"
-    When  the configured account "personal" merges "acme/api#42"
-    And  passuff runs one check
-    And  the developer opens the inbox TUI
-    And  the inbox observes the account
-    And  "alice" comments "Post-merge note" on "acme/api#42"
-    And  the inbox observes the account
-    Then  the TUI shows "comment by @alice"
-
-  @inbox-navigation
   Scenario: A refresh preserves the selected pull request
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -348,3 +335,30 @@ Feature: Inbox navigation
     And  the inbox observes the account
     Then  the TUI still shows "comment by @alice"
     And  the exit status is 0
+
+  @inbox-navigation
+  Scenario: The inbox observes only the open pull request that changed
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  an authored pull request "acme/api#43" by "octo-personal"
+    And  the watcher has already observed "acme/api#42" and "acme/api#43"
+    When  the developer opens the inbox TUI
+    And  the inbox observes the account
+    And  "alice" comments "Review this" on "acme/api#42"
+    And  the inbox observes the account
+    Then  the TUI shows "comment by @alice"
+    And  the inbox has observed only "acme/api#42"
+
+  @inbox-navigation
+  Scenario: The inbox reconciles open pull requests when the interval elapses
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "alice"
+    And  the pull request "acme/api#42" is assigned to me
+    And  the watcher has already observed "acme/api#42"
+    And  the reconciliation interval is "1" seconds
+    When  the developer opens the inbox TUI
+    And  the inbox observes the account
+    And  "bob" comments "Can you review this?" on "acme/api#42"
+    And  the inbox waits "2" seconds
+    And  the inbox observes the account
+    Then  the TUI shows "comment by @bob"

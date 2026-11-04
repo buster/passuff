@@ -1,7 +1,7 @@
 ┌ passuff — Watch scope ───────────────────────────────────────────────────────────────────────────┐
 │Mode: selected   (m switches all/selected)                                                        │
 │                                                                                                  │
-│> [x] acme/api                                                                                    │
+│▶ [x] acme/api                                                                                    │
 │                                                                                                  │
 │Add:                                                                                              │
 │                                                                                                  │
@@ -24,7 +24,7 @@
 │                                                                                                  │
 │                                                                                                  │
 │                                                                                                  │
-│j/k move   type owner/name   enter add   space toggle   m mode   esc close                        │
+│j/k move · type owner/name · enter add · space toggle · m mode · esc close                        │
 │                                                                                                  │
 │                                                                                                  │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
