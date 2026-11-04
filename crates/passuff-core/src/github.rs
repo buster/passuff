@@ -178,7 +178,7 @@ impl GitHubApiAdapter {
         );
         let mut login: Option<String> = None;
         let mut pull_requests = Vec::new();
-        let mut after: Option<String> = None;
+        let after: Option<String> = None;
         let mut seen_nodes = std::collections::HashSet::new();
 
         for _ in 0..10 {
@@ -215,15 +215,9 @@ impl GitHubApiAdapter {
                     pull_requests.push(map_pull_request(node));
                 }
             }
-            let page_info = connection.page_info.unwrap_or_default();
-            if page_info.has_next_page {
-                match page_info.end_cursor {
-                    Some(cursor) if !cursor.is_empty() => after = Some(cursor),
-                    _ => break,
-                }
-            } else {
-                break;
-            }
+            // One page bounds the response size; older authored pull requests
+            // live in the watch state and are hydrated by node id.
+            break;
         }
 
         if !known_node_ids.is_empty() {
@@ -620,7 +614,7 @@ const MAIN_QUERY: &str = r#"
 query($after: String) {
   viewer {
     login
-    pullRequests(first: 100, after: $after, states: [OPEN, MERGED, CLOSED], orderBy: {field: UPDATED_AT, direction: DESC}) {
+    pullRequests(first: 50, after: $after, states: [OPEN, MERGED, CLOSED], orderBy: {field: UPDATED_AT, direction: DESC}) {
       pageInfo { hasNextPage endCursor }
       nodes {
         id
@@ -724,8 +718,6 @@ struct GqlViewer {
 #[derive(Debug, Deserialize)]
 struct GqlConnection<T> {
     nodes: Vec<T>,
-    #[serde(rename = "pageInfo")]
-    page_info: Option<GqlPageInfo>,
 }
 
 #[derive(Debug, Default, Deserialize)]

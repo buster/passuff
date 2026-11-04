@@ -6,7 +6,7 @@ use crate::classifier::classify;
 use crate::credential::CredentialSource;
 use crate::domain::{
     AccountFailure, AccountFailureKind, ActivityRecord, ApiAllowance, ChangeProbe, ChangeSignal,
-    CoreError, LoginSet, Notification, ProbePullRequest, RefreshReport, ScopeSnapshot,
+    CoreError, LoginSet, Notification, PrState, ProbePullRequest, RefreshReport, ScopeSnapshot,
     WatchedPullRequest,
 };
 use crate::github::{AccountObservation, GitHubGateway};
@@ -117,13 +117,7 @@ impl PassuffCore {
             let known: Vec<String> = state
                 .accounts
                 .get(label)
-                .map(|account| {
-                    account
-                        .pull_requests
-                        .values()
-                        .map(|pull_request| pull_request.node_id.clone())
-                        .collect()
-                })
+                .map(observation_known_ids)
                 .unwrap_or_default();
             match self
                 .gateway
@@ -325,6 +319,37 @@ impl PassuffCore {
         );
         Ok(report)
     }
+}
+
+const KNOWN_RECENT_PULL_REQUESTS: usize = 20;
+
+/// Node ids to hydrate by id: every watched open pull request plus the most
+/// recently updated watched pull requests, capped at the 100-id node limit.
+fn observation_known_ids(account: &crate::domain::AccountState) -> Vec<String> {
+    let mut ids: Vec<String> = Vec::new();
+    for pull_request in account
+        .pull_requests
+        .values()
+        .filter(|pull_request| pull_request.current.state == PrState::Open)
+    {
+        if ids.len() >= 100 {
+            return ids;
+        }
+        if !ids.contains(&pull_request.node_id) {
+            ids.push(pull_request.node_id.clone());
+        }
+    }
+    let mut recent: Vec<_> = account.pull_requests.values().collect();
+    recent.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
+    for pull_request in recent.into_iter().take(KNOWN_RECENT_PULL_REQUESTS) {
+        if ids.len() >= 100 {
+            break;
+        }
+        if !ids.contains(&pull_request.node_id) {
+            ids.push(pull_request.node_id.clone());
+        }
+    }
+    ids
 }
 
 #[cfg(test)]
