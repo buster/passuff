@@ -14,6 +14,7 @@ use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Cell, Clear, Paragraph, Row, Table, TableState};
 use ratatui::{Frame, Terminal};
 
+use crate::delivery::NotificationSwitches;
 use crate::theme;
 use crate::transcript::{activity_summary, ci_label, state_label};
 
@@ -61,6 +62,14 @@ pub struct TuiPreferences {
     pub unread_only: bool,
     #[serde(default)]
     pub show_ignored: bool,
+    #[serde(default = "enabled_by_default")]
+    pub desktop: bool,
+    #[serde(default = "enabled_by_default")]
+    pub sound: bool,
+}
+
+fn enabled_by_default() -> bool {
+    true
 }
 
 impl Default for TuiPreferences {
@@ -71,6 +80,8 @@ impl Default for TuiPreferences {
             filter: None,
             unread_only: false,
             show_ignored: false,
+            desktop: true,
+            sound: true,
         }
     }
 }
@@ -856,6 +867,25 @@ fn pr_detail_lines(pull_request: &PullRequestView, width: usize) -> Vec<Line<'st
     lines
 }
 
+fn settings_row(label: &str, enabled: bool, selected: bool) -> Line<'static> {
+    let marker = if selected { "▶ " } else { "  " };
+    let label_style = if selected {
+        theme::gold_bold()
+    } else {
+        theme::bright()
+    };
+    let state_style = if enabled {
+        theme::green()
+    } else {
+        theme::dim()
+    };
+    Line::from(vec![
+        Span::styled(marker, theme::gold_bold()),
+        Span::styled(format!("{label:<22}"), label_style),
+        Span::styled(if enabled { "on" } else { "off" }, state_style),
+    ])
+}
+
 fn popup_hint() -> Line<'static> {
     Line::from(vec![
         Span::styled("Enter", theme::key()),
@@ -896,6 +926,8 @@ pub struct TuiApp {
     viewport: StdCell<(u16, u16)>,
     popup_scroll: StdCell<u16>,
     pr_detail_scroll: StdCell<u16>,
+    settings: Option<usize>,
+    notifications: NotificationSwitches,
 }
 
 impl TuiApp {
@@ -923,6 +955,8 @@ impl TuiApp {
             viewport: StdCell::new((0, 0)),
             popup_scroll: StdCell::new(0),
             pr_detail_scroll: StdCell::new(0),
+            settings: None,
+            notifications: NotificationSwitches::new(true, true),
         }
     }
 
@@ -1114,6 +1148,8 @@ impl TuiApp {
             }),
             unread_only: self.unread_only,
             show_ignored: self.show_ignored,
+            desktop: self.notifications.desktop(),
+            sound: self.notifications.sound(),
         }
     }
 
@@ -1126,6 +1162,12 @@ impl TuiApp {
             .and_then(filter_from_preference);
         self.unread_only = preferences.unread_only;
         self.show_ignored = preferences.show_ignored;
+        self.notifications.set_desktop(preferences.desktop);
+        self.notifications.set_sound(preferences.sound);
+    }
+
+    pub fn notification_switches(&self) -> NotificationSwitches {
+        self.notifications.clone()
     }
 
     pub fn show_save_prompt(&mut self) {
@@ -1230,6 +1272,24 @@ impl TuiApp {
                 }
                 _ => Ok(TuiAction::Continue),
             };
+        }
+        if let Some(selected) = self.settings {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char(',') => self.settings = None,
+                KeyCode::Char('j') | KeyCode::Down => {
+                    self.settings = Some((selected + 1) % 2);
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    self.settings = Some((selected + 1) % 2);
+                }
+                KeyCode::Char(' ') | KeyCode::Enter => match selected {
+                    0 => self.notifications.toggle_desktop(),
+                    1 => self.notifications.toggle_sound(),
+                    _ => {}
+                },
+                _ => {}
+            }
+            return Ok(TuiAction::Continue);
         }
         if self.help.is_some() {
             if matches!(
@@ -1478,6 +1538,10 @@ impl TuiApp {
                 self.help = Some(self.focus);
                 Ok(TuiAction::Continue)
             }
+            KeyCode::Char(',') => {
+                self.settings = Some(0);
+                Ok(TuiAction::Continue)
+            }
             KeyCode::Char('k') | KeyCode::Up => {
                 match self.focus {
                     Pane::Watched => {
@@ -1577,6 +1641,7 @@ impl TuiApp {
                 ("x", "ignore"),
                 ("◀/▶", "all|filtered"),
                 ("p", "scope"),
+                (",", "opts"),
                 ("q", "quit"),
             ],
             Pane::Activity => &[
@@ -1587,6 +1652,7 @@ impl TuiApp {
                 ("a", "all"),
                 ("u", "unread"),
                 ("p", "scope"),
+                (",", "opts"),
                 ("q", "quit"),
             ],
         };
@@ -1851,6 +1917,9 @@ impl TuiApp {
         if self.help.is_some() {
             self.render_help(frame);
         }
+        if self.settings.is_some() {
+            self.render_settings(frame);
+        }
         if self.save_prompt {
             let area = frame.area();
             let width = 54.min(area.width.saturating_sub(2)).max(20);
@@ -1874,6 +1943,48 @@ impl TuiApp {
                 rect,
             );
         }
+    }
+
+    fn render_settings(&self, frame: &mut Frame) {
+        let Some(selected) = self.settings else {
+            return;
+        };
+        let area = frame.area();
+        let width = 56.min(area.width.saturating_sub(2)).max(24);
+        let height = 5.min(area.height.saturating_sub(2)).max(5);
+        let rect = Rect::new(
+            (area.width.saturating_sub(width)) / 2,
+            (area.height.saturating_sub(height)) / 2,
+            width,
+            height,
+        );
+        let block = Block::bordered()
+            .title(Line::from(" Settings ").style(theme::accent_bold()))
+            .border_style(theme::border());
+        let inner = block.inner(rect);
+        frame.render_widget(Clear, rect);
+        frame.render_widget(block, rect);
+        let rows = vec![
+            settings_row(
+                "Desktop notifications",
+                self.notifications.desktop(),
+                selected == 0,
+            ),
+            settings_row("Sound", self.notifications.sound(), selected == 1),
+        ];
+        let chunks =
+            Layout::vertical([Constraint::Length(rows.len() as u16), Constraint::Length(1)])
+                .split(inner);
+        frame.render_widget(Paragraph::new(rows), chunks[0]);
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled("space", theme::key()),
+                Span::styled(" toggle   ", theme::dim()),
+                Span::styled("esc", theme::key()),
+                Span::styled(" close", theme::dim()),
+            ])),
+            chunks[1],
+        );
     }
 
     fn render_help(&self, frame: &mut Frame) {
@@ -1907,6 +2018,7 @@ impl TuiApp {
                 ("u", "unread activities only"),
                 ("c / C", "clear filters / reset view"),
                 ("p", "watch scope"),
+                (",", "settings"),
                 ("h / F1", "this help"),
                 ("q", "quit"),
             ],
@@ -1921,6 +2033,7 @@ impl TuiApp {
                 ("f / F", "filter to PR / stack"),
                 ("u", "unread activities only"),
                 ("c / C", "clear filters / reset view"),
+                (",", "settings"),
                 ("h / F1", "this help"),
                 ("q", "quit"),
             ],
@@ -2299,6 +2412,56 @@ mod tests {
             },
             read,
         }
+    }
+
+    #[test]
+    fn older_preferences_enable_notifications() {
+        let preferences: TuiPreferences = serde_json::from_str(
+            r#"{"sort":"updated","descending":true,"filter":null,"unread_only":false,"show_ignored":false}"#,
+        )
+        .expect("legacy preferences");
+        assert!(preferences.desktop);
+        assert!(preferences.sound);
+    }
+
+    #[tokio::test]
+    async fn the_settings_dialog_toggles_notifications() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Char(',')), &inbox, &core_config())
+            .await
+            .expect("open settings");
+        let frame = app.snapshot();
+        assert!(frame.contains("Desktop notifications"), "{frame}");
+        assert!(frame.contains("Sound"), "{frame}");
+        assert!(frame.contains("Settings"), "{frame}");
+        assert!(app.notification_switches().desktop());
+        assert!(app.notification_switches().sound());
+
+        app.handle_key(key(KeyCode::Char(' ')), &inbox, &core_config())
+            .await
+            .expect("toggle desktop");
+        assert!(!app.notification_switches().desktop());
+        assert!(app.notification_switches().sound());
+
+        app.handle_key(key(KeyCode::Char('j')), &inbox, &core_config())
+            .await
+            .expect("select sound");
+        app.handle_key(key(KeyCode::Char(' ')), &inbox, &core_config())
+            .await
+            .expect("toggle sound");
+        assert!(!app.notification_switches().sound());
+        let frame = app.snapshot();
+        assert!(frame.contains("off"), "{frame}");
+        let preferences = app.preferences();
+        assert!(!preferences.desktop);
+        assert!(!preferences.sound);
+
+        app.handle_key(key(KeyCode::Esc), &inbox, &core_config())
+            .await
+            .expect("close settings");
+        let frame = app.snapshot();
+        assert!(!frame.contains("Desktop notifications"), "{frame}");
     }
 
     #[test]

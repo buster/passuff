@@ -1,5 +1,6 @@
 #[cfg(feature = "test-support")]
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 #[cfg(feature = "test-support")]
 use std::sync::Mutex;
@@ -209,21 +210,67 @@ impl NotificationDelivery for FailingDelivery {
     }
 }
 
+/// Shared, mutable switches for the desktop and sound surfaces.
+#[derive(Clone)]
+pub struct NotificationSwitches {
+    desktop: Arc<AtomicBool>,
+    sound: Arc<AtomicBool>,
+}
+
+impl NotificationSwitches {
+    pub fn new(desktop: bool, sound: bool) -> Self {
+        Self {
+            desktop: Arc::new(AtomicBool::new(desktop)),
+            sound: Arc::new(AtomicBool::new(sound)),
+        }
+    }
+
+    pub fn desktop(&self) -> bool {
+        self.desktop.load(Ordering::Relaxed)
+    }
+
+    pub fn sound(&self) -> bool {
+        self.sound.load(Ordering::Relaxed)
+    }
+
+    pub fn set_desktop(&self, enabled: bool) {
+        self.desktop.store(enabled, Ordering::Relaxed);
+    }
+
+    pub fn set_sound(&self, enabled: bool) {
+        self.sound.store(enabled, Ordering::Relaxed);
+    }
+
+    pub fn toggle_desktop(&self) {
+        self.set_desktop(!self.desktop());
+    }
+
+    pub fn toggle_sound(&self) {
+        self.set_sound(!self.sound());
+    }
+}
+
 /// Suppress desktop notifications and/or sound for one run without changing configuration.
 #[derive(Clone)]
 pub struct MutedDelivery {
     inner: Arc<dyn NotificationDelivery>,
-    desktop: bool,
-    sound: bool,
+    switches: NotificationSwitches,
 }
 
 impl MutedDelivery {
     pub fn new(inner: Arc<dyn NotificationDelivery>, desktop: bool, sound: bool) -> Self {
-        Self {
-            inner,
-            desktop,
-            sound,
-        }
+        Self::with_switches(inner, NotificationSwitches::new(desktop, sound))
+    }
+
+    pub fn with_switches(
+        inner: Arc<dyn NotificationDelivery>,
+        switches: NotificationSwitches,
+    ) -> Self {
+        Self { inner, switches }
+    }
+
+    pub fn switches(&self) -> NotificationSwitches {
+        self.switches.clone()
     }
 }
 
@@ -234,14 +281,16 @@ impl NotificationDelivery for MutedDelivery {
         rendered: &RenderedNotification,
         config: &NotificationsConfig,
     ) -> DeliveryReport {
-        if self.desktop && self.sound {
+        let desktop = self.switches.desktop();
+        let sound = self.switches.sound();
+        if desktop && sound {
             return self.inner.deliver(rendered, config).await;
         }
         let mut config = config.clone();
-        if !self.desktop {
+        if !desktop {
             config.desktop = false;
         }
-        if !self.sound {
+        if !sound {
             config.sound = false;
         }
         self.inner.deliver(rendered, &config).await
@@ -298,7 +347,7 @@ mod tests {
 
 #[cfg(test)]
 mod mute_tests {
-    use super::{DeliveryReport, MutedDelivery, NotificationDelivery};
+    use super::{DeliveryReport, MutedDelivery, NotificationDelivery, NotificationSwitches};
     use crate::transcript::RenderedNotification;
     use async_trait::async_trait;
     use passuff_config::NotificationsConfig;
@@ -353,5 +402,29 @@ mod mute_tests {
     #[tokio::test]
     async fn leaving_both_enabled_passes_the_config_through() {
         assert_eq!(seen(true, true).await, (true, true));
+    }
+
+    #[tokio::test]
+    async fn switches_can_change_after_the_delivery_is_built() {
+        let capture = Arc::new(Capture::default());
+        let inner: Arc<dyn NotificationDelivery> = capture.clone();
+        let switches = NotificationSwitches::new(true, true);
+        let delivery = MutedDelivery::with_switches(inner, switches.clone());
+
+        delivery
+            .deliver(&rendered(), &NotificationsConfig::default())
+            .await;
+        assert_eq!(
+            capture.seen.lock().expect("seen").clone().unwrap().sound,
+            true
+        );
+
+        switches.set_sound(false);
+        delivery
+            .deliver(&rendered(), &NotificationsConfig::default())
+            .await;
+        let config = capture.seen.lock().expect("seen").clone().expect("config");
+        assert!(config.desktop);
+        assert!(!config.sound);
     }
 }

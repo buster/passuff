@@ -22,6 +22,26 @@ async fn moves_down(world: &mut World, count: usize) {
     world.press_many("j", count).await;
 }
 
+#[then(regex = r#"^the notification sound is muted$"#)]
+async fn notification_sound_is_muted(world: &mut World) {
+    let switches = world
+        .tui_app
+        .as_ref()
+        .expect("tui opened")
+        .notification_switches();
+    assert!(!switches.sound(), "expected the sound to be muted");
+}
+
+#[then(regex = r#"^the desktop notification is enabled$"#)]
+async fn desktop_notification_is_enabled(world: &mut World) {
+    let switches = world
+        .tui_app
+        .as_ref()
+        .expect("tui opened")
+        .notification_switches();
+    assert!(switches.desktop(), "expected the desktop notification to be enabled");
+}
+
 #[then(regex = r#"^the focused pane is "(PRs|activity)"$"#)]
 async fn focused(world: &mut World, expected: String) {
     world.assert_focus(&expected);
