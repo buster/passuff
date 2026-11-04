@@ -671,6 +671,35 @@ fn push_wrapped_text(lines: &mut Vec<Line<'static>>, text: &str, width: usize) {
     }
 }
 
+fn push_wrapped_styled(lines: &mut Vec<Line<'static>>, text: &str, width: usize, style: Style) {
+    for chunk in wrap_text(text, width) {
+        lines.push(Line::from(chunk).style(style));
+    }
+}
+
+fn indent_lines(lines: Vec<Line<'static>>, indent: usize) -> Vec<Line<'static>> {
+    if indent == 0 {
+        return lines;
+    }
+    let prefix = " ".repeat(indent);
+    lines
+        .into_iter()
+        .map(|line| {
+            let mut spans = Vec::with_capacity(line.spans.len() + 1);
+            spans.push(Span::raw(prefix.clone()));
+            spans.extend(line.spans);
+            Line::from(spans)
+        })
+        .collect()
+}
+
+fn separator(width: usize) -> Line<'static> {
+    Line::from(Span::styled(
+        "─".repeat(width),
+        Style::new().fg(Color::DarkGray),
+    ))
+}
+
 fn activity_body(event: &ActivityEvent) -> Option<(String, &str)> {
     let (label, body) = match event {
         ActivityEvent::Comment { author, body } => (format!("Comment by @{author}"), body.as_str()),
@@ -693,40 +722,51 @@ fn activity_body(event: &ActivityEvent) -> Option<(String, &str)> {
 
 fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'static>> {
     let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+    let value_style = Style::new().fg(Color::Gray);
     let mut lines = vec![Line::from(vec![
         Span::styled("Activity ", key_style),
-        Span::raw(activity_label(&detail.record)),
+        Span::styled(activity_label(&detail.record), value_style),
     ])];
     match detail.pull_request.as_ref() {
         Some(pull_request) => {
-            push_wrapped_text(
+            push_wrapped_styled(
                 &mut lines,
                 &format!("{}   {}", pull_request.key, pull_request.title),
                 width,
+                value_style,
             );
-            let mut state_line = format!(
-                "State: {}   {}",
-                state_label(&pull_request.state),
-                ci_label(&pull_request.ci_state)
-            );
+            let mut state = vec![
+                Span::styled("State: ", key_style),
+                Span::styled(state_label(&pull_request.state).to_string(), value_style),
+                Span::raw("   "),
+                Span::styled(ci_label(&pull_request.ci_state).to_string(), value_style),
+            ];
             if let Some(stack) = pull_request.stack.as_ref() {
-                state_line.push_str(&format!(
-                    "   Stack: {} position {}",
-                    stack.number, stack.position
+                state.push(Span::raw("   "));
+                state.push(Span::styled(
+                    format!("Stack: {} position {}", stack.number, stack.position),
+                    value_style,
                 ));
             }
-            push_wrapped_text(&mut lines, &state_line, width);
+            lines.push(Line::from(state));
         }
-        None => push_wrapped_text(
+        None => push_wrapped_styled(
             &mut lines,
             &format!("{}   pull request not in view", detail.record.key),
             width,
+            value_style,
         ),
     }
     if let Some((label, body)) = activity_body(&detail.record.event) {
-        lines.push(Line::default());
-        lines.push(Line::from(Span::styled(label, key_style)));
-        lines.extend(render_description(body, width));
+        lines.push(separator(width));
+        lines.push(Line::from(vec![
+            Span::raw("  "),
+            Span::styled(label, key_style),
+        ]));
+        lines.extend(indent_lines(
+            render_description(body, width.saturating_sub(2).max(1)),
+            2,
+        ));
     }
     lines.push(Line::default());
     push_wrapped_text(
@@ -751,14 +791,16 @@ fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'sta
 
 fn pr_detail_lines(pull_request: &PullRequestView, width: usize) -> Vec<Line<'static>> {
     let key_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+    let value_style = Style::new().fg(Color::Gray);
     let label = |text: &str| Span::styled(text.to_string(), key_style);
+    let value = |text: String| Span::styled(text, value_style);
 
     let mut status = state_label(&pull_request.state).to_string();
     if pull_request.is_draft {
         status.push_str(", draft");
     }
     let ci = ci_label(&pull_request.ci_state);
-    let ci = ci.strip_prefix("CI ").unwrap_or(&ci);
+    let ci = ci.strip_prefix("CI ").unwrap_or(&ci).to_string();
     let creator = format!(
         "@{} ({})",
         pull_request.author,
@@ -775,27 +817,41 @@ fn pr_detail_lines(pull_request: &PullRequestView, width: usize) -> Vec<Line<'st
             .join(", ")
     };
     let mut lines = vec![
-        Line::from(vec![label("Status: "), Span::raw(status)]),
-        Line::from(vec![label("CI: "), Span::raw(ci.to_string())]),
-        Line::from(vec![label("Creator: "), Span::raw(creator)]),
-        Line::from(vec![label("Assignee: "), Span::raw(assignees)]),
+        Line::from(vec![
+            label("Status: "),
+            value(status),
+            Span::raw("   "),
+            label("CI: "),
+            value(ci),
+        ]),
+        Line::from(vec![
+            label("Creator: "),
+            value(creator),
+            Span::raw("   "),
+            label("Assignee: "),
+            value(assignees),
+        ]),
     ];
     if let Some(stack) = pull_request.stack.as_ref() {
         lines.push(Line::from(vec![
             label("Stack: "),
-            Span::raw(format!(
+            value(format!(
                 "{}/{}   base {}",
                 stack.position, stack.size, stack.base
             )),
         ]));
     }
-    lines.push(Line::from(label("Description:")));
+    lines.push(separator(width));
+    lines.push(Line::from(vec![Span::raw("  "), label("Description:")]));
     let description = if pull_request.description.trim().is_empty() {
         "(no description)".to_string()
     } else {
         pull_request.description.clone()
     };
-    lines.extend(render_description(&description, width));
+    lines.extend(indent_lines(
+        render_description(&description, width.saturating_sub(2).max(1)),
+        2,
+    ));
     lines
 }
 
@@ -2906,6 +2962,58 @@ mod tests {
         let frame = app.snapshot();
         assert!(frame.contains("line 1"), "{frame}");
         assert!(!frame.contains("line 40"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn the_pull_request_detail_recedes_metadata_and_indents_the_description() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let mut pull_request = standalone("acme/api#42");
+        pull_request.description = "Summary\n\nThe body.".to_string();
+        app.view.pull_requests = vec![pull_request];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        app.handle_key(key(KeyCode::Enter), &inbox, &core_config())
+            .await
+            .expect("enter");
+        let frame = app.snapshot();
+        assert!(
+            frame.contains("Status: open   CI: passing"),
+            "metadata is not compact: {frame}"
+        );
+        assert!(
+            frame.contains("Creator: @octo-personal (11-02 11:00)   Assignee: none"),
+            "metadata is not compact: {frame}"
+        );
+        assert!(
+            frame.lines().any(|line| line.contains("│  Summary")),
+            "the description is not indented: {frame}"
+        );
+        assert!(
+            frame.lines().any(|line| line.contains('─')),
+            "the separator is missing: {frame}"
+        );
+
+        let backend = TestBackend::new(100, 30);
+        let mut terminal = Terminal::new(backend).expect("terminal");
+        terminal.draw(|frame| app.render(frame)).expect("draw");
+        let buffer = terminal.backend().buffer();
+        let mut label_is_green = false;
+        let mut value_is_gray = false;
+        for y in 0..30 {
+            let row: String = (0..100)
+                .map(|x| buffer[(x, y)].symbol())
+                .collect();
+            if let Some(byte_offset) = row.find("Status: ") {
+                let offset = row[..byte_offset].chars().count();
+                let value = offset + "Status: ".chars().count();
+                label_is_green = buffer[(offset as u16, y)].fg == Color::Green;
+                value_is_gray = buffer[(value as u16, y)].fg == Color::Gray;
+            }
+        }
+        assert!(label_is_green, "the metadata label is not green");
+        assert!(value_is_gray, "the metadata value is not gray");
     }
 
     #[test]
