@@ -43,4 +43,6 @@ pub enum Command {
         #[arg(long, conflicts_with = "id")]
         all: bool,
     },
+    /// Send a test desktop notification and play the configured sound
+    NotifyTest,
 }

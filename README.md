@@ -65,6 +65,11 @@ missing.
 interactive watch, starts `gh auth login --web` once when no session exists.
 `check` and non-interactive runs never open a browser.
 
+`passuff notify-test` sends one notification and plays the configured sound,
+reporting each enabled surface. It exits 1 if a surface fails and 2 when both
+surfaces are disabled. On macOS the desktop notification goes through
+Notification Center.
+
 `github_pat` accepts exactly one of `token_env`, `token_command`, or
 `token_file`. A token file must be absolute or start with `~`, and must not be
 readable or writable by group or other users (`0600` or `0400`). A literal
@@ -109,6 +114,7 @@ passuff inbox               list unread activity
 passuff inbox --all         list unread and read activity
 passuff read <id>           mark one activity record read
 passuff read --all          mark every activity record read
+passuff notify-test         send a test notification and play the configured sound
 passuff-tui                 open the inbox in a full-screen terminal UI
 passuff-tui --snapshot      print one TUI frame and exit
 passuff-tui --snapshot --observe  observe once, then print one frame

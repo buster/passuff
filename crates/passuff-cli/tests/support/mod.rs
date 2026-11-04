@@ -945,6 +945,34 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         self.last_status = outcome.status;
     }
 
+    pub async fn run_notify_test(&mut self) {
+        if self.e2e {
+            self.e2e_run_notify_test().await;
+            return;
+        }
+        let config = if let Some(text) = self.config_text.clone() {
+            ConfigLoader::parse(&text)
+        } else if self.invalid_config {
+            Err(ConfigError::Validation("invalid configuration".to_string()))
+        } else {
+            Ok(self.build_config())
+        };
+        let sound: Arc<dyn SoundPlayer> = if self.unavailable_sound {
+            Arc::new(UnavailableSoundPlayer)
+        } else {
+            Arc::new(RecordingSoundPlayer::new(self.sound_log.clone()))
+        };
+        let delivery: Arc<dyn NotificationDelivery> = if self.failing_delivery {
+            Arc::new(FailingDelivery)
+        } else {
+            Arc::new(RecordingDelivery::new(sound, self.notification_log.clone()))
+        };
+        let outcome = passuff_cli::notify_cli::notify_test(config, delivery).await;
+        self.last_report = outcome.report;
+        self.last_transcript = outcome.transcript;
+        self.last_status = outcome.status;
+    }
+
     pub async fn run_tui_snapshot(&mut self) {
         if self.e2e {
             self.e2e_run_tui_snapshot().await;

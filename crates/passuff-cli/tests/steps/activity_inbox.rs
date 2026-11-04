@@ -59,6 +59,11 @@ async fn read_without_target(world: &mut World) {
     world.run_read(None, false).await;
 }
 
+#[when(regex = r#"^the developer runs the notification test$"#)]
+async fn runs_notification_test(world: &mut World) {
+    world.run_notify_test().await;
+}
+
 fn record_lines(transcript: &str) -> Vec<&str> {
     let pattern = Regex::new(r"^\s+a\d+\s+\d{4}-\d{2}-\d{2}T").expect("record regex");
     transcript

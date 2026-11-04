@@ -55,6 +55,44 @@ Feature: Pull request activity notification
     And  the exit status is 0
 
   @pr-activity-notification
+  Scenario: The developer tests notifications
+    Given  a configured account "personal" with login "octo-personal"
+    When  the developer runs the notification test
+    Then  the transcript reports "desktop notification sent"
+    And  the transcript reports "sound played"
+    And  the desktop notification reports "If you can read this, passuff notifications are working."
+    And  the configured sound is played once
+    And  the exit status is 0
+
+  @e2e @pr-activity-notification
+  Scenario: The developer tests notifications on the command line
+    Given  a configured account "personal" with login "octo-personal"
+    When  the developer runs the notification test
+    Then  the transcript reports "desktop notification sent"
+    And  the desktop notification reports "If you can read this, passuff notifications are working."
+    And  the exit status is 0
+
+  @pr-activity-notification
+  Scenario: The notification test reports an unavailable surface
+    Given  a configured account "personal" with login "octo-personal"
+    And  the desktop notification surface is unavailable
+    And  the sound player is unavailable
+    When  the developer runs the notification test
+    Then  the transcript reports "desktop notification failed"
+    And  the transcript reports "sound unavailable"
+    And  the exit status is 1
+
+  @pr-activity-notification
+  Scenario: The notification test reports disabled surfaces
+    Given  a configured account "personal" with login "octo-personal"
+    And  the desktop notification is disabled in configuration
+    And  sound is disabled in configuration
+    When  the developer runs the notification test
+    Then  the transcript reports "desktop notifications are disabled"
+    And  the transcript reports "nothing to test"
+    And  the exit status is 2
+
+  @pr-activity-notification
   Scenario: A review comment from another person notifies
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
