@@ -134,7 +134,7 @@ impl StopAfter {
 impl WatchControl for StopAfter {
     fn should_continue(&self) -> bool {
         self.remaining
-            .try_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |remaining| {
                 remaining.checked_sub(1)
             })
             .is_ok()
