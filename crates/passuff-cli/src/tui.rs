@@ -370,6 +370,8 @@ pub struct TuiApp {
     selected_pr: Option<PullRequestKey>,
     status: Option<String>,
     countdown: Option<std::time::Duration>,
+    fetching: bool,
+    spinner: usize,
     popup: Option<ActivityDetail>,
     sort: SortMode,
     descending: bool,
@@ -390,6 +392,8 @@ impl TuiApp {
             selected_pr: None,
             status: None,
             countdown: None,
+            fetching: false,
+            spinner: 0,
             popup: None,
             sort: SortMode::Updated,
             descending: true,
@@ -437,6 +441,19 @@ impl TuiApp {
     /// Show the time until the next observation.
     pub fn set_countdown(&mut self, countdown: Option<std::time::Duration>) {
         self.countdown = countdown;
+    }
+
+    pub fn set_fetching(&mut self, fetching: bool) {
+        self.fetching = fetching;
+        if !fetching {
+            self.spinner = 0;
+        }
+    }
+
+    pub fn advance_spinner(&mut self) {
+        if self.fetching {
+            self.spinner = self.spinner.wrapping_add(1);
+        }
     }
 
     pub fn focus(&self) -> Pane {
@@ -941,10 +958,6 @@ impl TuiApp {
             )),
             chunks[0],
         );
-        let countdown = self
-            .countdown
-            .map(|remaining| format!("   |   ↻ {}s", remaining.as_secs().max(1)))
-            .unwrap_or_default();
         let visible = self.visible_activity();
         let unread = visible.iter().filter(|record| !record.read).count();
         let filtered = self
@@ -952,15 +965,30 @@ impl TuiApp {
             .as_ref()
             .map(|_| format!("   (filtered from {})", self.view.activity.len()))
             .unwrap_or_default();
+        let mut spans = vec![Span::raw(format!(
+            "{} unread of {}{}   |   Focus: activity",
+            unread,
+            visible.len(),
+            filtered
+        ))];
+        if self.fetching {
+            const FRAMES: [&str; 4] = ["◇", "◆", "◈", "◆"];
+            spans.push(Span::raw("   |   "));
+            spans.push(Span::styled(
+                FRAMES[self.spinner % FRAMES.len()],
+                Style::new().fg(Color::Green).add_modifier(Modifier::BOLD),
+            ));
+            spans.push(Span::raw(" fetching"));
+        } else if let Some(remaining) = self.countdown {
+            let seconds = if remaining.as_secs() >= 10 {
+                format!("{}s", remaining.as_secs())
+            } else {
+                format!("{:.1}s", remaining.as_secs_f64())
+            };
+            spans.push(Span::raw(format!("   |   ↻ {seconds}")));
+        }
         frame.render_widget(
-            Paragraph::new(format!(
-                "{} unread of {}{}   |   Focus: activity{}",
-                unread,
-                visible.len(),
-                filtered,
-                countdown
-            ))
-            .style(Style::new().fg(Color::Yellow)),
+            Paragraph::new(Line::from(spans)).style(Style::new().fg(Color::Yellow)),
             chunks[1],
         );
 
@@ -1677,6 +1705,18 @@ mod tests {
         app.set_countdown(Some(std::time::Duration::from_secs(42)));
         let frame = app.snapshot();
         assert!(frame.contains("↻ 42s"), "{frame}");
+        app.set_countdown(Some(std::time::Duration::from_millis(1_440)));
+        let frame = app.snapshot();
+        assert!(frame.contains("↻ 1.4s"), "{frame}");
+    }
+
+    #[test]
+    fn snapshot_shows_a_spinner_while_fetching() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.set_fetching(true);
+        let frame = app.snapshot();
+        assert!(frame.contains("fetching"), "{frame}");
+        assert!(frame.contains('◆') || frame.contains('◇'), "{frame}");
     }
 
     #[test]
