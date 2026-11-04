@@ -16,10 +16,12 @@ use url::Url;
 
 pub const DEFAULT_GRAPHQL_URL: &str = "https://api.github.com/graphql";
 pub const DEFAULT_POLL_INTERVAL_SECS: u64 = 60;
+pub const DEFAULT_RECONCILIATION_INTERVAL_SECS: u64 = 3600;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppConfig {
     pub poll_interval_secs: u64,
+    pub reconciliation_interval_secs: u64,
     pub core: CoreConfig,
     pub notifications: NotificationsConfig,
 }
@@ -179,6 +181,7 @@ pub enum Urgency {
 #[serde(default, deny_unknown_fields)]
 struct FileConfig {
     poll_interval_secs: u64,
+    reconciliation_interval_secs: u64,
     events: EventToggles,
     notifications: NotificationsConfig,
     watch: FileWatchConfig,
@@ -189,6 +192,7 @@ impl Default for FileConfig {
     fn default() -> Self {
         Self {
             poll_interval_secs: DEFAULT_POLL_INTERVAL_SECS,
+            reconciliation_interval_secs: DEFAULT_RECONCILIATION_INTERVAL_SECS,
             events: EventToggles::default(),
             notifications: NotificationsConfig::default(),
             watch: FileWatchConfig::default(),
@@ -257,6 +261,11 @@ impl FileConfig {
         if self.poll_interval_secs < 1 {
             return Err(ConfigError::Validation(
                 "poll_interval_secs must be at least 1".to_string(),
+            ));
+        }
+        if self.reconciliation_interval_secs < 1 {
+            return Err(ConfigError::Validation(
+                "reconciliation_interval_secs must be at least 1".to_string(),
             ));
         }
         if let SoundFile::Path(path) = &self.notifications.sound_file {
@@ -374,6 +383,7 @@ impl FileConfig {
 
         Ok(AppConfig {
             poll_interval_secs: self.poll_interval_secs,
+            reconciliation_interval_secs: self.reconciliation_interval_secs,
             core: CoreConfig {
                 accounts,
                 events: self.events,

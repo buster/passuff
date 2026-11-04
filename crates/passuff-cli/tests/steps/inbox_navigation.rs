@@ -158,3 +158,22 @@ async fn still_shows(world: &mut World, expected: String) {
         world.last_transcript
     );
 }
+
+#[given(regex = r#"^the reconciliation interval is "(\d+)" seconds$"#)]
+async fn reconciliation_interval(world: &mut World, seconds: u64) {
+    world.reconciliation_interval_secs = Some(seconds);
+}
+
+#[when(regex = r#"^the inbox waits "(\d+)" seconds$"#)]
+async fn inbox_waits(_world: &mut World, seconds: u64) {
+    tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
+}
+
+#[then(regex = r#"^the inbox has observed only "([^"]+)"$"#)]
+async fn observed_only(world: &mut World, key: String) {
+    assert_eq!(
+        world.observation_observed_targets(),
+        vec![format!("node-{key}")],
+        "observation target set differs"
+    );
+}

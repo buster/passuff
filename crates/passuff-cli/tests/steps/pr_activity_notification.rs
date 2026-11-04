@@ -816,3 +816,8 @@ async fn no_notification_for(world: &mut World, key: String) {
         world.last_report().notifications
     );
 }
+
+#[when(regex = r#"^the next observation fails$"#)]
+async fn next_observation_fails(world: &mut World) {
+    world.fail_observe_once = true;
+}

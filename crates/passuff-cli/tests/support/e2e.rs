@@ -13,6 +13,26 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::World;
 
+struct E2eQueryResponder {
+    probe: Value,
+    nodes: Value,
+    search: Value,
+}
+
+impl wiremock::Respond for E2eQueryResponder {
+    fn respond(&self, request: &wiremock::Request) -> ResponseTemplate {
+        let body = String::from_utf8_lossy(&request.body);
+        let response = if body.contains("nodes(ids:") {
+            self.nodes.clone()
+        } else if body.contains("search(") {
+            self.search.clone()
+        } else {
+            self.probe.clone()
+        };
+        ResponseTemplate::new(200).set_body_json(response)
+    }
+}
+
 #[cfg(target_os = "linux")]
 pub struct DbustTwin {
     _dir: tempfile::TempDir,
@@ -246,7 +266,7 @@ impl World {
         };
         let reset_at =
             (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
-        let body = json!({
+        let probe_body = json!({
             "data": {
                 "rateLimit": { "cost": 1, "limit": 5000, "remaining": 5000, "resetAt": reset_at },
                 "viewer": {
@@ -258,10 +278,23 @@ impl World {
                 }
             }
         });
+        let nodes_body = json!({
+            "data": {
+                "viewer": { "login": self.e2e_login },
+                "nodes": self.e2e_prs,
+            }
+        });
+        let search_body = json!({
+            "data": { "search": { "nodes": [] } }
+        });
         server.reset().await;
         Mock::given(method("POST"))
             .and(path("/graphql"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .respond_with(E2eQueryResponder {
+                probe: probe_body,
+                nodes: nodes_body,
+                search: search_body,
+            })
             .mount(server)
             .await;
     }

@@ -1,15 +1,16 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use passuff_config::CoreConfig;
 
-use crate::classifier::classify;
+use crate::classifier::{classify, created_after};
 use crate::credential::CredentialSource;
 use crate::domain::{
     AccountFailure, AccountFailureKind, ActivityRecord, ApiAllowance, ChangeProbe, ChangeSignal,
     CoreError, LoginSet, Notification, PrState, ProbePullRequest, RefreshReport, ScopeSnapshot,
     WatchedPullRequest,
 };
-use crate::github::{AccountObservation, GitHubGateway};
+use crate::github::{Discovery, GitHubGateway};
 use crate::state::SnapshotStore;
 
 pub struct PassuffCore {
@@ -19,6 +20,7 @@ pub struct PassuffCore {
     credentials: Arc<dyn CredentialSource>,
     current: Option<Vec<ChangeProbe>>,
     pending: Option<Vec<ChangeProbe>>,
+    last_check: BTreeMap<String, Option<String>>,
 }
 
 impl PassuffCore {
@@ -35,25 +37,39 @@ impl PassuffCore {
             credentials,
             current: None,
             pending: None,
+            last_check: BTreeMap::new(),
         })
     }
 
-    /// Ask GitHub for a cheap change signal without building observations.
+    /// Ask GitHub for the cheap change signal and the changed targets.
     pub async fn probe(&mut self) -> Result<ChangeSignal, CoreError> {
         let scope = ScopeSnapshot::from_watch(&self.config.watch);
         let mut probes = Vec::new();
         let mut allowance: Option<ApiAllowance> = None;
+        let mut failures = Vec::new();
         for (label, account) in &self.config.accounts {
-            let token = self
-                .credentials
-                .resolve(&account.credential)
-                .await
-                .map_err(|error| CoreError::Probe(format!("{label}: {error}")))?;
-            let probe = self
-                .gateway
-                .probe(&token, &account.graphql_url)
-                .await
-                .map_err(|error| CoreError::Probe(format!("{label}: {error}")))?;
+            let token = match self.credentials.resolve(&account.credential).await {
+                Ok(token) => token,
+                Err(error) => {
+                    failures.push(AccountFailure {
+                        label: label.clone(),
+                        kind: AccountFailureKind::Credential,
+                        detail: error.to_string(),
+                    });
+                    continue;
+                }
+            };
+            let probe = match self.gateway.probe(&token, &account.graphql_url).await {
+                Ok(probe) => probe,
+                Err(error) => {
+                    failures.push(AccountFailure {
+                        label: label.clone(),
+                        kind: error.account_failure_kind(),
+                        detail: error.to_string(),
+                    });
+                    continue;
+                }
+            };
             let mut pull_requests: Vec<ProbePullRequest> = probe
                 .pull_requests
                 .into_iter()
@@ -76,37 +92,96 @@ impl PassuffCore {
                 }
             }
             probes.push(ChangeProbe {
+                label: label.clone(),
                 login: probe.login,
                 pull_requests,
             });
         }
-        probes.sort_by(|left, right| left.login.cmp(&right.login));
-        let changed = match self.current.as_ref() {
-            Some(current) => {
-                current.len() != probes.len()
-                    || current.iter().zip(probes.iter()).any(|(left, right)| {
-                        left.login != right.login || left.pull_requests != right.pull_requests
-                    })
-            }
-            None => true,
-        };
+        probes.sort_by(|left, right| left.label.cmp(&right.label));
+        let changed = probes.iter().any(|probe| {
+            let current = self
+                .current
+                .as_ref()
+                .and_then(|current| current.iter().find(|entry| entry.label == probe.label));
+            let last_check = self
+                .last_check
+                .get(&probe.label)
+                .and_then(|value| value.as_deref());
+            !relevant_targets(current, probe, last_check).is_empty()
+        });
         self.pending = Some(probes);
-        Ok(ChangeSignal { changed, allowance })
+        Ok(ChangeSignal {
+            changed,
+            allowance,
+            failures,
+        })
     }
 
-    pub async fn refresh(&mut self) -> Result<RefreshReport, CoreError> {
+    /// Observe only the pull requests the probe reported as changed.
+    pub async fn refresh_targeted(&mut self) -> Result<RefreshReport, CoreError> {
+        let probe_failures = if self.pending.is_none() {
+            self.probe().await?.failures
+        } else {
+            Vec::new()
+        };
+        let mut report = self.run_cycle(CycleKind::Targeted).await?;
+        merge_probe_failures(&mut report, probe_failures);
+        Ok(report)
+    }
+
+    /// Observe every watched open pull request and every open involved pull request.
+    pub async fn refresh_reconciliation(&mut self) -> Result<RefreshReport, CoreError> {
+        let probe_failures = if self.pending.is_none() {
+            self.probe().await?.failures
+        } else {
+            Vec::new()
+        };
+        let mut report = self.run_cycle(CycleKind::Reconciliation).await?;
+        merge_probe_failures(&mut report, probe_failures);
+        Ok(report)
+    }
+
+    async fn run_cycle(&mut self, kind: CycleKind) -> Result<RefreshReport, CoreError> {
         tracing::debug!(accounts = self.config.accounts.len(), "refreshing accounts");
         let mut state = self.store.load().await?;
         let mut report = RefreshReport::default();
+        let mut observed: BTreeMap<String, ObservedAccount> = BTreeMap::new();
+        let mut failed: BTreeSet<String> = BTreeSet::new();
+        let mut logins: Vec<String> = state
+            .accounts
+            .values()
+            .filter(|account| !account.login.is_empty())
+            .map(|account| account.login.clone())
+            .collect();
+        if let Some(pending) = &self.pending {
+            for entry in pending {
+                let expected = self
+                    .config
+                    .accounts
+                    .get(&entry.label)
+                    .and_then(|account| account.expected_login.as_deref());
+                if expected.is_none_or(|expected| entry.login.eq_ignore_ascii_case(expected)) {
+                    logins.push(entry.login.clone());
+                }
+            }
+        }
+        logins.extend(
+            self.config
+                .accounts
+                .values()
+                .filter_map(|account| account.expected_login.clone()),
+        );
+        let login_set = LoginSet::new(logins);
+        let previous_scope = state.last_scope.clone();
+        let current_scope = ScopeSnapshot::from_watch(&self.config.watch);
 
-        let mut observed: Vec<(String, AccountObservation)> = Vec::new();
-        let mut failures: Vec<AccountFailure> = Vec::new();
         for (label, account) in &self.config.accounts {
             let token = match self.credentials.resolve(&account.credential).await {
                 Ok(token) => token,
                 Err(error) => {
                     tracing::debug!(account = %label, error = %error, "credential failed");
-                    failures.push(AccountFailure {
+                    failed.insert(label.clone());
+                    report.account_failures.push(AccountFailure {
                         label: label.clone(),
                         kind: AccountFailureKind::Credential,
                         detail: error.to_string(),
@@ -114,52 +189,89 @@ impl PassuffCore {
                     continue;
                 }
             };
-            let known: Vec<String> = state
-                .accounts
-                .get(label)
-                .map(observation_known_ids)
+            let pending = self
+                .pending
+                .as_ref()
+                .and_then(|pending| pending.iter().find(|entry| &entry.label == label));
+            let account_state = state.accounts.get(label);
+            let last_check = account_state.and_then(|account| account.last_check_at.clone());
+            let watched: Vec<&WatchedPullRequest> = account_state
+                .map(|account| {
+                    account
+                        .pull_requests
+                        .values()
+                        .filter(|pull_request| {
+                            self.config
+                                .watch
+                                .allows_repository(&pull_request.repository)
+                                && !self
+                                    .config
+                                    .watch
+                                    .ignores(&pull_request.repository, pull_request.number)
+                        })
+                        .collect()
+                })
                 .unwrap_or_default();
-            match self
+            let known_ids: Vec<String> = watched
+                .iter()
+                .map(|pull_request| pull_request.node_id.clone())
+                .collect();
+            let current = self
+                .current
+                .as_ref()
+                .and_then(|current| current.iter().find(|entry| &entry.label == label));
+            let mut targets: Vec<String> = match kind {
+                CycleKind::Targeted => pending
+                    .map(|pending| relevant_targets(current, pending, last_check.as_deref()))
+                    .unwrap_or_default(),
+                CycleKind::Reconciliation => watched
+                    .iter()
+                    .filter(|pull_request| pull_request.current.state == PrState::Open)
+                    .map(|pull_request| pull_request.node_id.clone())
+                    .collect(),
+            };
+            if matches!(kind, CycleKind::Reconciliation) {
+                if let Some(pending) = pending {
+                    for id in relevant_targets(current, pending, last_check.as_deref()) {
+                        if !targets.contains(&id) {
+                            targets.push(id);
+                        }
+                    }
+                }
+            }
+            targets.sort();
+            targets.dedup();
+            let discovery = match kind {
+                CycleKind::Targeted => Discovery::New,
+                CycleKind::Reconciliation => Discovery::All,
+            };
+            let observation = match self
                 .gateway
-                .observe(&token, &account.graphql_url, &known)
+                .observe(&token, &account.graphql_url, &targets, discovery, &known_ids)
                 .await
             {
-                Ok(observation) => {
-                    tracing::debug!(
-                        account = %label,
-                        login = %observation.login,
-                        pull_requests = observation.pull_requests.len(),
-                        "account observed"
-                    );
-                    observed.push((label.clone(), observation));
-                }
+                Ok(observation) => observation,
                 Err(error) => {
                     tracing::debug!(account = %label, error = %error, "observation failed");
-                    failures.push(AccountFailure {
+                    failed.insert(label.clone());
+                    report.account_failures.push(AccountFailure {
                         label: label.clone(),
                         kind: error.account_failure_kind(),
                         detail: error.to_string(),
                     });
+                    continue;
                 }
-            }
-        }
-
-        let mut accepted: Vec<(String, AccountObservation)> = Vec::new();
-        for (label, observation) in observed {
+            };
             let expected = self
                 .config
                 .accounts
-                .get(&label)
+                .get(label)
                 .and_then(|account| account.expected_login.as_deref());
             if let Some(expected) = expected {
                 if !observation.login.eq_ignore_ascii_case(expected) {
-                    tracing::debug!(
-                        account = %label,
-                        expected = %expected,
-                        actual = %observation.login,
-                        "credential identity mismatch"
-                    );
-                    failures.push(AccountFailure {
+                    tracing::debug!(account = %label, "credential identity mismatch");
+                    failed.insert(label.clone());
+                    report.account_failures.push(AccountFailure {
                         label: label.clone(),
                         kind: AccountFailureKind::Identity,
                         detail: format!(
@@ -170,33 +282,17 @@ impl PassuffCore {
                     continue;
                 }
             }
-            accepted.push((label, observation));
-        }
 
-        let mut logins: Vec<String> = state
-            .accounts
-            .values()
-            .filter(|account| !account.login.is_empty())
-            .map(|account| account.login.clone())
-            .collect();
-        logins.extend(
-            accepted
+            let involved = observation.involved_node_ids.clone();
+            let checked_at = observation.checked_at.clone();
+            let seen: Vec<String> = observation
+                .pull_requests
                 .iter()
-                .map(|(_, observation)| observation.login.clone()),
-        );
-        let login_set = LoginSet::new(logins);
-        let previous_scope = state.last_scope.clone();
-        let current_scope = ScopeSnapshot::from_watch(&self.config.watch);
-
-        for (label, observation) in accepted {
+                .map(|pull_request| pull_request.node_id.clone())
+                .collect();
             let entry = state.accounts.entry(label.clone()).or_default();
-            if !entry.login.is_empty() && !entry.login.eq_ignore_ascii_case(&observation.login) {
-                entry.pull_requests.clear();
-                entry.last_check_at = None;
-            }
             let login = observation.login.clone();
             entry.login = observation.login;
-            let involved = observation.involved_node_ids.clone();
             let has_prior_cycle = entry.last_check_at.is_some();
             let last_check_at = entry.last_check_at.clone();
 
@@ -251,7 +347,7 @@ impl PassuffCore {
                     Some(_) => {
                         let mut watched = WatchedPullRequest::from_baseline(
                             &pull_request,
-                            observation.checked_at.clone(),
+                            checked_at.clone(),
                         );
                         watched.current = current;
                         if events.is_empty() {
@@ -287,7 +383,7 @@ impl PassuffCore {
                         state.activity.push(ActivityRecord {
                             id: format!("a{}", state.next_activity_id),
                             key: notification.key.clone(),
-                            observed_at: observation.checked_at.clone(),
+                            observed_at: checked_at.clone(),
                             event: event.clone(),
                             read: false,
                         });
@@ -301,27 +397,42 @@ impl PassuffCore {
                     state.activity.push(ActivityRecord {
                         id: format!("a{}", state.next_activity_id),
                         key: key.clone(),
-                        observed_at: observation.checked_at.clone(),
+                        observed_at: checked_at.clone(),
                         event,
                         read: true,
                     });
                 }
             }
-            entry.last_check_at = Some(observation.checked_at);
+            entry.last_check_at = Some(checked_at);
+            observed.insert(
+                label.clone(),
+                ObservedAccount {
+                    targets,
+                    seen,
+                },
+            );
         }
 
-        if failures.is_empty() {
+        if report.account_failures.is_empty() {
             state.last_scope = Some(current_scope);
         }
-        report.account_failures = failures;
         if state.activity.len() > 500 {
             let excess = state.activity.len() - 500;
             state.activity.drain(0..excess);
         }
         self.store.save(&state).await?;
-        if let Some(pending) = self.pending.take() {
-            self.current = Some(pending);
-        }
+        self.commit_probe(observed, failed);
+        self.last_check = self
+            .config
+            .accounts
+            .keys()
+            .map(|label| {
+                (
+                    label.clone(),
+                    state.accounts.get(label).and_then(|account| account.last_check_at.clone()),
+                )
+            })
+            .collect();
         tracing::debug!(
             notifications = report.notifications.len(),
             baselines = report.baselines_recorded.len(),
@@ -330,45 +441,132 @@ impl PassuffCore {
         );
         Ok(report)
     }
+
+    fn commit_probe(
+        &mut self,
+        observed: BTreeMap<String, ObservedAccount>,
+        failed: BTreeSet<String>,
+    ) {
+        let Some(pending) = self.pending.take() else {
+            return;
+        };
+        let previous = self.current.take().unwrap_or_default();
+        let mut merged = Vec::new();
+        let mut handled = BTreeSet::new();
+        for entry in pending {
+            handled.insert(entry.label.clone());
+            if failed.contains(&entry.label) {
+                if let Some(old) = previous.iter().find(|old| old.label == entry.label) {
+                    merged.push(old.clone());
+                }
+                continue;
+            }
+            let Some(seen) = observed.get(&entry.label) else {
+                if let Some(old) = previous.iter().find(|old| old.label == entry.label) {
+                    merged.push(old.clone());
+                }
+                continue;
+            };
+            let mut pull_requests = Vec::new();
+            for pull_request in entry.pull_requests {
+                if seen.targets.contains(&pull_request.node_id)
+                    && !seen.seen.contains(&pull_request.node_id)
+                {
+                    if let Some(old) = previous
+                        .iter()
+                        .find(|old| old.label == entry.label)
+                        .and_then(|old| {
+                            old.pull_requests
+                                .iter()
+                                .find(|old| old.node_id == pull_request.node_id)
+                        })
+                    {
+                        pull_requests.push(old.clone());
+                    }
+                } else {
+                    pull_requests.push(pull_request);
+                }
+            }
+            merged.push(ChangeProbe {
+                label: entry.label,
+                login: entry.login,
+                pull_requests,
+            });
+        }
+        for old in previous {
+            if !handled.contains(&old.label) {
+                merged.push(old);
+            }
+        }
+        merged.sort_by(|left, right| left.label.cmp(&right.label));
+        self.current = Some(merged);
+    }
 }
 
-const KNOWN_RECENT_PULL_REQUESTS: usize = 20;
-
-/// Node ids to hydrate by id: every watched open pull request plus the most
-/// recently updated watched pull requests, capped at the 100-id node limit.
-fn observation_known_ids(account: &crate::domain::AccountState) -> Vec<String> {
-    let mut ids: Vec<String> = Vec::new();
-    for pull_request in account
-        .pull_requests
-        .values()
-        .filter(|pull_request| pull_request.current.state == PrState::Open)
-    {
-        if ids.len() >= 100 {
-            return ids;
-        }
-        if !ids.contains(&pull_request.node_id) {
-            ids.push(pull_request.node_id.clone());
-        }
-    }
-    let mut recent: Vec<_> = account.pull_requests.values().collect();
-    recent.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
-    for pull_request in recent.into_iter().take(KNOWN_RECENT_PULL_REQUESTS) {
-        if ids.len() >= 100 {
-            break;
-        }
-        if !ids.contains(&pull_request.node_id) {
-            ids.push(pull_request.node_id.clone());
-        }
-    }
-    ids
+fn merge_probe_failures(report: &mut RefreshReport, failures: Vec<AccountFailure>) {
+    let labels: BTreeSet<String> = failures.iter().map(|failure| failure.label.clone()).collect();
+    report
+        .account_failures
+        .retain(|failure| !labels.contains(&failure.label));
+    report.account_failures.extend(failures);
 }
 
+#[derive(Debug, Clone, Copy)]
+enum CycleKind {
+    Targeted,
+    Reconciliation,
+}
+
+struct ObservedAccount {
+    targets: Vec<String>,
+    seen: Vec<String>,
+}
+
+/// Ids the probe reported as relevant: changed or new open pull requests,
+/// state transitions, and short-lived pull requests.
+fn relevant_targets(
+    current: Option<&ChangeProbe>,
+    pending: &ChangeProbe,
+    last_check_at: Option<&str>,
+) -> Vec<String> {
+    let mut targets = Vec::new();
+    for pull_request in &pending.pull_requests {
+        let previous = current.and_then(|current| {
+            current
+                .pull_requests
+                .iter()
+                .find(|previous| previous.node_id == pull_request.node_id)
+        });
+        let relevant = match previous {
+            None => {
+                pull_request.state == PrState::Open
+                    || (pull_request.state.is_terminal()
+                        && last_check_at.is_some_and(|last| {
+                            created_after(&pull_request.created_at, last)
+                        }))
+            }
+            Some(previous) => {
+                if previous.state != pull_request.state {
+                    true
+                } else if pull_request.state == PrState::Open {
+                    previous != pull_request
+                } else {
+                    false
+                }
+            }
+        };
+        if relevant && !targets.contains(&pull_request.node_id) {
+            targets.push(pull_request.node_id.clone());
+        }
+    }
+    targets
+}
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::credential::CredentialError;
     use crate::domain::{ApiAllowance, CiResult, CiState, Comment, ProbePullRequest, PullRequestKey, StateError, WatcherState};
-    use crate::github::{AccountProbe, GitHubError};
+    use crate::github::{AccountObservation, AccountProbe, GitHubError};
     use async_trait::async_trait;
     use passuff_config::{
         AccountConfig, CredentialSpec, EventToggles, WatchConfig, WatchMode,
@@ -441,6 +639,8 @@ mod tests {
             &self,
             _token: &str,
             _graphql_url: &Url,
+            _target_ids: &[String],
+            _discovery: Discovery,
             _known_node_ids: &[String],
         ) -> Result<AccountObservation, GitHubError> {
             Err(GitHubError::Transport("unused".to_string()))
@@ -510,6 +710,7 @@ mod tests {
             credentials: Arc::new(EnvCredentials),
             current: None,
             pending: None,
+            last_check: BTreeMap::new(),
         }
     }
 
@@ -572,7 +773,7 @@ mod tests {
             Arc::new(BrokenStore),
         );
         assert!(core.probe().await.expect("first probe").changed);
-        assert!(core.refresh().await.is_err());
+        assert!(core.refresh_reconciliation().await.is_err());
         assert!(core.probe().await.expect("second probe").changed);
     }
     struct ObservationGateway {
@@ -597,6 +798,8 @@ mod tests {
             &self,
             _token: &str,
             _graphql_url: &Url,
+            _target_ids: &[String],
+            _discovery: Discovery,
             _known_node_ids: &[String],
         ) -> Result<AccountObservation, GitHubError> {
             Ok(self.observation.lock().expect("observation").clone())
@@ -656,7 +859,7 @@ mod tests {
         ))));
         let store = Arc::new(MemoryStore(Arc::new(Mutex::new(WatcherState::default()))));
         let mut core = core(config(WatchMode::All, Vec::new()), gateway.clone(), store);
-        assert!(core.refresh().await.expect("baseline").notifications.is_empty());
+        assert!(core.refresh_reconciliation().await.expect("baseline").notifications.is_empty());
         gateway.set(observation(authored(
             crate::domain::PrState::Merged,
             vec![Comment {
@@ -666,7 +869,7 @@ mod tests {
                 created_at: "2026-11-03T12:30:00Z".to_string(),
             }],
         )));
-        assert!(core.refresh().await.expect("retired").notifications.is_empty());
+        assert!(core.refresh_reconciliation().await.expect("retired").notifications.is_empty());
     }
 
 }

@@ -210,7 +210,7 @@ impl CliRuntime {
             Err(error) => return self.state_error(error),
         };
 
-        let report = match core.refresh().await {
+        let report = match core.refresh_reconciliation().await {
             Ok(report) => report,
             Err(error) => return self.state_error(error),
         };
@@ -283,7 +283,7 @@ impl CliRuntime {
             first_cycle = false;
             let refresh = tokio::select! {
                 _ = control.interrupted() => break,
-                refresh = core.refresh() => refresh,
+                refresh = core.refresh_reconciliation() => refresh,
             };
             match refresh {
                 Ok(report) => {
@@ -460,6 +460,8 @@ mod tests {
             &self,
             _token: &str,
             _graphql_url: &url::Url,
+            _target_ids: &[String],
+            _discovery: passuff_core::Discovery,
             _known_node_ids: &[String],
         ) -> Result<AccountObservation, GitHubError> {
             tokio::time::sleep(Duration::from_secs(30)).await;
@@ -548,6 +550,7 @@ mod tests {
     async fn watch_stops_while_a_cycle_is_in_flight() {
         let config = AppConfig {
             poll_interval_secs: 1,
+            reconciliation_interval_secs: 3600,
             core: CoreConfig {
                 watch: passuff_config::WatchConfig::default(),
                 accounts: BTreeMap::from([(
@@ -596,6 +599,8 @@ mod tests {
             &self,
             _token: &str,
             _graphql_url: &url::Url,
+            _target_ids: &[String],
+            _discovery: passuff_core::Discovery,
             _known_node_ids: &[String],
         ) -> Result<AccountObservation, GitHubError> {
             Ok(AccountObservation {

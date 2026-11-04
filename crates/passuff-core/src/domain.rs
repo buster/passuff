@@ -326,6 +326,7 @@ pub struct ProbePullRequest {
 /// One account's change probe result, without observations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChangeProbe {
+    pub label: String,
     pub login: String,
     pub pull_requests: Vec<ProbePullRequest>,
 }
@@ -335,6 +336,7 @@ pub struct ChangeProbe {
 pub struct ChangeSignal {
     pub changed: bool,
     pub allowance: Option<ApiAllowance>,
+    pub failures: Vec<AccountFailure>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -344,7 +346,7 @@ pub struct RefreshReport {
     pub baselines_recorded: Vec<PullRequestKey>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountFailure {
     pub label: String,
     pub kind: AccountFailureKind,

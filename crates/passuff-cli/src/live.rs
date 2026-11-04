@@ -70,6 +70,7 @@ impl ObservationSession {
                     Ok(core) => {
                         self.core = core;
                         self.config = config;
+                        self.last_full = None;
                     }
                     Err(outcome) => {
                         return self.failed(outcome.transcript);
@@ -88,33 +89,28 @@ impl ObservationSession {
         };
         self.backoff = INITIAL_BACKOFF;
 
-        let due = self
-            .last_full
-            .is_none_or(|last| last.elapsed() >= Duration::from_secs(300));
+        let interval = Duration::from_secs(self.config.reconciliation_interval_secs.max(1));
+        let due = self.last_full.is_none_or(|last| last.elapsed() >= interval);
         let mut changed = false;
-        let mut failure = None;
+        let mut failure = format_failures(&signal.failures);
         if (signal.changed || due) && allowance_allows_cycle(signal.allowance.as_ref()) {
-            match self.core.refresh().await {
+            let refreshed = if due {
+                self.core.refresh_reconciliation().await
+            } else {
+                self.core.refresh_targeted().await
+            };
+            match refreshed {
                 Ok(refreshed) => {
                     self.runtime
                         .deliver_report(&self.config, &refreshed)
                         .await;
-                    if let Some(account_failure) = refreshed.account_failures.first() {
-                        let extra = refreshed.account_failures.len().saturating_sub(1);
-                        failure = Some(if extra > 0 {
-                            format!(
-                                "account {} failed: {} (+{extra})",
-                                account_failure.label, account_failure.detail
-                            )
-                        } else {
-                            format!(
-                                "account {} failed: {}",
-                                account_failure.label, account_failure.detail
-                            )
-                        });
+                    if let Some(account_failure) = format_failures(&refreshed.account_failures) {
+                        failure = Some(account_failure);
                     }
                     changed = true;
-                    self.last_full = Some(std::time::Instant::now());
+                    if due {
+                        self.last_full = Some(std::time::Instant::now());
+                    }
                 }
                 Err(error) => {
                     failure = Some(error.to_string());
@@ -142,6 +138,16 @@ impl ObservationSession {
             next_delay: delay,
         }
     }
+}
+
+fn format_failures(failures: &[passuff_core::AccountFailure]) -> Option<String> {
+    let first = failures.first()?;
+    let extra = failures.len().saturating_sub(1);
+    Some(if extra > 0 {
+        format!("account {} failed: {} (+{extra})", first.label, first.detail)
+    } else {
+        format!("account {} failed: {}", first.label, first.detail)
+    })
 }
 
 fn allowance_allows_cycle(allowance: Option<&ApiAllowance>) -> bool {

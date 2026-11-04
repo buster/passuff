@@ -217,7 +217,7 @@ fn current_observation(current: &AuthoredPullRequest) -> CurrentObservation {
     }
 }
 
-fn created_after(created_at: &str, last_check_at: &str) -> bool {
+pub(crate) fn created_after(created_at: &str, last_check_at: &str) -> bool {
     match (
         DateTime::parse_from_rfc3339(created_at),
         DateTime::parse_from_rfc3339(last_check_at),

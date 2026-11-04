@@ -172,6 +172,8 @@ pub struct World {
     pub gh_login_fails: bool,
     pub interactive: bool,
     pub real_credentials: bool,
+    pub reconciliation_interval_secs: Option<u64>,
+    pub fail_observe_once: bool,
     pub config_text: Option<String>,
     pub watch_scope: Vec<String>,
     pub fail_state_write: bool,
@@ -236,6 +238,8 @@ impl Default for World {
             gh_login_fails: false,
             interactive: false,
             real_credentials: false,
+            reconciliation_interval_secs: None,
+            fail_observe_once: false,
             config_text: None,
             watch_scope: Vec::new(),
             fail_state_write: false,
@@ -600,6 +604,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             .collect();
         AppConfig {
             poll_interval_secs: 1,
+            reconciliation_interval_secs: self.reconciliation_interval_secs.unwrap_or(3600),
             core: CoreConfig {
                 accounts,
                 events: self.events.clone(),
@@ -649,6 +654,10 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             self.check_clock.clone(),
             self.involved_pull_requests.clone(),
         ));
+        if self.fail_observe_once {
+            gateway.fail_next_observe();
+            self.fail_observe_once = false;
+        }
         let credentials = self.credentials(false);
         let store: Arc<dyn SnapshotStore> = if self.failing_store {
             Arc::new(FailingStore)
@@ -826,6 +835,19 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
 
     pub fn fail_browser(&mut self) {
         self.browser_fails = true;
+    }
+
+    pub fn observation_observed_targets(&self) -> Vec<String> {
+        self.observation_gateway
+            .as_ref()
+            .map(FakeGateway::observed_targets)
+            .unwrap_or_default()
+    }
+
+    pub fn fail_next_observe(&self) {
+        if let Some(gateway) = self.observation_gateway.as_ref() {
+            gateway.fail_next_observe();
+        }
     }
 
     pub fn observation_observe_calls(&self) -> usize {
@@ -1437,8 +1459,10 @@ struct FakeGateway {
     probe_calls: Arc<AtomicUsize>,
     observe_calls: Arc<AtomicUsize>,
     fail_probe: Arc<AtomicBool>,
+    fail_observe: Arc<AtomicBool>,
     allowance: Arc<Mutex<Option<ApiAllowance>>>,
     involved: Arc<Mutex<Vec<String>>>,
+    observe_targets: Arc<Mutex<Vec<Vec<String>>>>,
 }
 
 impl FakeGateway {
@@ -1457,8 +1481,10 @@ impl FakeGateway {
             probe_calls: Arc::new(AtomicUsize::new(0)),
             observe_calls: Arc::new(AtomicUsize::new(0)),
             fail_probe: Arc::new(AtomicBool::new(false)),
+            fail_observe: Arc::new(AtomicBool::new(false)),
             allowance: Arc::new(Mutex::new(None)),
             involved,
+            observe_targets: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -1478,6 +1504,19 @@ impl FakeGateway {
         self.fail_probe.store(true, Ordering::SeqCst);
     }
 
+    fn fail_next_observe(&self) {
+        self.fail_observe.store(true, Ordering::SeqCst);
+    }
+
+    fn observed_targets(&self) -> Vec<String> {
+        self.observe_targets
+            .lock()
+            .expect("observe targets")
+            .last()
+            .cloned()
+            .unwrap_or_default()
+    }
+
     fn probe_calls(&self) -> usize {
         self.probe_calls.load(Ordering::SeqCst)
     }
@@ -1493,9 +1532,18 @@ impl GitHubGateway for FakeGateway {
         &self,
         token: &str,
         _graphql_url: &Url,
+        target_ids: &[String],
+        _discovery: passuff_core::Discovery,
         _known_node_ids: &[String],
     ) -> Result<AccountObservation, GitHubError> {
         self.observe_calls.fetch_add(1, Ordering::SeqCst);
+        self.observe_targets
+            .lock()
+            .expect("observe targets")
+            .push(target_ids.to_vec());
+        if self.fail_observe.swap(false, Ordering::SeqCst) {
+            return Err(GitHubError::Transport("unavailable".to_string()));
+        }
         let live = self.live.lock().expect("live gateway");
         let Some((login, pull_requests)) = live.get(token) else {
             return Err(GitHubError::Authentication);

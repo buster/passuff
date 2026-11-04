@@ -58,16 +58,26 @@ impl GitHubError {
     }
 }
 
+/// Which assigned/review-requested pull requests a pass hydrates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Discovery {
+    None,
+    New,
+    All,
+}
+
 #[async_trait]
 pub trait GitHubGateway: Send + Sync {
     async fn observe(
         &self,
         token: &str,
         graphql_url: &Url,
+        target_ids: &[String],
+        discovery: Discovery,
         known_node_ids: &[String],
     ) -> Result<AccountObservation, GitHubError>;
 
-    /// Query the open authored pull requests and the GraphQL allowance without
+    /// Query the authored pull requests and the GraphQL allowance without
     /// building observations.
     async fn probe(&self, token: &str, graphql_url: &Url) -> Result<AccountProbe, GitHubError>;
 }
@@ -137,10 +147,19 @@ impl GitHubGateway for GitHubApiAdapter {
         &self,
         token: &str,
         graphql_url: &Url,
+        target_ids: &[String],
+        discovery: Discovery,
         known_node_ids: &[String],
     ) -> Result<AccountObservation, GitHubError> {
         match self
-            .observe_with(token, graphql_url, known_node_ids, MAIN_QUERY, NODES_QUERY)
+            .observe_with(
+                token,
+                graphql_url,
+                target_ids,
+                discovery,
+                known_node_ids,
+                NODES_QUERY,
+            )
             .await
         {
             Err(GitHubError::GraphQl(message)) if mentions_stack(&message) => {
@@ -148,8 +167,9 @@ impl GitHubGateway for GitHubApiAdapter {
                 self.observe_with(
                     token,
                     graphql_url,
+                    target_ids,
+                    discovery,
                     known_node_ids,
-                    &without_stack_fields(MAIN_QUERY),
                     &without_stack_fields(NODES_QUERY),
                 )
                 .await
@@ -168,29 +188,96 @@ impl GitHubApiAdapter {
         &self,
         token: &str,
         graphql_url: &Url,
+        target_ids: &[String],
+        discovery: Discovery,
         known_node_ids: &[String],
-        main_query: &str,
         nodes_query: &str,
     ) -> Result<AccountObservation, GitHubError> {
         tracing::debug!(
             host = graphql_url.host_str().unwrap_or("unknown"),
             "querying GitHub"
         );
+        let (login, mut pull_requests) = self
+            .observe_ids(token, graphql_url, target_ids, nodes_query)
+            .await?;
+        let mut seen: std::collections::HashSet<String> =
+            pull_requests.iter().map(|pr| pr.node_id.clone()).collect();
+
+        let mut discovered: Vec<String> = Vec::new();
+        if discovery != Discovery::None {
+            for query in [
+                "is:pr is:open assignee:@me",
+                "is:pr is:open review-requested:@me",
+            ] {
+                for id in self
+                    .search_pull_request_ids(token, graphql_url, query)
+                    .await
+                {
+                    if !discovered.contains(&id) {
+                        discovered.push(id);
+                    }
+                }
+            }
+            let extra: Vec<String> = discovered
+                .iter()
+                .filter(|id| !seen.contains(*id))
+                .filter(|id| match discovery {
+                    Discovery::New => !known_node_ids.contains(*id),
+                    _ => true,
+                })
+                .cloned()
+                .collect();
+            if !extra.is_empty() {
+                let (_, more) = self
+                    .observe_ids(token, graphql_url, &extra, nodes_query)
+                    .await?;
+                for pull_request in more {
+                    if seen.insert(pull_request.node_id.clone()) {
+                        pull_requests.push(pull_request);
+                    }
+                }
+            }
+        }
+
+        let login = login
+            .ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
+        tracing::debug!(
+            pull_requests = pull_requests.len(),
+            "GitHub observation parsed"
+        );
+        Ok(AccountObservation {
+            login,
+            pull_requests,
+            involved_node_ids: discovered,
+            checked_at: Utc::now().to_rfc3339(),
+        })
+    }
+
+    async fn observe_ids(
+        &self,
+        token: &str,
+        graphql_url: &Url,
+        ids: &[String],
+        nodes_query: &str,
+    ) -> Result<(Option<String>, Vec<AuthoredPullRequest>), GitHubError> {
         let mut login: Option<String> = None;
         let mut pull_requests = Vec::new();
-        let after: Option<String> = None;
-        let mut seen_nodes = std::collections::HashSet::new();
-
-        for _ in 0..10 {
+        let mut seen = std::collections::HashSet::new();
+        let chunks: Vec<&[String]> = if ids.is_empty() {
+            vec![&[]]
+        } else {
+            ids.chunks(100).collect()
+        };
+        for chunk in chunks {
             let body = self
                 .post(
                     token,
                     graphql_url,
-                    main_query,
-                    serde_json::json!({ "after": after }),
+                    nodes_query,
+                    serde_json::json!({ "ids": chunk }),
                 )
                 .await?;
-            let response: GqlResponse = serde_json::from_str(&body)
+            let response: GqlNodesResponse = serde_json::from_str(&body)
                 .map_err(|error| GitHubError::Malformed(error.to_string()))?;
             if let Some(errors) = response.errors.as_ref().filter(|errors| !errors.is_empty()) {
                 if response.data.is_none() {
@@ -207,95 +294,13 @@ impl GitHubApiAdapter {
                 .data
                 .ok_or_else(|| GitHubError::Malformed("missing data".to_string()))?;
             login.get_or_insert_with(|| data.viewer.login.clone());
-            let Some(connection) = data.viewer.pull_requests else {
-                break;
-            };
-            for node in connection.nodes {
-                if seen_nodes.insert(node.id.clone()) {
+            for node in data.nodes.into_iter().flatten() {
+                if seen.insert(node.id.clone()) {
                     pull_requests.push(map_pull_request(node));
                 }
             }
-            // One page bounds the response size; older authored pull requests
-            // live in the watch state and are hydrated by node id.
-            break;
         }
-
-        if !known_node_ids.is_empty() {
-            if let Ok(body) = self
-                .post(
-                    token,
-                    graphql_url,
-                    nodes_query,
-                    serde_json::json!({ "ids": known_node_ids }),
-                )
-                .await
-            {
-                if let Ok(response) = serde_json::from_str::<GqlNodesResponse>(&body) {
-                    if let Some(errors) =
-                        response.errors.as_ref().filter(|errors| !errors.is_empty())
-                    {
-                        let message = errors
-                            .iter()
-                            .map(|error| error.message.clone())
-                            .collect::<Vec<_>>()
-                            .join("; ");
-                        if response.data.is_none() && mentions_stack(&message) {
-                            return Err(GitHubError::GraphQl(message));
-                        }
-                    }
-                    if let Some(data) = response.data {
-                        for node in data.nodes.into_iter().flatten() {
-                            if seen_nodes.insert(node.id.clone()) {
-                                pull_requests.push(map_pull_request(node));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let mut discovered: Vec<String> = Vec::new();
-        for query in ["is:pr assignee:@me", "is:pr review-requested:@me"] {
-            for id in self.search_pull_request_ids(token, graphql_url, query).await {
-                if !seen_nodes.contains(&id) && !discovered.contains(&id) {
-                    discovered.push(id);
-                }
-            }
-        }
-        if !discovered.is_empty() {
-            if let Ok(body) = self
-                .post(
-                    token,
-                    graphql_url,
-                    nodes_query,
-                    serde_json::json!({ "ids": discovered }),
-                )
-                .await
-            {
-                if let Ok(response) = serde_json::from_str::<GqlNodesResponse>(&body) {
-                    if let Some(data) = response.data {
-                        for node in data.nodes.into_iter().flatten() {
-                            if seen_nodes.insert(node.id.clone()) {
-                                pull_requests.push(map_pull_request(node));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let login =
-            login.ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
-        tracing::debug!(
-            pull_requests = pull_requests.len(),
-            "GitHub observation parsed"
-        );
-        Ok(AccountObservation {
-            login,
-            pull_requests,
-            involved_node_ids: discovered,
-            checked_at: Utc::now().to_rfc3339(),
-        })
+        Ok((login, pull_requests))
     }
 
     async fn search_pull_request_ids(
@@ -619,44 +624,9 @@ fn map_ci(rollup: &GqlRollup) -> CiResult {
     }
 }
 
-const MAIN_QUERY: &str = r#"
-query($after: String) {
-  viewer {
-    login
-    pullRequests(first: 50, after: $after, states: [OPEN, MERGED, CLOSED], orderBy: {field: UPDATED_AT, direction: DESC}) {
-      pageInfo { hasNextPage endCursor }
-      nodes {
-        id
-        number
-        title
-        body
-        url
-        state
-        merged
-        isDraft
-        createdAt
-        updatedAt
-        baseRefName
-        mergedBy { login }
-        stack { number size baseRefName }
-        stackEntry { position }
-        author { login }
-        repository { nameWithOwner }
-        assignees(first: 20) { nodes { login } }
-        labels(first: 20) { nodes { name } }
-        milestone { title }
-        comments(last: 100) { nodes { id author { login } body createdAt } }
-        reviews(last: 100) { nodes { id author { login } state body submittedAt } }
-        reviewThreads(last: 50) { nodes { comments(last: 20) { nodes { id author { login } body createdAt } } } }
-        commits(last: 1) { nodes { commit { oid statusCheckRollup { state contexts(first: 50) { nodes { __typename ... on CheckRun { name conclusion } ... on StatusContext { context state } } } } } } }
-      }
-    }
-  }
-}
-"#;
-
 const NODES_QUERY: &str = r#"
 query($ids: [ID!]!) {
+  viewer { login }
   nodes(ids: $ids) {
     ... on PullRequest {
       id
@@ -753,8 +723,14 @@ struct GqlNodesResponse {
 
 #[derive(Debug, Deserialize)]
 struct GqlNodesData {
+    viewer: GqlViewerLogin,
     #[serde(default)]
     nodes: Vec<Option<GqlPr>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlViewerLogin {
+    login: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1082,27 +1058,16 @@ mod tests {
             .and(path("/graphql"))
             .and(body_string_contains("nodes(ids:"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "data": { "nodes": [assigned] }
+                "data": { "viewer": { "login": "octo" }, "nodes": [assigned] }
             })))
             .mount(&server)
             .await;
-        mount(
-            &server,
-            200,
-            serde_json::json!({
-                "data": { "viewer": { "login": "octo", "pullRequests": {
-                    "pageInfo": { "hasNextPage": false, "endCursor": null },
-                    "nodes": [node()]
-                } } }
-            }),
-        )
-        .await;
         let adapter = GitHubApiAdapter::new();
         let observation = adapter
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::All, &[])
             .await
             .expect("observation");
-        assert_eq!(observation.pull_requests.len(), 2);
+        assert_eq!(observation.pull_requests.len(), 1);
         assert!(observation
             .pull_requests
             .iter()
@@ -1119,16 +1084,13 @@ mod tests {
             &server,
             200,
             serde_json::json!({
-                "data": { "viewer": { "login": "octo", "pullRequests": {
-                    "pageInfo": { "hasNextPage": false, "endCursor": null },
-                    "nodes": [node]
-                } } }
+                "data": { "viewer": { "login": "octo" }, "nodes": [node] }
             }),
         )
         .await;
         let adapter = GitHubApiAdapter::new();
         let observation = adapter
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect("observation");
         assert_eq!(observation.pull_requests[0].body, "");
@@ -1142,15 +1104,12 @@ mod tests {
             &server,
             200,
             serde_json::json!({
-                "data": { "viewer": { "login": "octo", "pullRequests": {
-                    "pageInfo": { "hasNextPage": false, "endCursor": null },
-                    "nodes": [node()]
-                } } }
+                "data": { "viewer": { "login": "octo" }, "nodes": [node()] }
             }),
         )
         .await;
         let observation = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect("observation");
         assert_eq!(observation.login, "octo");
@@ -1176,7 +1135,7 @@ mod tests {
         let server = MockServer::start().await;
         mount(&server, 401, serde_json::json!({})).await;
         let error = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect_err("authentication error");
         assert!(matches!(error, GitHubError::Authentication));
@@ -1194,7 +1153,7 @@ mod tests {
             .mount(&server)
             .await;
         let error = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect_err("rate limit error");
         assert!(matches!(
@@ -1205,7 +1164,7 @@ mod tests {
         let server = MockServer::start().await;
         mount(&server, 500, serde_json::json!({})).await;
         let error = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect_err("transport error");
         assert!(matches!(error, GitHubError::Transport(_)));
@@ -1221,7 +1180,7 @@ mod tests {
         )
         .await;
         let error = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect_err("graphql error");
         assert!(matches!(error, GitHubError::GraphQl(message) if message == "Bad query"));
@@ -1233,7 +1192,7 @@ mod tests {
             .mount(&server)
             .await;
         let error = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect_err("malformed response");
         assert!(matches!(error, GitHubError::Malformed(_)));
@@ -1265,15 +1224,12 @@ mod tests {
             &server,
             200,
             serde_json::json!({
-                "data": { "viewer": { "login": "octo", "pullRequests": {
-                    "pageInfo": { "hasNextPage": false, "endCursor": null },
-                    "nodes": [merged, closed, unknown]
-                } } }
+                "data": { "viewer": { "login": "octo" }, "nodes": [merged, closed, unknown] }
             }),
         )
         .await;
         let observation = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect("observation");
         assert_eq!(observation.pull_requests[0].state, PrState::Merged);
@@ -1288,7 +1244,7 @@ mod tests {
     async fn observe_reports_transport_failures_and_missing_data() {
         let unreachable = Url::parse("http://127.0.0.1:1/graphql").expect("url");
         let error = GitHubApiAdapter::new()
-            .observe("token", &unreachable, &[])
+            .observe("token", &unreachable, &[], Discovery::None, &[])
             .await
             .expect_err("transport error");
         assert!(matches!(error, GitHubError::Transport(_)));
@@ -1296,7 +1252,7 @@ mod tests {
         let server = MockServer::start().await;
         mount(&server, 200, serde_json::json!({ "data": null })).await;
         let error = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect_err("missing data");
         assert!(
@@ -1311,12 +1267,12 @@ mod tests {
             &server,
             200,
             serde_json::json!({
-                "data": { "viewer": { "login": "octo", "pullRequests": null } }
+                "data": { "viewer": { "login": "octo" }, "nodes": [] }
             }),
         )
         .await;
         let observation = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect("observation");
         assert_eq!(observation.login, "octo");
@@ -1334,15 +1290,12 @@ mod tests {
             &server,
             200,
             serde_json::json!({
-                "data": { "viewer": { "login": "octo", "pullRequests": {
-                    "pageInfo": { "hasNextPage": false, "endCursor": null },
-                    "nodes": [stacked]
-                } } }
+                "data": { "viewer": { "login": "octo" }, "nodes": [stacked] }
             }),
         )
         .await;
         let observation = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect("observation");
         assert_eq!(
@@ -1385,15 +1338,12 @@ mod tests {
                 &server,
                 200,
                 serde_json::json!({
-                    "data": { "viewer": { "login": "octo", "pullRequests": {
-                        "pageInfo": { "hasNextPage": false, "endCursor": null },
-                        "nodes": [incomplete]
-                    } } }
+                    "data": { "viewer": { "login": "octo" }, "nodes": [incomplete] }
                 }),
             )
             .await;
             let observation = GitHubApiAdapter::new()
-                .observe("token", &endpoint(&server), &[])
+                .observe("token", &endpoint(&server), &[], Discovery::None, &[])
                 .await
                 .expect("observation");
             assert!(observation.pull_requests[0].stack.is_none());
@@ -1413,10 +1363,7 @@ mod tests {
                 }))
             } else {
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "data": { "viewer": { "login": "octo", "pullRequests": {
-                        "pageInfo": { "hasNextPage": false, "endCursor": null },
-                        "nodes": [node()]
-                    } } }
+                    "data": { "viewer": { "login": "octo" }, "nodes": [node()] }
                 }))
             }
         }
@@ -1433,7 +1380,7 @@ mod tests {
             .mount(&server)
             .await;
         let observation = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &[])
+            .observe("token", &endpoint(&server), &[], Discovery::None, &[])
             .await
             .expect("retry observation");
         assert_eq!(observation.login, "octo");
@@ -1443,9 +1390,9 @@ mod tests {
 
     #[test]
     fn queries_are_read_only() {
-        assert!(!MAIN_QUERY.to_ascii_lowercase().contains("mutation"));
         assert!(!NODES_QUERY.to_ascii_lowercase().contains("mutation"));
-        assert!(!without_stack_fields(MAIN_QUERY).contains("stackEntry"));
+        assert!(!NODES_QUERY.to_ascii_lowercase().contains("mutation"));
+        assert!(!without_stack_fields(NODES_QUERY).contains("stackEntry"));
         assert!(!without_stack_fields(NODES_QUERY).contains("stack {"));
     }
     struct NodesRetryResponder {
@@ -1460,20 +1407,17 @@ mod tests {
                 .get("variables")
                 .and_then(|variables| variables.get("ids"))
                 .is_some();
-            if is_nodes && call == 1 {
+            if is_nodes && call == 0 {
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
                     "errors": [{ "message": "Field 'stackEntry' doesn't exist on type 'PullRequest'" }]
                 }))
             } else if is_nodes {
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "data": { "nodes": [node()] }
+                    "data": { "viewer": { "login": "octo" }, "nodes": [node()] }
                 }))
             } else {
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "data": { "viewer": { "login": "octo", "pullRequests": {
-                        "pageInfo": { "hasNextPage": false, "endCursor": null },
-                        "nodes": [node()]
-                    } } }
+                    "data": { "viewer": { "login": "octo" }, "nodes": [node()] }
                 }))
             }
         }
@@ -1490,7 +1434,7 @@ mod tests {
             .mount(&server)
             .await;
         let observation = GitHubApiAdapter::new()
-            .observe("token", &endpoint(&server), &["node-1".to_string()])
+            .observe("token", &endpoint(&server), &["node-1".to_string()], Discovery::None, &[])
             .await
             .expect("retry observation");
         assert_eq!(observation.login, "octo");

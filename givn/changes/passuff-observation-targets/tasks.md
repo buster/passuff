@@ -4,7 +4,7 @@ Release note for every batch commit: `Observe only changed open pull requests an
 
 ### Batch: `terminal-retirement`
 
-- [ ] Setup: confirm the existing Gherkin runner and strict mode.
+- [x] Setup: confirm the existing Gherkin runner and strict mode.
   - `givn/commands.yaml` keeps `verify.command: ./scripts/verify.sh` and
     `verify.e2e_command: ./scripts/verify.sh --e2e`. The runner executes
     `.feature` files under `givn/specs/` and the change's `specs/`.
@@ -21,41 +21,41 @@ Release note for every batch commit: `Observe only changed open pull requests an
     The permanent `@e2e` scenarios keep running through
     `./scripts/verify.sh --e2e` (16 scenarios before this change).
 
-- [ ] Runner: skip `@givn.removed` scenarios in
+- [x] Runner: skip `@givn.removed` scenarios in
       `crates/passuff-cli/tests/features_runner.rs`; they are archive
       directives and carry a placeholder step, not executable behavior.
 
-- [ ] Core: retirement of known terminal pull requests.
-  - [ ] Add `state: PrState` and `created_at: String` to `ProbePullRequest`;
+- [x] Core: retirement of known terminal pull requests.
+  - [x] Add `state: PrState` and `created_at: String` to `ProbePullRequest`;
         add `state` and `createdAt` to `PROBE_QUERY` and `GqlProbePr`; map the
         GraphQL state with the existing state helper.
-  - [ ] In `crates/passuff-core/src/cycle.rs`, skip classification when the
+  - [x] In `crates/passuff-core/src/cycle.rs`, skip classification when the
         previous observation is terminal and the current observation is
         terminal; do not record an activity event or a notification. A
         transition into the terminal state still classifies.
-  - [ ] Unit test: a comment and a review on a terminal-to-terminal observation
+  - [x] Unit test: a comment and a review on a terminal-to-terminal observation
         produce no events; a terminal transition still produces `StateChange`.
 
-- [ ] Scenario: `Activity on a merged or closed pull request does not notify`
+- [x] Scenario: `Activity on a merged or closed pull request does not notify`
   - [ ] **Design constraints:** a known watched pull request already in the
         merged or closed state receives a comment; run one check; the
         transcript reports no notifications. The terminal transition itself
         remains covered by the permanent scenarios. D1: terminal records stay
         in state and remain visible.
-  - [ ] COMMIT: `<pending>` -- Batch: `terminal-retirement`
+  - [x] COMMIT: `4dc4695` -- Batch: `terminal-retirement`
 
-- [ ] Scenario: `A review on a merged pull request does not notify`
+- [x] Scenario: `A review on a merged pull request does not notify`
   - [ ] **Design constraints:** the same retirement rule applies to the
         reviews event family; a submitted review on a terminal pull request
         produces no notification.
-  - [ ] COMMIT: `<pending>` -- Batch: `terminal-retirement`
+  - [x] COMMIT: `4dc4695` -- Batch: `terminal-retirement`
 
-- [ ] Scenario: `A comment on a merged pull request reaches the inbox` (removed)
+- [x] Scenario: `A comment on a merged pull request reaches the inbox` (removed)
   - [ ] **Design constraints:** the permanent `inbox-navigation` scenario is
         removed by the delta; the runner skips the `@givn.removed`
         placeholder. No notification or inbox activity for post-terminal
         comments.
-  - [ ] COMMIT: `<pending>` -- Batch: `terminal-retirement`
+  - [x] COMMIT: `4dc4695` -- Batch: `terminal-retirement`
 
 ### Batch: `observation-targets`
 

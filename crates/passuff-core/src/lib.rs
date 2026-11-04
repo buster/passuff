@@ -18,6 +18,6 @@ pub use domain::{
     LoginSet, Notification, PrState, PullRequestKey, PullRequestStack, RefreshReport, Review,
     ReviewComment, ScopeSnapshot, StateError, WatchedPullRequest, WatcherState,
 };
-pub use github::{AccountObservation, AccountProbe, GitHubApiAdapter, GitHubError, GitHubGateway};
+pub use github::{AccountObservation, AccountProbe, Discovery, GitHubApiAdapter, GitHubError, GitHubGateway};
 pub use inbox::{AccountView, Inbox, InboxService, InboxView, PullRequestView, ReadOutcome};
 pub use state::{JsonStateStore, SnapshotStore};
