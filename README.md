@@ -13,6 +13,8 @@ requests you are not involved in stay silent; your own comments and reviews are
 recorded as read without a notification. It runs on Linux and macOS, prints a
 terminal transcript, raises a desktop notification, and plays a sound.
 
+![passuff inbox demo](passuff.gif)
+
 ## Quick start
 
 ```sh
@@ -121,6 +123,7 @@ passuff notify-test         send a test notification and play the configured sou
 passuff-tui                 open the inbox in a full-screen terminal UI
 passuff-tui --snapshot      print one TUI frame and exit
 passuff-tui --snapshot --observe  observe once, then print one frame
+```
 
 The terminal inbox groups pull requests that GitHub reports as one stack,
 showing the stack base and size and each member's position; repositories where
@@ -155,6 +158,8 @@ watch-scope picker: `j`/`k` move,
 `space` toggles, `m` switches all/selected, type `owner/name` and press Enter to
 add, and `esc` closes. Scripted snapshots accept `--picker`,
 `--scope-select`, `--scope-deselect`, `--scope-mode`, and `--scope-add`.
+
+```
 passuff --config PATH       use a specific configuration file
 passuff --state PATH        use a specific state file
 passuff --verbose           enable diagnostic logs on stderr
