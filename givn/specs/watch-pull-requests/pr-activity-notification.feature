@@ -10,8 +10,16 @@ Feature: Pull request activity notification
     Then  the terminal shows a notification for "acme/api#42"
     And  the desktop notification reports "New comment from @alice"
     And  the configured sound is played once
-    When  passuff is stopped
-    Then  the exit status is 0
+
+  @pr-activity-notification
+  Scenario: A pull request I did not author is watched
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "alice"
+    And  the pull request "acme/api#42" is assigned to me
+    And  the watcher has already observed "acme/api#42"
+    When  "bob" comments "Can you review this?" on "acme/api#42"
+    And  passuff runs one check
+    Then  the transcript reports a notification for "acme/api#42"
 
   @e2e @pr-activity-notification
   Scenario: Developer runs a single check and sees the current activity

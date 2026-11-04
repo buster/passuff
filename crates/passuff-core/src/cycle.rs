@@ -202,6 +202,7 @@ impl PassuffCore {
             }
             let login = observation.login.clone();
             entry.login = observation.login;
+            let involved = observation.involved_node_ids.clone();
             let has_prior_cycle = entry.last_check_at.is_some();
             let last_check_at = entry.last_check_at.clone();
 
@@ -217,7 +218,9 @@ impl PassuffCore {
                 {
                     continue;
                 }
-                if !pull_request.author.eq_ignore_ascii_case(&login) {
+                if !pull_request.author.eq_ignore_ascii_case(&login)
+                    && !involved.contains(&pull_request.node_id)
+                {
                     continue;
                 }
                 let key = pull_request.key.clone();

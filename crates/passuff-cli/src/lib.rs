@@ -599,6 +599,7 @@ mod tests {
         ) -> Result<AccountObservation, GitHubError> {
             Ok(AccountObservation {
                 login: "octo".to_string(),
+                involved_node_ids: Vec::new(),
                 pull_requests: vec![passuff_core::AuthoredPullRequest {
                     key: passuff_core::PullRequestKey::new("acme/web".to_string(), 1),
                     node_id: "node-1".to_string(),

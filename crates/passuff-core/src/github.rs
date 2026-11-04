@@ -14,6 +14,7 @@ use crate::domain::{
 pub struct AccountObservation {
     pub login: String,
     pub pull_requests: Vec<AuthoredPullRequest>,
+    pub involved_node_ids: Vec<String>,
     pub checked_at: String,
 }
 
@@ -259,6 +260,36 @@ impl GitHubApiAdapter {
             }
         }
 
+        let mut discovered: Vec<String> = Vec::new();
+        for query in ["is:pr assignee:@me", "is:pr review-requested:@me"] {
+            for id in self.search_pull_request_ids(token, graphql_url, query).await {
+                if !seen_nodes.contains(&id) && !discovered.contains(&id) {
+                    discovered.push(id);
+                }
+            }
+        }
+        if !discovered.is_empty() {
+            if let Ok(body) = self
+                .post(
+                    token,
+                    graphql_url,
+                    nodes_query,
+                    serde_json::json!({ "ids": discovered }),
+                )
+                .await
+            {
+                if let Ok(response) = serde_json::from_str::<GqlNodesResponse>(&body) {
+                    if let Some(data) = response.data {
+                        for node in data.nodes.into_iter().flatten() {
+                            if seen_nodes.insert(node.id.clone()) {
+                                pull_requests.push(map_pull_request(node));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let login =
             login.ok_or_else(|| GitHubError::Malformed("missing viewer login".to_string()))?;
         tracing::debug!(
@@ -268,8 +299,50 @@ impl GitHubApiAdapter {
         Ok(AccountObservation {
             login,
             pull_requests,
+            involved_node_ids: discovered,
             checked_at: Utc::now().to_rfc3339(),
         })
+    }
+
+    async fn search_pull_request_ids(
+        &self,
+        token: &str,
+        graphql_url: &Url,
+        query: &str,
+    ) -> Vec<String> {
+        let Ok(body) = self
+            .post(
+                token,
+                graphql_url,
+                SEARCH_QUERY,
+                serde_json::json!({ "query": query }),
+            )
+            .await
+        else {
+            return Vec::new();
+        };
+        let Ok(response) = serde_json::from_str::<GqlSearchResponse>(&body) else {
+            return Vec::new();
+        };
+        if response
+            .errors
+            .as_ref()
+            .is_some_and(|errors| !errors.is_empty())
+        {
+            tracing::debug!("involved pull request search failed; skipping it");
+            return Vec::new();
+        }
+        response
+            .data
+            .map(|data| {
+                data.search
+                    .nodes
+                    .into_iter()
+                    .flatten()
+                    .map(|node| node.id)
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     async fn probe_with(
@@ -827,6 +900,35 @@ struct GqlContexts {
     nodes: Vec<GqlContext>,
 }
 
+const SEARCH_QUERY: &str = r#"
+query($query: String!) {
+  search(query: $query, type: ISSUE, first: 100) {
+    nodes { ... on PullRequest { id } }
+  }
+}
+"#;
+
+#[derive(Debug, Deserialize)]
+struct GqlSearchResponse {
+    data: Option<GqlSearchData>,
+    errors: Option<Vec<GqlError>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlSearchData {
+    search: GqlSearchConnection,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlSearchConnection {
+    nodes: Vec<Option<GqlSearchNode>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GqlSearchNode {
+    id: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct GqlProbeResponse {
     data: Option<GqlProbeData>,
@@ -883,7 +985,7 @@ struct GqlContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_string_contains, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     fn endpoint(server: &MockServer) -> Url {
@@ -938,6 +1040,53 @@ mod tests {
                 }
             } }] }
         })
+    }
+
+    #[tokio::test]
+    async fn observe_hydrates_assigned_pull_requests() {
+        let server = MockServer::start().await;
+        let mut assigned = node();
+        assigned["id"] = serde_json::json!("node-2");
+        assigned["number"] = serde_json::json!(7);
+        assigned["repository"] = serde_json::json!({ "nameWithOwner": "acme/web" });
+        assigned["author"] = serde_json::json!({ "login": "alice" });
+        Mock::given(method("POST"))
+            .and(path("/graphql"))
+            .and(body_string_contains("search("))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": { "search": { "nodes": [{ "id": "node-2" }] } }
+            })))
+            .mount(&server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path("/graphql"))
+            .and(body_string_contains("nodes(ids:"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": { "nodes": [assigned] }
+            })))
+            .mount(&server)
+            .await;
+        mount(
+            &server,
+            200,
+            serde_json::json!({
+                "data": { "viewer": { "login": "octo", "pullRequests": {
+                    "pageInfo": { "hasNextPage": false, "endCursor": null },
+                    "nodes": [node()]
+                } } }
+            }),
+        )
+        .await;
+        let adapter = GitHubApiAdapter::new();
+        let observation = adapter
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect("observation");
+        assert_eq!(observation.pull_requests.len(), 2);
+        assert!(observation
+            .pull_requests
+            .iter()
+            .any(|pull_request| pull_request.key.to_string() == "acme/web#7"));
     }
 
     #[tokio::test]

@@ -180,6 +180,7 @@ pub struct World {
     pub planned_delay: Option<Duration>,
     pub e2e_pending_comment: Option<(String, String, String, String)>,
     pub ignored_pull_requests: Vec<String>,
+    pub involved_pull_requests: Arc<Mutex<Vec<String>>>,
     pub browser_log: Arc<Mutex<Vec<String>>>,
     pub browser_fails: bool,
     pub e2e_browser_log: Option<PathBuf>,
@@ -243,6 +244,7 @@ impl Default for World {
             planned_delay: None,
             e2e_pending_comment: None,
             ignored_pull_requests: Vec::new(),
+            involved_pull_requests: Arc::new(Mutex::new(Vec::new())),
             browser_log: Arc::new(Mutex::new(Vec::new())),
             browser_fails: false,
             e2e_browser_log: None,
@@ -641,6 +643,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         let gateway = Arc::new(FakeGateway::new(
             self.gateway_snapshot(),
             self.check_clock.clone(),
+            self.involved_pull_requests.clone(),
         ));
         let credentials = self.credentials(false);
         let store: Arc<dyn SnapshotStore> = if self.failing_store {
@@ -690,6 +693,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                     gateway: Arc::new(FakeGateway::new(
                         self.gateway_snapshot(),
                         self.check_clock.clone(),
+                        self.involved_pull_requests.clone(),
                     )),
                     store: Arc::new(JsonStateStore::new(self.state_path())),
                     credentials: self.credentials(false),
@@ -708,6 +712,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         let gateway = Arc::new(FakeGateway::new(
             self.gateway_snapshot(),
             self.check_clock.clone(),
+            self.involved_pull_requests.clone(),
         ));
         let credentials = self.credentials(self.interactive);
         let store: Arc<dyn SnapshotStore> = if self.failing_store {
@@ -771,7 +776,11 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         let config = ConfigLoader::parse(&text).expect("observation configuration");
         let path = self.scope_config_path();
         std::fs::write(&path, &text).expect("observation configuration file");
-        let gateway = FakeGateway::new(self.gateway_snapshot(), self.check_clock.clone());
+        let gateway = FakeGateway::new(
+            self.gateway_snapshot(),
+            self.check_clock.clone(),
+            self.involved_pull_requests.clone(),
+        );
         let credentials = self.credentials(false);
         let store: Arc<dyn SnapshotStore> = Arc::new(JsonStateStore::new(self.state_path()));
         let sound: Arc<dyn SoundPlayer> =
@@ -1340,6 +1349,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         let gateway = Arc::new(FakeGateway::new(
             self.gateway_snapshot(),
             self.check_clock.clone(),
+            self.involved_pull_requests.clone(),
         ));
         let credentials = self.credentials(false);
         let store: Arc<dyn SnapshotStore> = Arc::new(JsonStateStore::new(self.state_path()));
@@ -1411,12 +1421,14 @@ struct FakeGateway {
     observe_calls: Arc<AtomicUsize>,
     fail_probe: Arc<AtomicBool>,
     allowance: Arc<Mutex<Option<ApiAllowance>>>,
+    involved: Arc<Mutex<Vec<String>>>,
 }
 
 impl FakeGateway {
     fn new(
         snapshot: Vec<(String, String, Vec<AuthoredPullRequest>)>,
         clock: Arc<Mutex<u64>>,
+        involved: Arc<Mutex<Vec<String>>>,
     ) -> Self {
         let live = snapshot
             .into_iter()
@@ -1429,6 +1441,7 @@ impl FakeGateway {
             observe_calls: Arc::new(AtomicUsize::new(0)),
             fail_probe: Arc::new(AtomicBool::new(false)),
             allowance: Arc::new(Mutex::new(None)),
+            involved,
         }
     }
 
@@ -1476,6 +1489,13 @@ impl GitHubGateway for FakeGateway {
         Ok(AccountObservation {
             login: login.clone(),
             pull_requests: pull_requests.clone(),
+            involved_node_ids: self
+                .involved
+                .lock()
+                .expect("involved")
+                .iter()
+                .map(|key| format!("node-{key}"))
+                .collect(),
             checked_at,
         })
     }
