@@ -98,6 +98,20 @@ impl ObservationSession {
                     self.runtime
                         .deliver_report(&self.config, &refreshed)
                         .await;
+                    if let Some(account_failure) = refreshed.account_failures.first() {
+                        let extra = refreshed.account_failures.len().saturating_sub(1);
+                        failure = Some(if extra > 0 {
+                            format!(
+                                "account {} failed: {} (+{extra})",
+                                account_failure.label, account_failure.detail
+                            )
+                        } else {
+                            format!(
+                                "account {} failed: {}",
+                                account_failure.label, account_failure.detail
+                            )
+                        });
+                    }
                     changed = true;
                     self.last_full = Some(std::time::Instant::now());
                 }
