@@ -68,7 +68,8 @@ interactive watch, starts `gh auth login --web` once when no session exists.
 `passuff notify-test` sends one notification and plays the configured sound,
 reporting each enabled surface. It exits 1 if a surface fails and 2 when both
 surfaces are disabled. On macOS the desktop notification goes through
-Notification Center.
+Notification Center via `osascript`; allow notifications for the app that runs
+the script (usually Script Editor or the terminal) in System Settings.
 
 `github_pat` accepts exactly one of `token_env`, `token_command`, or
 `token_file`. A token file must be absolute or start with `~`, and must not be

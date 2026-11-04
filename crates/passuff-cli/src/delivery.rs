@@ -60,30 +60,67 @@ impl NotificationDelivery for DesktopDelivery {
             return report;
         }
 
-        let mut notification = notify_rust::Notification::new();
-        notification
-            .appname("passuff")
-            .summary(&rendered.title)
-            .body(&rendered.body);
+        #[cfg(target_os = "macos")]
+        {
+            match show_macos_notification(&rendered.title, &rendered.body).await {
+                Ok(()) => report.desktop_delivered = true,
+                Err(error) => report
+                    .errors
+                    .push(format!("desktop notification failed: {error}")),
+            }
+        }
         #[cfg(not(target_os = "macos"))]
         {
+            let mut notification = notify_rust::Notification::new();
+            notification
+                .appname("passuff")
+                .summary(&rendered.title)
+                .body(&rendered.body);
             let urgency = match config.urgency {
                 Urgency::Low => notify_rust::Urgency::Low,
                 Urgency::Normal => notify_rust::Urgency::Normal,
                 Urgency::Critical => notify_rust::Urgency::Critical,
             };
             notification.urgency(urgency);
-        }
-        if matches!(report.sound, Some(SoundOutcome::Unavailable)) {
-            notification.sound_name("message-new-instant");
-        }
-        match notification.show() {
-            Ok(_) => report.desktop_delivered = true,
-            Err(error) => report
-                .errors
-                .push(format!("desktop notification failed: {error}")),
+            if matches!(report.sound, Some(SoundOutcome::Unavailable)) {
+                notification.sound_name("message-new-instant");
+            }
+            match notification.show() {
+                Ok(_) => report.desktop_delivered = true,
+                Err(error) => report
+                    .errors
+                    .push(format!("desktop notification failed: {error}")),
+            }
         }
         report
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn macos_notification_args(title: &str, body: &str) -> Vec<String> {
+    vec![
+        "-e".to_string(),
+        "on run argv".to_string(),
+        "-e".to_string(),
+        "display notification (item 1 of argv) with title (item 2 of argv)".to_string(),
+        "-e".to_string(),
+        "end run".to_string(),
+        body.to_string(),
+        title.to_string(),
+    ]
+}
+
+#[cfg(target_os = "macos")]
+async fn show_macos_notification(title: &str, body: &str) -> Result<(), String> {
+    let status = tokio::process::Command::new("osascript")
+        .args(macos_notification_args(title, body))
+        .status()
+        .await
+        .map_err(|error| format!("osascript failed: {error}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("osascript exited with {status}"))
     }
 }
 
@@ -185,4 +222,26 @@ pub fn build_delivery(sound: Arc<crate::sound::SystemSoundPlayer>) -> Arc<dyn No
         }
     }
     Arc::new(DesktopDelivery::new(sound))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::macos_notification_args;
+
+    #[test]
+    fn macos_notifications_pass_the_body_then_the_title() {
+        let args = macos_notification_args(
+            "passuff: notify test",
+            "If you can read this, passuff notifications are working.",
+        );
+        assert!(args.iter().any(|arg| arg == "on run argv"));
+        assert!(args
+            .iter()
+            .any(|arg| arg == "display notification (item 1 of argv) with title (item 2 of argv)"));
+        assert_eq!(
+            args[args.len() - 2],
+            "If you can read this, passuff notifications are working."
+        );
+        assert_eq!(args[args.len() - 1], "passuff: notify test");
+    }
 }

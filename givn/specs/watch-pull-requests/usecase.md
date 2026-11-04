@@ -86,7 +86,7 @@ The developer starts the watcher, or runs a single check pass.
 - R39: When a repository scope excludes a repository, an authored pull request outside it is not observed or notified; already watched pull requests and activity are hidden from the inbox and status but retained in state.
 - R40: Activity on an already-merged or already-closed watched pull request does not notify. The transition that made it terminal, a short-lived pull request (R27), and a reopen (R28) are still reported.
 - R41: A check cycle observes only the pull requests selected from the change probe and the discovery search; a reconciliation pass observes every watched open pull request and every open assigned or review-requested pull request.
-- R42: `notify-test` sends one test notification through the configured desktop and sound surfaces, reports the result of each enabled surface, exits 0 when every enabled surface succeeds, 1 when an enabled surface fails, and 2 for a configuration error or when both surfaces are disabled. On macOS the desktop notification is delivered through Notification Center.
+- R42: `notify-test` sends one test notification through the configured desktop and sound surfaces, reports the result of each enabled surface, exits 0 when every enabled surface succeeds, 1 when an enabled surface fails, and 2 for a configuration error or when both surfaces are disabled. On macOS the desktop notification is delivered through Notification Center via `osascript`.
 
 ## Examples
 
