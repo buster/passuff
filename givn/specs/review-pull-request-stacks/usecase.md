@@ -28,9 +28,9 @@ The developer opens the inbox and reviews the activity of a stack.
 
 1. passuff loads the configuration and the persisted watch state.
 2. passuff groups watched pull requests by repository and stack number and orders each group by stack position.
-3. passuff shows each stack's base and size, its watched members with position, state, and CI, and the stack's unread count; standalone pull requests keep single rows.
-4. The developer focuses a stack and marks one of its activity records read.
-5. passuff updates the record and the stack's unread count.
+3. passuff orders stack members by position and shows position/size on each member; the stack's base appears in the pull request detail; standalone pull requests keep single rows.
+4. The developer marks an activity record read.
+5. passuff updates the record and the total unread count.
 
 ## Extensions
 
@@ -38,7 +38,6 @@ The developer opens the inbox and reviews the activity of a stack.
 - 2b. A stack member is not watched by any configured account: passuff omits the member, keeps the stack size, and shows the watched positions, which may have gaps; protects R4.
 - 2c. Stack metadata arrives for a pull request that was standalone: passuff moves it into its stack on the next render; protects R2.
 - 2d. Stack metadata disappears or GitHub rejects the stack field: passuff renders the pull request standalone and does not fail the account observation; protects R7.
-- 3a. A stack has no unread activity: passuff shows it with zero unread; protects R5.
 - 3b. A stack member is merged or closed: passuff keeps the member and its activity in the group with the terminal state; protects R3.
 - 4a. Marking read fails: passuff leaves the record unread and reports the state error; protects the minimal guarantee.
 
@@ -46,9 +45,9 @@ The developer opens the inbox and reviews the activity of a stack.
 
 - R1: Stack membership comes only from GitHub-reported stack metadata; an absent or null stack means standalone.
 - R2: Watched pull requests group by repository and stack number and order by stack position ascending.
-- R3: The group shows the stack base and size once; each member shows its position and state.
+- R3: Each stack member shows position/size; the stack's base appears in the pull request detail.
 - R4: A member not watched by any configured account is omitted; the size still reflects the full stack, so positions may have gaps.
-- R5: Activity records group under the stack of their pull request; the group shows an aggregated unread count.
+- R5: Activity records carry the stack label of their pull request; the inbox shows the total unread count.
 - R6: Standalone pull requests keep the existing inbox presentation and read behaviour.
 - R7: A GitHub rejection of stack metadata degrades to standalone and never fails the account observation.
 - R8: Stack grouping is read-only; passuff never creates, extends, or dissolves a stack.
@@ -56,8 +55,8 @@ The developer opens the inbox and reviews the activity of a stack.
 
 ## Examples
 
-- `acme/api` stack 7 has watched pull requests #41 at position 1 and #42 at position 2, base `main`, size 2: the inbox shows one group with both positions and one unread count.
-- Stack 7 has size 3, but only positions 1 and 3 are watched: the group shows positions 1 and 3 and size 3; no row is invented for position 2.
+- `acme/api` stack 7 has watched pull requests #41 at position 1 and #42 at position 2, base `main`, size 2: the members show `1/2` and `2/2`; the detail shows `base main`.
+- Stack 7 has size 3, but only positions 1 and 3 are watched: the rows show `1/3` and `3/3`; no row is invented for position 2.
 - Pull request #43 has no stack metadata: it appears as a standalone row, not a one-member stack.
 - A repository without the stacked-PRs preview renders every pull request standalone; the account observation still succeeds.
 - A comment arrives on merged member #41: the activity appears under stack 7 with the merged state.

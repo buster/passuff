@@ -59,10 +59,7 @@ pub struct ActivityDetail {
 struct StackGroup<'a> {
     repository: String,
     number: u64,
-    base: String,
-    size: u64,
     members: Vec<&'a PullRequestView>,
-    unread: usize,
 }
 
 fn stack_groups(view: &InboxView) -> (Vec<StackGroup<'_>>, Vec<&PullRequestView>) {
@@ -86,22 +83,10 @@ fn stack_groups(view: &InboxView) -> (Vec<StackGroup<'_>>, Vec<&PullRequestView>
                 .map(|stack| stack.position)
                 .unwrap_or(0)
         });
-        let first = members
-            .first()
-            .and_then(|pull_request| pull_request.stack.as_ref())
-            .expect("stack member");
-        let unread = view
-            .activity
-            .iter()
-            .filter(|record| !record.read && members.iter().any(|member| member.key == record.key))
-            .count();
         result.push(StackGroup {
             repository,
             number,
-            base: first.base.clone(),
-            size: first.size,
             members,
-            unread,
         });
     }
     result.sort_by(|left, right| {
@@ -660,24 +645,6 @@ impl TuiApp {
             );
         } else {
             let (groups, standalone) = stack_groups(&self.view);
-            let summaries: Vec<String> = groups
-                .iter()
-                .map(|group| {
-                    format!(
-                        "{} stack {} | base {} | size {} | {} unread in stack",
-                        group.repository, group.number, group.base, group.size, group.unread
-                    )
-                })
-                .collect();
-            let inner = watched_block.inner(chunks[2]);
-            frame.render_widget(watched_block, chunks[2]);
-            let summary_height = (summaries.len() as u16).min(inner.height.saturating_sub(1));
-            let watched_layout =
-                Layout::vertical([Constraint::Length(summary_height), Constraint::Min(1)])
-                    .split(inner);
-            if summary_height > 0 {
-                frame.render_widget(Paragraph::new(summaries.join("\n")), watched_layout[0]);
-            }
             let mut rows: Vec<Row> = Vec::new();
             for unit in ordered_units(&groups, &standalone) {
                 for pull_request in unit {
@@ -686,15 +653,13 @@ impl TuiApp {
                             Cell::from(pull_request.key.to_string()),
                             Cell::from(state_label(&pull_request.state)),
                             Cell::from(ci_label(&pull_request.ci_state)),
-                            Cell::from(format!("position {}", stack.position)),
-                            Cell::from(format!("stack {}", stack.number)),
+                            Cell::from(format!("{}/{}", stack.position, stack.size)),
                             Cell::from(pull_request.title.clone()),
                         ])),
                         None => rows.push(Row::new(vec![
                             Cell::from(pull_request.key.to_string()),
                             Cell::from(state_label(&pull_request.state)),
                             Cell::from(ci_label(&pull_request.ci_state)),
-                            Cell::from(""),
                             Cell::from(""),
                             Cell::from(pull_request.title.clone()),
                         ])),
@@ -707,13 +672,12 @@ impl TuiApp {
                     Constraint::Length(18),
                     Constraint::Length(8),
                     Constraint::Length(12),
-                    Constraint::Length(11),
-                    Constraint::Length(10),
-                    Constraint::Min(10),
+                    Constraint::Length(8),
+                    Constraint::Min(15),
                 ],
             )
             .header(
-                Row::new(["Pull request", "State", "CI", "Position", "Stack", "Title"])
+                Row::new(["Pull request", "State", "CI", "Stack", "Title"])
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
             .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD))
@@ -723,9 +687,11 @@ impl TuiApp {
             } else {
                 Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             };
-            let table = table.row_highlight_style(highlight);
+            let table = table
+                .block(watched_block)
+                .row_highlight_style(highlight);
             let mut state = TableState::default().with_selected(Some(self.pr_selected));
-            frame.render_stateful_widget(table, watched_layout[1], &mut state);
+            frame.render_stateful_widget(table, chunks[2], &mut state);
         }
 
         let activity_block = Block::bordered()
@@ -940,13 +906,22 @@ impl TuiApp {
                 .collect::<Vec<_>>()
                 .join(", ")
         };
-        let header = vec![
+        let mut header = vec![
             Line::from(vec![label("Status: "), Span::raw(status)]),
             Line::from(vec![label("CI: "), Span::raw(ci)]),
             Line::from(vec![label("Creator: "), Span::raw(creator)]),
             Line::from(vec![label("Assignee: "), Span::raw(assignees)]),
-            Line::from(label("Description:")),
         ];
+        if let Some(stack) = pull_request.stack.as_ref() {
+            header.push(Line::from(vec![
+                label("Stack: "),
+                Span::raw(format!(
+                    "{}/{}   base {}",
+                    stack.position, stack.size, stack.base
+                )),
+            ]));
+        }
+        header.push(Line::from(label("Description:")));
         let max_height = (area.height * 80 / 100)
             .min(area.height.saturating_sub(2))
             .max(8);
@@ -1577,12 +1552,9 @@ mod tests {
             stacked("acme/api#43", 7, 2, 1, "main"),
         ];
         let frame = TuiApp::new(view).snapshot();
-        assert!(
-            frame.contains("acme/api stack 7 | base main | size 2 | 0 unread in stack"),
-            "{frame}"
-        );
-        let first = frame.find("position 1").expect("position 1");
-        let second = frame.find("position 2").expect("position 2");
+        assert!(!frame.contains("unread in stack"), "{frame}");
+        let first = frame.find("1/2").expect("1/2");
+        let second = frame.find("2/2").expect("2/2");
         assert!(first < second, "{frame}");
     }
 
@@ -1594,10 +1566,9 @@ mod tests {
             stacked("acme/api#44", 7, 3, 3, "main"),
         ];
         let frame = TuiApp::new(view).snapshot();
-        assert!(frame.contains("size 3"), "{frame}");
-        assert!(frame.contains("position 1"), "{frame}");
-        assert!(frame.contains("position 3"), "{frame}");
-        assert!(!frame.contains("position 2"), "{frame}");
+        assert!(frame.contains("1/3"), "{frame}");
+        assert!(frame.contains("3/3"), "{frame}");
+        assert!(!frame.contains("2/3"), "{frame}");
     }
 
     #[test]
@@ -1606,8 +1577,8 @@ mod tests {
         view.pull_requests = vec![standalone("acme/api#42")];
         let frame = TuiApp::new(view).snapshot();
         assert!(frame.contains("acme/api#42"), "{frame}");
-        assert!(!frame.contains("stack 7"), "{frame}");
-        assert!(!frame.contains("base main"), "{frame}");
+        assert!(!frame.contains("1/1"), "{frame}");
+        assert!(!frame.contains("unread in stack"), "{frame}");
     }
 
     #[test]
@@ -1624,7 +1595,7 @@ mod tests {
         ];
         let frame = TuiApp::new(view).snapshot();
         assert!(frame.contains("2 unread of 3"), "{frame}");
-        assert!(frame.contains("1 unread in stack"), "{frame}");
+        assert!(!frame.contains("unread in stack"), "{frame}");
     }
 
     #[test]
@@ -1647,7 +1618,8 @@ mod tests {
             stacked("acme/web#40", 7, 1, 1, "main"),
         ];
         let frame = TuiApp::new(view).snapshot();
-        assert!(frame.contains("acme/api stack 7"), "{frame}");
-        assert!(frame.contains("acme/web stack 7"), "{frame}");
+        assert!(frame.contains("acme/api#42"), "{frame}");
+        assert!(frame.contains("acme/web#40"), "{frame}");
+        assert!(!frame.contains("unread in stack"), "{frame}");
     }
 }
