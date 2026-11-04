@@ -2190,7 +2190,7 @@ dependencies = [
 
 [[package]]
 name = "passuff"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2219,7 +2219,7 @@ dependencies = [
 
 [[package]]
 name = "passuff-config"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "tempfile",
@@ -2230,7 +2230,7 @@ dependencies = [
 
 [[package]]
 name = "passuff-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "chrono",

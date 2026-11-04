@@ -31,8 +31,8 @@ notify-rust = "4.18"
 ratatui = "0.30"
 toml_edit = "0.25"
 crossterm = "0.29"
-passuff-config = { path = "../passuff-config", version = "0.1.0" }
-passuff-core = { path = "../passuff-core", version = "0.1.0" }
+passuff-config = { path = "../passuff-config", version = "0.1.1" }
+passuff-core = { path = "../passuff-core", version = "0.1.1" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
