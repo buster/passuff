@@ -892,7 +892,7 @@ fn popup_hint() -> Line<'static> {
         Span::styled(" open in browser   ", theme::dim()),
         Span::styled("↑↓/PgUp/PgDn", theme::key()),
         Span::styled(" scroll   ", theme::dim()),
-        Span::styled("Esc", theme::key()),
+        Span::styled("Esc/q", theme::key()),
         Span::styled(" close", theme::dim()),
     ])
 }
@@ -928,6 +928,7 @@ pub struct TuiApp {
     pr_detail_scroll: StdCell<u16>,
     settings: Option<usize>,
     notifications: NotificationSwitches,
+    ignored_pull_requests: Vec<String>,
 }
 
 impl TuiApp {
@@ -957,6 +958,7 @@ impl TuiApp {
             pr_detail_scroll: StdCell::new(0),
             settings: None,
             notifications: NotificationSwitches::new(true, true),
+            ignored_pull_requests: Vec::new(),
         }
     }
 
@@ -966,6 +968,17 @@ impl TuiApp {
 
     pub fn set_show_ignored(&mut self, show_ignored: bool) {
         self.show_ignored = show_ignored;
+    }
+
+    pub fn set_ignored_pull_requests(&mut self, ignored: &[String]) {
+        self.ignored_pull_requests = ignored.to_vec();
+    }
+
+    fn is_ignored(&self, key: &PullRequestKey) -> bool {
+        let entry = key.to_string();
+        self.ignored_pull_requests
+            .iter()
+            .any(|ignored| ignored.eq_ignore_ascii_case(&entry))
     }
 
     pub fn close_popup(&mut self) {
@@ -1266,7 +1279,7 @@ impl TuiApp {
                     self.save_prompt = false;
                     Ok(TuiAction::QuitDiscard)
                 }
-                KeyCode::Esc => {
+                KeyCode::Esc | KeyCode::Char('q') => {
                     self.save_prompt = false;
                     Ok(TuiAction::Continue)
                 }
@@ -1275,7 +1288,7 @@ impl TuiApp {
         }
         if let Some(selected) = self.settings {
             match key.code {
-                KeyCode::Esc | KeyCode::Char(',') => self.settings = None,
+                KeyCode::Esc | KeyCode::Char(',') | KeyCode::Char('q') => self.settings = None,
                 KeyCode::Char('j') | KeyCode::Down => {
                     self.settings = Some((selected + 1) % 2);
                 }
@@ -1294,7 +1307,11 @@ impl TuiApp {
         if self.help.is_some() {
             if matches!(
                 key.code,
-                KeyCode::Esc | KeyCode::Char('h') | KeyCode::Char('H') | KeyCode::F(1)
+                KeyCode::Esc
+                    | KeyCode::Char('q')
+                    | KeyCode::Char('h')
+                    | KeyCode::Char('H')
+                    | KeyCode::F(1)
             ) {
                 self.help = None;
             }
@@ -1306,7 +1323,7 @@ impl TuiApp {
                 return Ok(TuiAction::Continue);
             }
             return match key.code {
-                KeyCode::Esc => {
+                KeyCode::Esc | KeyCode::Char('q') => {
                     self.pr_detail = None;
                     self.pr_detail_scroll.set(0);
                     Ok(TuiAction::Continue)
@@ -1325,7 +1342,7 @@ impl TuiApp {
                 return Ok(TuiAction::Continue);
             }
             return match key.code {
-                KeyCode::Esc => {
+                KeyCode::Esc | KeyCode::Char('q') => {
                     self.popup = None;
                     self.popup_scroll.set(0);
                     Ok(TuiAction::Continue)
@@ -1633,18 +1650,28 @@ impl TuiApp {
     }
 
     fn footer_keys(&self) -> Line<'static> {
-        let entries: &[(&str, &str)] = match self.focus {
-            Pane::Watched => &[
+        let selected_ignored = self
+            .selected_pull_request()
+            .is_some_and(|pull_request| self.is_ignored(&pull_request.key));
+        let entries: Vec<(&str, &str)> = match self.focus {
+            Pane::Watched => vec![
                 ("Tab", "activity"),
                 ("↑↓", "move"),
                 ("enter", "detail"),
-                ("x", "ignore"),
-                ("◀/▶", "all|filtered"),
+                (
+                    "x",
+                    if selected_ignored {
+                        "unignore"
+                    } else {
+                        "ignore"
+                    },
+                ),
+                ("◀/▶", "view"),
                 ("p", "scope"),
                 (",", "opts"),
                 ("q", "quit"),
             ],
-            Pane::Activity => &[
+            Pane::Activity => vec![
                 ("Tab", "PRs"),
                 ("↑↓", "move"),
                 ("enter", "detail"),
@@ -1766,7 +1793,8 @@ impl TuiApp {
             );
         } else {
             let (groups, standalone) = stack_groups(&self.view);
-            let mut entries: Vec<(&PullRequestView, String, String, Option<String>)> = Vec::new();
+            let mut entries: Vec<(&PullRequestView, String, String, Option<String>, bool)> =
+                Vec::new();
             let mut has_stack = false;
             let mut stack_width = 1;
             let mut people_width = 1;
@@ -1783,7 +1811,8 @@ impl TuiApp {
                         stack_width = stack_width.max(stack.chars().count());
                     }
                     people_width = people_width.max(people.chars().count());
-                    entries.push((pull_request, key, people, stack));
+                    let ignored = self.is_ignored(&pull_request.key);
+                    entries.push((pull_request, key, people, stack, ignored));
                 }
             }
             let mut constraints = vec![
@@ -1801,7 +1830,7 @@ impl TuiApp {
             constraints.push(Constraint::Min(15));
             header.push("Title");
             let mut rows: Vec<Row> = Vec::new();
-            for (pull_request, key, people, stack) in entries {
+            for (pull_request, key, people, stack, ignored) in entries {
                 let mut cells = vec![
                     Cell::from(key),
                     Cell::from(state_label(&pull_request.state)),
@@ -1811,8 +1840,18 @@ impl TuiApp {
                     cells.push(Cell::from(stack.unwrap_or_default()));
                 }
                 cells.push(Cell::from(people));
-                cells.push(Cell::from(pull_request.title.clone()));
-                rows.push(Row::new(cells));
+                let title = if ignored {
+                    format!("⊘ {}", pull_request.title)
+                } else {
+                    pull_request.title.clone()
+                };
+                cells.push(Cell::from(title));
+                let style = if ignored {
+                    theme::dim()
+                } else {
+                    Style::default()
+                };
+                rows.push(Row::new(cells).style(style));
             }
             let table = Table::new(rows, constraints)
                 .header(
@@ -1980,7 +2019,7 @@ impl TuiApp {
             Paragraph::new(Line::from(vec![
                 Span::styled("space", theme::key()),
                 Span::styled(" toggle   ", theme::dim()),
-                Span::styled("esc", theme::key()),
+                Span::styled("esc/q", theme::key()),
                 Span::styled(" close", theme::dim()),
             ])),
             chunks[1],
@@ -2011,7 +2050,7 @@ impl TuiApp {
                 ("PgUp/PgDn", "move by ten"),
                 ("Home/End", "first / last row"),
                 ("Enter", "pull request detail"),
-                ("x", "ignore or restore"),
+                ("x", "ignore / unignore"),
                 ("left/right", "filtered / all"),
                 ("s / S", "sort field / reverse"),
                 ("f / F", "filter activities to PR / stack"),
@@ -2306,6 +2345,7 @@ mod tests {
             assignees: Vec::new(),
             is_draft: false,
             updated_at: "2026-11-02T11:00:00Z".to_string(),
+            ignored: false,
             stack: Some(PullRequestStack {
                 number,
                 size,
@@ -2328,6 +2368,7 @@ mod tests {
             assignees: Vec::new(),
             is_draft: false,
             updated_at: "2026-11-02T11:00:00Z".to_string(),
+            ignored: false,
             stack: None,
         }
     }
@@ -2352,7 +2393,7 @@ mod tests {
             "long title was clipped: {snapshot}"
         );
         assert!(snapshot.contains("open in browser"));
-        assert!(snapshot.contains("Esc close"));
+        assert!(snapshot.contains("Esc/q close"));
         assert!(snapshot.contains("Activity api#42"), "{snapshot}");
         assert!(!snapshot.contains("Activity a1"), "{snapshot}");
         let lines: Vec<&str> = snapshot.lines().collect();
@@ -2422,6 +2463,47 @@ mod tests {
         .expect("legacy preferences");
         assert!(preferences.desktop);
         assert!(preferences.sound);
+    }
+
+    #[tokio::test]
+    async fn q_closes_every_dialog() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        let inbox = FakeInbox::new(Vec::new());
+        let record = record("a1", false);
+        app.popup = Some(ActivityDetail {
+            record: record.clone(),
+            changes: vec![record],
+            pull_request: None,
+            url: None,
+        });
+        app.handle_key(key(KeyCode::Char('q')), &inbox, &core_config())
+            .await
+            .expect("activity popup");
+        assert!(app.popup.is_none());
+
+        app.pr_detail = Some(standalone("acme/api#42"));
+        app.handle_key(key(KeyCode::Char('q')), &inbox, &core_config())
+            .await
+            .expect("pull request dialog");
+        assert!(app.pr_detail.is_none());
+
+        app.help = Some(Pane::Watched);
+        app.handle_key(key(KeyCode::Char('q')), &inbox, &core_config())
+            .await
+            .expect("help");
+        assert!(app.help.is_none());
+
+        app.settings = Some(0);
+        app.handle_key(key(KeyCode::Char('q')), &inbox, &core_config())
+            .await
+            .expect("settings");
+        assert!(app.settings.is_none());
+
+        app.show_save_prompt();
+        app.handle_key(key(KeyCode::Char('q')), &inbox, &core_config())
+            .await
+            .expect("save prompt");
+        assert!(!app.save_prompt);
     }
 
     #[tokio::test]
@@ -2977,6 +3059,23 @@ mod tests {
             action,
             TuiAction::ToggleIgnore(pr_key("acme/api#42"))
         );
+    }
+
+    #[tokio::test]
+    async fn an_ignored_pull_request_stays_visible_with_the_unignore_control() {
+        let mut app = TuiApp::new(view(Vec::new()));
+        app.view.pull_requests = vec![standalone("acme/api#42")];
+        app.set_ignored_pull_requests(&["acme/api#42".to_string()]);
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Tab), &inbox, &core_config())
+            .await
+            .expect("tab");
+        let frame = app.snapshot();
+        assert!(
+            frame.contains("⊘"),
+            "the ignored marker is missing: {frame}"
+        );
+        assert!(frame.contains("x unignore"), "{frame}");
     }
 
     #[tokio::test]

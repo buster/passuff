@@ -995,7 +995,10 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             .await;
         match loaded {
             Ok(view) => {
-                let app = TuiApp::new(view);
+                let mut app = TuiApp::new(view);
+                if let Ok(config) = config.as_ref() {
+                    app.set_ignored_pull_requests(&config.core.watch.ignored_pull_requests);
+                }
                 self.last_transcript = app.snapshot();
                 self.last_status = 0;
                 self.tui_app = Some(app);
@@ -1100,6 +1103,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
         app.reload(&inbox, &config.core)
             .await
             .expect("reload tui view");
+        app.set_ignored_pull_requests(&self.ignored_pull_requests);
         self.last_transcript = app.snapshot();
     }
 

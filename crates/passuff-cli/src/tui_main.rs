@@ -139,6 +139,9 @@ async fn main() {
         }
     };
     let mut app = TuiApp::new(view);
+    if let Ok(config) = config.as_ref() {
+        app.set_ignored_pull_requests(&config.core.watch.ignored_pull_requests);
+    }
 
     if args.observe || args.observe_for.is_some() {
         let active = config.as_ref().expect("validated configuration").clone();
@@ -164,6 +167,9 @@ async fn main() {
         };
         let first = session.tick().await;
         config = Ok(first.config.clone());
+        if let Ok(config) = config.as_ref() {
+            app.set_ignored_pull_requests(&config.core.watch.ignored_pull_requests);
+        }
         if let Err(error) = app.reload(&inbox, &first.config.core).await {
             eprintln!("passuff: state error: {error}");
             std::process::exit(3);
@@ -329,6 +335,7 @@ async fn observe_for(
         }
         tokio::time::sleep(delay).await;
         let update = session.tick().await;
+        app.set_ignored_pull_requests(&update.config.core.watch.ignored_pull_requests);
         let view_config = display_config(&update.config, app.show_ignored());
         if app.reload(inbox, &view_config.core).await.is_err() {
             break;
@@ -552,7 +559,11 @@ async fn run_terminal(
                         .await
                         {
                             Ok(true) => break Ok(()),
-                            Ok(false) => {}
+                            Ok(false) => {
+                                app.set_ignored_pull_requests(
+                                    &config.core.watch.ignored_pull_requests,
+                                );
+                            }
                             Err(message) => break Err(message),
                         }
                     }
@@ -577,6 +588,7 @@ async fn run_terminal(
                     app.set_budget(allowance.remaining, allowance.limit);
                 }
                 config = update.config;
+                app.set_ignored_pull_requests(&config.core.watch.ignored_pull_requests);
                 if update.changed {
                     known = known_repositories(editor, &config, store).await;
                     if let Some(active) = picker.as_mut() {

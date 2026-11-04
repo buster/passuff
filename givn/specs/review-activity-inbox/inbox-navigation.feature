@@ -175,6 +175,32 @@ Feature: Inbox navigation
     And  the activity "New comment from @bob" is unread
 
   @inbox-navigation
+  Scenario: The developer closes dialogs with q
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  "alice" comments "Review this" on "acme/api#42"
+    And  passuff runs one check
+    And  the developer opens the inbox TUI
+    And  the developer presses "enter"
+    Then  the TUI shows "open in browser"
+    When  the developer presses "q"
+    Then  the TUI does not show "open in browser"
+    When  the developer presses "tab"
+    And  the developer presses "enter"
+    Then  the TUI shows "Creator:"
+    When  the developer presses "q"
+    Then  the TUI does not show "Creator:"
+    When  the developer presses "h"
+    Then  the TUI shows "Pull request pane"
+    When  the developer presses "q"
+    Then  the TUI does not show "Pull request pane"
+    When  the developer presses "comma"
+    Then  the TUI shows "Desktop notifications"
+    When  the developer presses "q"
+    Then  the TUI does not show "Desktop notifications"
+
+  @inbox-navigation
   Scenario: The developer mutes notifications from the settings dialog
     Given  a configured account "personal" with login "octo-personal"
     When  the developer opens the inbox TUI
@@ -287,11 +313,15 @@ Feature: Inbox navigation
     When  the developer opens the inbox TUI
     And  the developer presses "tab"
     And  the developer presses "x"
-    Then  the TUI does not show "acme/api#42"
+    Then  the TUI shows "acme/api#42"
+    And  the TUI shows "⊘"
+    And  the TUI shows "x unignore"
     When  the developer presses "right"
     Then  the TUI shows "acme/api#42"
     When  the developer presses "x"
-    And  the developer presses "left"
+    Then  the TUI shows "x ignore"
+    And  the TUI does not show "⊘"
+    When  the developer presses "left"
     Then  the TUI shows "acme/api#42"
 
   @inbox-navigation
