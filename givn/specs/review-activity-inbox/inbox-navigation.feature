@@ -63,7 +63,7 @@ Feature: Inbox navigation
     And  the inbox observes the account
     And  "alice" comments "Post-merge note" on "acme/api#42"
     And  the inbox observes the account
-    Then  the TUI shows "New comment from @alice"
+    Then  the TUI shows "comment by @alice"
 
   @inbox-navigation
   Scenario: A refresh preserves the selected pull request
@@ -88,7 +88,7 @@ Feature: Inbox navigation
     And  the watcher has already observed "acme/api#42"
     And  "alice" comments "Review this" on "acme/api#42" after the first observation
     When  the developer opens the inbox TUI and lets it observe for "4" seconds
-    Then  the TUI shows "New comment from @alice"
+    Then  the TUI shows "comment by @alice"
     And  the TUI shows "1 unread of 1"
     And  the exit status is 0
 
@@ -119,5 +119,5 @@ Feature: Inbox navigation
     And  the inbox observes the account
     And  GitHub becomes unavailable for the next observation
     And  the inbox observes the account
-    Then  the TUI still shows "New comment from @alice"
+    Then  the TUI still shows "comment by @alice"
     And  the exit status is 0

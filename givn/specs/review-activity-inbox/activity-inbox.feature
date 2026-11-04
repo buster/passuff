@@ -216,10 +216,9 @@ Feature: Activity inbox
     And  the TUI shows "personal @octo-personal"
     And  the TUI shows "watch scope: all authored pull requests"
     And  the TUI shows "Pull request acme/api#42"
-    And  the TUI shows "New comment from @alice"
+    And  the TUI shows "comment by @alice"
     And  the TUI does not show "Open"
     And  the TUI does not show "Success"
-    And  the TUI does not show "Can you split this migration?"
     And  the TUI does not show "token-TOKEN_PERSONAL"
 
   @activity-inbox
@@ -320,7 +319,7 @@ Feature: Activity inbox
     When  "alice" comments "Can you split this migration?" on "acme/api#42"
     And  the developer opens the inbox TUI observing the account
     Then  the TUI shows "1 unread of 1"
-    And  the TUI shows "New comment from @alice"
+    And  the TUI shows "comment by @alice"
     And  the exit status is 0
 
   @e2e @activity-inbox
@@ -332,7 +331,7 @@ Feature: Activity inbox
     And  passuff runs one check
     And  the developer opens the inbox TUI with keys "enter"
     Then  the TUI shows "Activity api#42"
-    And  the TUI shows "New comment from @alice"
+    And  the TUI shows "comment by @alice"
     And  the TUI shows "acme/api#42"
     And  the TUI shows "Pull request acme/api#42"
     And  the TUI shows "unread"

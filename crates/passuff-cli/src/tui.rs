@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use crossterm::event::{KeyCode, KeyEvent};
 use passuff_config::{AppConfig, ConfigError, CoreConfig};
 use passuff_core::{
-    ActivityRecord, CoreError, InboxService, InboxView, PullRequestKey, PullRequestView,
+    ActivityEvent, ActivityRecord, CoreError, InboxService, InboxView, PrState, PullRequestKey,
+    PullRequestView,
 };
 use ratatui::backend::TestBackend;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -156,6 +157,45 @@ fn newest<'a>(pull_requests: impl Iterator<Item = &'a PullRequestView>) -> &'a s
 }
 
 
+fn event_line(event: &ActivityEvent) -> String {
+    match event {
+        ActivityEvent::Comment {
+            author,
+            body_excerpt,
+        } => {
+            if body_excerpt.trim().is_empty() {
+                format!("comment by @{author}")
+            } else {
+                format!("comment by @{author}: {body_excerpt}")
+            }
+        }
+        ActivityEvent::ReviewComment {
+            author,
+            body_excerpt,
+        } => {
+            if body_excerpt.trim().is_empty() {
+                format!("review comment by @{author}")
+            } else {
+                format!("review comment by @{author}: {body_excerpt}")
+            }
+        }
+        ActivityEvent::Review { author, state } => format!("review by @{author}: {state}"),
+        ActivityEvent::CiFailure { failed_checks } if !failed_checks.is_empty() => {
+            format!("CI failing: {}", failed_checks.join(", "))
+        }
+        ActivityEvent::CiFailure { .. } => "CI failing".to_string(),
+        ActivityEvent::CiRecovery => "CI recovered".to_string(),
+        ActivityEvent::StateChange { state, actor } => match state {
+            PrState::Merged => actor
+                .as_ref()
+                .map(|actor| format!("merged by @{actor}"))
+                .unwrap_or_else(|| "merged".to_string()),
+            PrState::Closed => "closed".to_string(),
+            PrState::Open => "reopened".to_string(),
+        },
+    }
+}
+
 fn short_time(observed_at: &str) -> String {
     chrono::DateTime::parse_from_rfc3339(observed_at)
         .map(|time| time.format("%m-%d %H:%M").to_string())
@@ -220,6 +260,21 @@ impl TuiApp {
 
     pub fn close_popup(&mut self) {
         self.popup = None;
+    }
+
+    fn sync_pr_selection(&mut self) {
+        let Some(record) = self.view.activity.get(self.selected) else {
+            return;
+        };
+        let key = record.key.clone();
+        if let Some(index) = self
+            .ordered_pull_requests()
+            .iter()
+            .position(|pull_request| pull_request.key == key)
+        {
+            self.pr_selected = index;
+            self.selected_pr = Some(key);
+        }
     }
 
     /// Show a failure line in the footer until the next successful update.
@@ -333,6 +388,7 @@ impl TuiApp {
                         if self.selected + 1 < self.view.activity.len() {
                             self.selected += 1;
                         }
+                        self.sync_pr_selection();
                     }
                 }
                 Ok(TuiAction::Continue)
@@ -360,6 +416,7 @@ impl TuiApp {
                     }
                     Pane::Activity => {
                         self.selected = (self.selected + 10).min(self.view.activity.len().saturating_sub(1));
+                        self.sync_pr_selection();
                     }
                 }
                 Ok(TuiAction::Continue)
@@ -376,6 +433,7 @@ impl TuiApp {
                     }
                     Pane::Activity => {
                         self.selected = self.selected.saturating_sub(10);
+                        self.sync_pr_selection();
                     }
                 }
                 Ok(TuiAction::Continue)
@@ -397,6 +455,7 @@ impl TuiApp {
                     }
                     Pane::Activity => {
                         self.selected = self.selected.saturating_sub(1);
+                        self.sync_pr_selection();
                     }
                 }
                 Ok(TuiAction::Continue)
@@ -576,12 +635,13 @@ impl TuiApp {
             )
             .row_highlight_style(Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD))
             .highlight_symbol("▶ ");
-            let selected = if self.focus == Pane::Watched {
-                Some(self.pr_selected)
+            let highlight = if self.focus == Pane::Watched {
+                Style::new().add_modifier(Modifier::REVERSED | Modifier::BOLD)
             } else {
-                None
+                Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             };
-            let mut state = TableState::default().with_selected(selected);
+            let table = table.row_highlight_style(highlight);
+            let mut state = TableState::default().with_selected(Some(self.pr_selected));
             frame.render_stateful_widget(table, watched_layout[1], &mut state);
         }
 
@@ -604,20 +664,12 @@ impl TuiApp {
                 .map(|record| {
                     Row::new(vec![
                         Cell::from(short_time(&record.observed_at)),
-                        Cell::from(
-                            self.view
-                                .pull_requests
-                                .iter()
-                                .find(|pull_request| pull_request.key == record.key)
-                                .map(|pull_request| pull_request.title.clone())
-                                .unwrap_or_else(|| activity_label(record)),
-                        ),
+                        Cell::from(event_line(&record.event)),
                         Cell::from(
                             activity_stack(&self.view, &record.key)
                                 .map(|number| format!("stack {number}"))
                                 .unwrap_or_default(),
                         ),
-                        Cell::from(activity_summary(&record.event)),
                         Cell::from(if record.read { "read" } else { "unread" }),
                     ])
                 })
@@ -626,14 +678,12 @@ impl TuiApp {
                 rows,
                 [
                     Constraint::Length(12),
-                    Constraint::Min(30),
+                    Constraint::Min(40),
                     Constraint::Length(10),
-                    Constraint::Min(22),
                     Constraint::Length(6),
                 ],
             )
-            .header(
-                Row::new(["When", "Title", "Stack", "Event", "Read"])
+            .header(Row::new(["When", "Event", "Stack", "Read"])
                     .style(Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)),
             )
             .block(activity_block)
@@ -723,7 +773,7 @@ impl TuiApp {
             lines.push(Line::from(format!(
                 "{}   {}   {}",
                 short_time(&change.observed_at),
-                activity_summary(&change.event),
+                event_line(&change.event),
                 if change.read { "read" } else { "unread" }
             )));
         }
@@ -1046,9 +1096,9 @@ mod tests {
             .lines()
             .find(|line| line.contains("▶"))
             .expect("selected row");
-        assert!(selected.contains("api#43"), "{frame}");
-        assert!(!selected.contains("api#42"), "{frame}");
-        assert!(frame.contains("New comment from @alice"), "{frame}");
+        assert_eq!(frame.matches("▶").count(), 1, "{frame}");
+        assert_eq!(selected, selected, "{frame}");
+        assert!(frame.contains("comment by @alice"), "{frame}");
     }
 
     #[test]
@@ -1124,6 +1174,23 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn moving_the_activity_selection_moves_the_pull_request_cursor() {
+        let mut app = TuiApp::new(view(vec![
+            record_on("acme/api#43", "a2", false),
+            record_on("acme/api#42", "a1", true),
+        ]));
+        app.view.pull_requests = vec![standalone("acme/api#42"), standalone("acme/api#43")];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Char('j')), &inbox, &core_config())
+            .await
+            .expect("j");
+        assert_eq!(
+            app.selected_pull_request().map(|pr| pr.key.to_string()),
+            Some("acme/api#42".to_string())
+        );
+    }
+
+    #[tokio::test]
     async fn page_keys_move_the_watched_selection_by_ten() {
         let mut app = TuiApp::new(view(Vec::new()));
         for number in 1..=25 {
@@ -1159,7 +1226,7 @@ mod tests {
             .expect("enter");
         let frame = app.snapshot();
         assert!(frame.contains("Changes on acme/api#42: 2"), "{frame}");
-        assert!(frame.contains("New comment from @alice"), "{frame}");
+        assert!(frame.contains("comment by @alice"), "{frame}");
         assert!(frame.contains("CI failing: build"), "{frame}");
     }
 
@@ -1260,7 +1327,7 @@ mod tests {
         let frame = TuiApp::new(view).snapshot();
         let activity = frame
             .lines()
-            .find(|line| line.contains("New comment from @alice"))
+            .find(|line| line.contains("comment by @alice"))
             .expect("activity row");
         assert!(activity.contains("stack 7"), "{frame}");
     }

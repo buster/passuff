@@ -188,6 +188,7 @@ mod tests {
             labels: Vec::new(),
             milestone: None,
             base_ref: "main".to_string(),
+            merged_by: None,
             stack: None,
             head_oid: "abc123".to_string(),
             ci: CiResult::default(),

@@ -615,6 +615,7 @@ mod tests {
                     labels: Vec::new(),
                     milestone: None,
                     base_ref: "main".to_string(),
+                    merged_by: None,
                     stack: None,
                     head_oid: "abc".to_string(),
                     ci: passuff_core::CiResult::default(),

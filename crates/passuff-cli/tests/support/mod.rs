@@ -116,6 +116,7 @@ impl PullRequestFixture {
             labels: self.labels.clone(),
             milestone: self.milestone.clone(),
             base_ref: self.base_ref.clone(),
+            merged_by: None,
             stack: self.stack.clone(),
             head_oid: self.head_oid.clone(),
             ci: self.ci.clone(),
