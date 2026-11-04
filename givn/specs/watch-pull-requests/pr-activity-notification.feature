@@ -85,6 +85,9 @@ Feature: Pull request activity notification
     When  "octo-personal" submits an "approved" review on "acme/api#42"
     And  passuff runs one check
     Then  the transcript reports no notifications
+    When  the developer lists all activity
+    Then  the transcript reports "Review approved by @octo-personal"
+    And  the activity "Review approved by @octo-personal" is read
 
   @pr-activity-notification
   Scenario: A commit push stays silent
@@ -358,6 +361,9 @@ Feature: Pull request activity notification
     When  "octo-work" comments "I will rerun CI" on "acme/api#42"
     And  passuff runs one check
     Then  the transcript reports no notifications
+    When  the developer lists all activity
+    Then  the transcript reports "New comment from @octo-work"
+    And  the activity "New comment from @octo-work" is read
 
   @pr-activity-notification
   Scenario: A failed account does not stop the other account
