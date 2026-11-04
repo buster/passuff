@@ -5,7 +5,9 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use async_trait::async_trait;
-use passuff_config::{NotificationsConfig, Urgency};
+use passuff_config::NotificationsConfig;
+#[cfg(not(target_os = "macos"))]
+use passuff_config::Urgency;
 #[cfg(feature = "test-support")]
 use serde_json::json;
 
@@ -58,17 +60,20 @@ impl NotificationDelivery for DesktopDelivery {
             return report;
         }
 
-        let urgency = match config.urgency {
-            Urgency::Low => notify_rust::Urgency::Low,
-            Urgency::Normal => notify_rust::Urgency::Normal,
-            Urgency::Critical => notify_rust::Urgency::Critical,
-        };
         let mut notification = notify_rust::Notification::new();
         notification
             .appname("passuff")
             .summary(&rendered.title)
-            .body(&rendered.body)
-            .urgency(urgency);
+            .body(&rendered.body);
+        #[cfg(not(target_os = "macos"))]
+        {
+            let urgency = match config.urgency {
+                Urgency::Low => notify_rust::Urgency::Low,
+                Urgency::Normal => notify_rust::Urgency::Normal,
+                Urgency::Critical => notify_rust::Urgency::Critical,
+            };
+            notification.urgency(urgency);
+        }
         if matches!(report.sound, Some(SoundOutcome::Unavailable)) {
             notification.sound_name("message-new-instant");
         }
