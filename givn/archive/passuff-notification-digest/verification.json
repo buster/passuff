@@ -1,24 +1,67 @@
 {
   "schema": 1,
   "change": "passuff-notification-digest",
-  "status": "pending",
-  "candidate_revision": null,
-  "tested_revision": null,
-  "scopes": {},
-  "coverage": null,
-  "scope_evidence": {},
-  "coverage_inputs": null,
-  "merge_completed": true,
-  "merged_deltas": [
-    "watch-pull-requests/pr-activity-notification.feature"
-  ],
-  "merge_in_progress": null,
-  "merge_plan": [
-    "watch-pull-requests/pr-activity-notification.feature"
-  ],
-  "merge_targets": {
-    "watch-pull-requests/pr-activity-notification.feature": "givn/specs/watch-pull-requests/pr-activity-notification.feature"
+  "status": "proven",
+  "candidate_revision": "0be2a7bdd2e665f8e6e0c2d33a7faaf22fcb4a39",
+  "tested_revision": "0be2a7bdd2e665f8e6e0c2d33a7faaf22fcb4a39",
+  "scopes": {
+    "e2e": {
+      "status": "passed",
+      "total": 17,
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 5.552029237
+    },
+    "regular": {
+      "status": "passed",
+      "total": 185,
+      "passed": 185,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 4.245178414
+    }
   },
+  "coverage": {
+    "status": "passed",
+    "line_covered": 6326,
+    "line_valid": 7147,
+    "line_percent": 88
+  },
+  "scope_evidence": {
+    "e2e": {
+      "inputs": {
+        "revision": "0be2a7bdd2e665f8e6e0c2d33a7faaf22fcb4a39",
+        "features_digest": "209c45d1e8e84545f2b7942ab68c15499188db64976f510598066539d094bf7a",
+        "command_digest": "35a094569ae36313ab870cd6093c367757767b4199936126ccb855e87e67532f",
+        "content_digest": "888105220e05ad8c42278d63c84f8fdd79ea63f26f76ec6896e74072f9ffa5ef",
+        "scope": "e2e"
+      },
+      "result_digest": "f73550d0b76e876d27a7d8f7c60968d76b8199c8bff9d88eb1af3a03ead5f4f7"
+    },
+    "regular": {
+      "inputs": {
+        "revision": "0be2a7bdd2e665f8e6e0c2d33a7faaf22fcb4a39",
+        "features_digest": "209c45d1e8e84545f2b7942ab68c15499188db64976f510598066539d094bf7a",
+        "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+        "content_digest": "888105220e05ad8c42278d63c84f8fdd79ea63f26f76ec6896e74072f9ffa5ef",
+        "scope": "regular"
+      },
+      "result_digest": "2588125e1d2364ac30e774c20f5e4130ff7dc538c4844777370aa022aab9dd71"
+    }
+  },
+  "coverage_inputs": {
+    "revision": "0be2a7bdd2e665f8e6e0c2d33a7faaf22fcb4a39",
+    "features_digest": "209c45d1e8e84545f2b7942ab68c15499188db64976f510598066539d094bf7a",
+    "command_digest": "16b6296c6b3d3f329e8b035453b00bf9212254940aef50d3404ae7f509a74424",
+    "content_digest": "888105220e05ad8c42278d63c84f8fdd79ea63f26f76ec6896e74072f9ffa5ef",
+    "scope": "coverage"
+  },
+  "merge_completed": true,
+  "merged_deltas": [],
+  "merge_in_progress": null,
+  "merge_plan": [],
+  "merge_targets": {},
   "started_at_unix": 1793823787,
-  "finished_at_unix": null
+  "finished_at_unix": 1793823816
 }
