@@ -324,7 +324,7 @@ jobs:
         run: |
           set -euo pipefail
           version_output="$(target/release/passuff --version)"
-          expected_output="passuff $RELEASE_VERSION"
+          expected_output="passuff $RELEASE_VERSION (☞ﾟヮﾟ)☞"
           if [[ "$version_output" != "$expected_output" ]]; then
             printf 'passuff --version returned %s, expected %s\n' \
               "$version_output" "$expected_output" >&2
