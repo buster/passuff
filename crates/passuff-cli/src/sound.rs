@@ -144,3 +144,57 @@ impl SoundPlayer for UnavailableSoundPlayer {
         SoundOutcome::Unavailable
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_bundled_sound_is_three_short_beeps_in_one_second() {
+        let bytes = BUNDLED_WAV;
+        assert_eq!(&bytes[0..4], b"RIFF");
+        assert_eq!(&bytes[8..12], b"WAVE");
+        let channels = u16::from_le_bytes([bytes[22], bytes[23]]);
+        let rate = u32::from_le_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]);
+        let bits = u16::from_le_bytes([bytes[34], bytes[35]]);
+        assert_eq!(channels, 1);
+        assert_eq!(rate, 44_100);
+        assert_eq!(bits, 16);
+
+        let samples: Vec<i16> = bytes[44..]
+            .chunks_exact(2)
+            .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]))
+            .collect();
+        let duration = samples.len() as f64 / f64::from(rate);
+        assert!((duration - 1.0).abs() < 0.01, "duration was {duration}");
+
+        let mut regions = 0;
+        let mut active = false;
+        let mut silence = 0;
+        let mut region_len = 0;
+        for sample in samples {
+            if sample.abs() > 2_000 {
+                if !active {
+                    regions += 1;
+                    active = true;
+                }
+                silence = 0;
+                region_len += 1;
+            } else {
+                if active && silence > 1_000 {
+                    assert!(
+                        region_len < rate as usize / 5,
+                        "beep was longer than 200 ms"
+                    );
+                    active = false;
+                    region_len = 0;
+                }
+                silence += 1;
+            }
+        }
+        if active {
+            assert!(region_len < rate as usize / 5);
+        }
+        assert_eq!(regions, 3, "expected three beeps");
+    }
+}
