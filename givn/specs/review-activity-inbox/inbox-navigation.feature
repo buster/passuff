@@ -214,6 +214,21 @@ Feature: Inbox navigation
     And  the TUI does not show "Summary First paragraph"
 
   @inbox-navigation
+  Scenario: The pull request description renders a Markdown subset
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the pull request "acme/api#42" has a markdown description
+    And  the watcher has already observed "acme/api#42"
+    When  the developer opens the inbox TUI
+    And  the developer presses "tab"
+    And  the developer presses "enter"
+    Then  the TUI shows "Summary"
+    And  the TUI shows "• first item"
+    And  the TUI shows "bold text"
+    And  the TUI does not show "## Summary"
+    And  the TUI does not show "**bold**"
+
+  @inbox-navigation
   Scenario: The developer ignores and restores a pull request
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
