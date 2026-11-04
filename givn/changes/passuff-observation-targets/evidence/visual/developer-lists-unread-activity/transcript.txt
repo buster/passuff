@@ -1,0 +1,3 @@
+passuff: inbox
+  a1 2026-11-04T13:27:59.980725691+00:00 acme/api#42 unread New comment from @alice
+exit status: 0

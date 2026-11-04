@@ -413,6 +413,7 @@ impl GitHubApiAdapter {
                     number: node.number,
                     node_id: node.id,
                     updated_at: node.updated_at,
+                    created_at: node.created_at,
                     head_oid: node
                         .commits
                         .nodes
@@ -420,6 +421,7 @@ impl GitHubApiAdapter {
                         .map(|commit| commit.commit.oid.clone())
                         .unwrap_or_default(),
                     ci_state,
+                    state: map_pr_state(&node.state, node.merged),
                 });
             }
             let page_info = connection.page_info.unwrap_or_default();
@@ -463,14 +465,18 @@ fn without_stack_fields(query: &str) -> String {
         )
 }
 
-fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
-    let state = if node.merged || node.state.eq_ignore_ascii_case("MERGED") {
+fn map_pr_state(state: &str, merged: bool) -> PrState {
+    if merged || state.eq_ignore_ascii_case("MERGED") {
         PrState::Merged
-    } else if node.state.eq_ignore_ascii_case("CLOSED") {
+    } else if state.eq_ignore_ascii_case("CLOSED") {
         PrState::Closed
     } else {
         PrState::Open
-    };
+    }
+}
+
+fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
+    let state = map_pr_state(&node.state, node.merged);
     let ci = node
         .commits
         .nodes
@@ -692,6 +698,9 @@ query($after: String) {
         id
         number
         updatedAt
+        createdAt
+        state
+        merged
         repository { nameWithOwner }
         commits(last: 1) { nodes { commit { oid statusCheckRollup { state } } } }
       }
@@ -976,6 +985,10 @@ struct GqlProbePr {
     number: u64,
     #[serde(rename = "updatedAt")]
     updated_at: String,
+    #[serde(rename = "createdAt")]
+    created_at: String,
+    state: String,
+    merged: bool,
     repository: GqlRepo,
     commits: GqlCommits,
 }

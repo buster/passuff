@@ -317,8 +317,10 @@ pub struct ProbePullRequest {
     pub number: u64,
     pub node_id: String,
     pub updated_at: String,
+    pub created_at: String,
     pub head_oid: String,
     pub ci_state: Option<CiState>,
+    pub state: PrState,
 }
 
 /// One account's change probe result, without observations.

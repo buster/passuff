@@ -64,6 +64,9 @@ fn main() {
             .fail_on_skipped()
             .max_concurrent_scenarios(Some(1))
             .filter_run(features, move |_, _, scenario| {
+                if scenario.tags.iter().any(|tag| tag == "givn.removed") {
+                    return false;
+                }
                 let is_e2e = scenario.tags.iter().any(|tag| tag == "e2e");
                 let matches_scope = match scope.as_str() {
                     "e2e" => is_e2e,

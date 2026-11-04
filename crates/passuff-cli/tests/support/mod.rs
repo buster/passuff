@@ -1536,8 +1536,10 @@ impl GitHubGateway for FakeGateway {
                     number: pull_request.key.number,
                     node_id: pull_request.node_id.clone(),
                     updated_at: pull_request.updated_at.clone(),
+                    created_at: pull_request.created_at.clone(),
                     head_oid: pull_request.head_oid.clone(),
                     ci_state: Some(pull_request.ci.state.clone()),
+                    state: pull_request.state.clone(),
                 })
                 .collect(),
             allowance,

@@ -220,6 +220,9 @@ impl PassuffCore {
                 let key = pull_request.key.clone();
                 let key_string = key.to_string();
                 let previous = entry.pull_requests.get(&key_string);
+                let retired = previous
+                    .is_some_and(|watched| watched.current.state.is_terminal())
+                    && pull_request.state.is_terminal();
                 let catch_up = previous_scope.as_ref().is_some_and(|scope| {
                     !scope.allows_repository(&pull_request.key.repository)
                         && current_scope.allows_repository(&pull_request.key.repository)
@@ -232,8 +235,16 @@ impl PassuffCore {
                     has_prior_cycle,
                     last_check_at.as_deref(),
                 );
-                let events = classification.events;
-                let silent = classification.silent;
+                let events = if retired {
+                    Vec::new()
+                } else {
+                    classification.events
+                };
+                let silent = if retired {
+                    Vec::new()
+                } else {
+                    classification.silent
+                };
                 let baseline = classification.baseline;
                 let current = classification.current;
                 let watched = match baseline {
@@ -356,7 +367,7 @@ fn observation_known_ids(account: &crate::domain::AccountState) -> Vec<String> {
 mod tests {
     use super::*;
     use crate::credential::CredentialError;
-    use crate::domain::{ApiAllowance, CiState, ProbePullRequest, StateError, WatcherState};
+    use crate::domain::{ApiAllowance, CiResult, CiState, Comment, ProbePullRequest, PullRequestKey, StateError, WatcherState};
     use crate::github::{AccountProbe, GitHubError};
     use async_trait::async_trait;
     use passuff_config::{
@@ -459,8 +470,10 @@ mod tests {
             number: 42,
             node_id: node_id.to_string(),
             updated_at: updated_at.to_string(),
+            created_at: "2026-11-03T10:00:00Z".to_string(),
             head_oid: "abc".to_string(),
             ci_state: Some(CiState::Success),
+            state: crate::domain::PrState::Open,
         }
     }
 
@@ -487,7 +500,7 @@ mod tests {
 
     fn core(
         config: CoreConfig,
-        gateway: Arc<ProbeGateway>,
+        gateway: Arc<dyn GitHubGateway>,
         store: Arc<dyn SnapshotStore>,
     ) -> PassuffCore {
         PassuffCore {
@@ -562,4 +575,98 @@ mod tests {
         assert!(core.refresh().await.is_err());
         assert!(core.probe().await.expect("second probe").changed);
     }
+    struct ObservationGateway {
+        observation: Mutex<AccountObservation>,
+    }
+
+    impl ObservationGateway {
+        fn new(observation: AccountObservation) -> Self {
+            Self {
+                observation: Mutex::new(observation),
+            }
+        }
+
+        fn set(&self, observation: AccountObservation) {
+            *self.observation.lock().expect("observation") = observation;
+        }
+    }
+
+    #[async_trait]
+    impl GitHubGateway for ObservationGateway {
+        async fn observe(
+            &self,
+            _token: &str,
+            _graphql_url: &Url,
+            _known_node_ids: &[String],
+        ) -> Result<AccountObservation, GitHubError> {
+            Ok(self.observation.lock().expect("observation").clone())
+        }
+
+        async fn probe(
+            &self,
+            _token: &str,
+            _graphql_url: &Url,
+        ) -> Result<AccountProbe, GitHubError> {
+            Err(GitHubError::Transport("unused".to_string()))
+        }
+    }
+
+    fn authored(state: crate::domain::PrState, comments: Vec<Comment>) -> crate::domain::AuthoredPullRequest {
+        let merged = matches!(state, crate::domain::PrState::Merged);
+        crate::domain::AuthoredPullRequest {
+            key: PullRequestKey::new("acme/api".to_string(), 42),
+            node_id: "n1".to_string(),
+            author: "octo".to_string(),
+            title: "Pull request".to_string(),
+            body: String::new(),
+            url: "https://github.com/acme/api/pull/42".to_string(),
+            created_at: "2026-11-03T10:00:00Z".to_string(),
+            updated_at: "2026-11-03T11:00:00Z".to_string(),
+            state,
+            merged,
+            is_draft: false,
+            assignees: Vec::new(),
+            labels: Vec::new(),
+            milestone: None,
+            base_ref: "main".to_string(),
+            merged_by: None,
+            stack: None,
+            head_oid: "abc".to_string(),
+            ci: CiResult::default(),
+            comments,
+            reviews: Vec::new(),
+            review_comments: Vec::new(),
+        }
+    }
+
+    fn observation(pull_request: crate::domain::AuthoredPullRequest) -> AccountObservation {
+        AccountObservation {
+            login: "octo".to_string(),
+            pull_requests: vec![pull_request],
+            involved_node_ids: Vec::new(),
+            checked_at: "2026-11-03T12:00:00Z".to_string(),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_comment_on_a_terminal_pull_request_produces_no_notification() {
+        let gateway = Arc::new(ObservationGateway::new(observation(authored(
+            crate::domain::PrState::Merged,
+            Vec::new(),
+        ))));
+        let store = Arc::new(MemoryStore(Arc::new(Mutex::new(WatcherState::default()))));
+        let mut core = core(config(WatchMode::All, Vec::new()), gateway.clone(), store);
+        assert!(core.refresh().await.expect("baseline").notifications.is_empty());
+        gateway.set(observation(authored(
+            crate::domain::PrState::Merged,
+            vec![Comment {
+                id: "c1".to_string(),
+                author: "alice".to_string(),
+                body: "post-merge".to_string(),
+                created_at: "2026-11-03T12:30:00Z".to_string(),
+            }],
+        )));
+        assert!(core.refresh().await.expect("retired").notifications.is_empty());
+    }
+
 }
