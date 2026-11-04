@@ -1,5 +1,7 @@
 # Passuff! (☞ﾟヮﾟ)☞
 
+[![crates.io](https://img.shields.io/crates/v/passuff?logo=rust)](https://crates.io/crates/passuff)
+
 <!-- givn:begin:coverage-badge -->
 [![Line Coverage: 89%](https://img.shields.io/badge/line%20coverage-89%25-brightgreen)](coverage/cobertura-coverage.xml)
 [![Branch Coverage: 47%](https://img.shields.io/badge/branch%20coverage-47%25-brightgreen)](coverage/cobertura-coverage.xml)
