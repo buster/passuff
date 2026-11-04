@@ -35,7 +35,7 @@ async fn transcript_shows_commands(world: &mut World) {
 #[then(regex = r#"^the transcript shows the version$"#)]
 async fn transcript_shows_version(world: &mut World) {
     let transcript = world.last_transcript.trim();
-    let pattern = Regex::new(r"^passuff \d+\.\d+\.\d+$").expect("version regex");
+    let pattern = Regex::new(r"^passuff \d+\.\d+\.\d+ \(☞ﾟヮﾟ\)☞$").expect("version regex");
     assert!(
         pattern.is_match(transcript),
         "expected a version line, got {transcript:?}"

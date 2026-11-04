@@ -183,7 +183,7 @@ mod tests {
         assert!(outcome.transcript.contains("sound played"));
         let notifications = delivery.notifications.lock().expect("notifications");
         assert_eq!(notifications.len(), 1);
-        assert_eq!(notifications[0].0, "passuff: notify test");
+        assert_eq!(notifications[0].0, "passuff (☞ﾟヮﾟ)☞: notify test");
         assert!(notifications[0]
             .1
             .contains("passuff notifications are working"));

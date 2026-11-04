@@ -1,5 +1,7 @@
 pub mod browser;
 pub mod delivery;
+pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), " (☞ﾟヮﾟ)☞");
+
 pub mod gh_login;
 pub mod inbox_cli;
 pub mod live;

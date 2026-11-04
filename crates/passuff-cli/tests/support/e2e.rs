@@ -693,7 +693,7 @@ impl World {
     }
 
     pub async fn e2e_wait_terminal_notification(&self, key: &str) {
-        let needle = format!("passuff: {key}");
+        let needle = format!("passuff (☞ﾟヮﾟ)☞: {key}");
         let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
         loop {
             if self

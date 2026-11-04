@@ -30,8 +30,8 @@ impl TranscriptRenderer {
             None
         };
         let title = match &count_line {
-            Some(line) => format!("passuff: {line}"),
-            None => format!("passuff: {}", notification.key),
+            Some(line) => format!("passuff (☞ﾟヮﾟ)☞: {line}"),
+            None => format!("passuff (☞ﾟヮﾟ)☞: {}", notification.key),
         };
         let lines: Vec<String> = notification.events.iter().map(render_event).collect();
         let body = match &count_line {
@@ -67,7 +67,7 @@ impl TranscriptRenderer {
             activity_phrase(total),
             pull_request_phrase(notifications.len())
         );
-        let title = format!("passuff: {count_line}");
+        let title = format!("passuff (☞ﾟヮﾟ)☞: {count_line}");
         let mut body_lines = vec![count_line.clone()];
         for notification in notifications.iter().take(5) {
             body_lines.push(format!(
@@ -118,7 +118,7 @@ impl TranscriptRenderer {
     }
 
     pub fn render_test_notification(&self, sound: bool) -> RenderedNotification {
-        let title = "passuff: notify test".to_string();
+        let title = "passuff (☞ﾟヮﾟ)☞: notify test".to_string();
         let body = "If you can read this, passuff notifications are working.".to_string();
         RenderedNotification {
             transcript: format!("{title}\n{body}"),
@@ -334,7 +334,7 @@ mod tests {
     fn a_single_event_keeps_the_previous_notification() {
         let notification = one(key("acme/api", 42), vec![comment("alice")]);
         let rendered = rendered(&notification);
-        assert_eq!(rendered.title, "passuff: acme/api#42");
+        assert_eq!(rendered.title, "passuff (☞ﾟヮﾟ)☞: acme/api#42");
         assert_eq!(rendered.body, "New comment from @alice");
         assert!(rendered.transcript.contains("New comment from @alice"));
     }
@@ -343,7 +343,10 @@ mod tests {
     fn a_single_pull_request_with_several_events_names_the_count() {
         let notification = one(key("acme/api", 42), vec![comment("alice"), review(), ci()]);
         let rendered = rendered(&notification);
-        assert_eq!(rendered.title, "passuff: 3 activities on acme/api#42");
+        assert_eq!(
+            rendered.title,
+            "passuff (☞ﾟヮﾟ)☞: 3 activities on acme/api#42"
+        );
         assert!(rendered.body.starts_with("3 activities on acme/api#42\n"));
         assert!(rendered
             .transcript
@@ -357,7 +360,10 @@ mod tests {
             one(key("acme/web", 7), vec![comment("bob")]),
         ];
         let rendered = TranscriptRenderer.render_digest(&notifications, true);
-        assert_eq!(rendered.title, "passuff: 2 activities in 2 pull requests");
+        assert_eq!(
+            rendered.title,
+            "passuff (☞ﾟヮﾟ)☞: 2 activities in 2 pull requests"
+        );
         assert!(rendered
             .body
             .starts_with("2 activities in 2 pull requests\n"));

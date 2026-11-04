@@ -1713,7 +1713,10 @@ impl TuiApp {
         self.viewport.set((area.width, area.height));
         let outer = Block::bordered()
             .title(Line::from(vec![
-                Span::styled(" passuff", theme::bright().add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    " passuff (☞ﾟヮﾟ)☞",
+                    theme::bright().add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(" — Inbox ", theme::dim()),
             ]))
             .border_style(theme::border());

@@ -24,8 +24,8 @@ use ratatui::Terminal;
 #[derive(Debug, Parser)]
 #[command(
     name = "passuff-tui",
-    version,
-    about = "Browse the passuff activity inbox"
+    version = passuff::VERSION,
+    about = "Browse the passuff activity inbox (☞ﾟヮﾟ)☞"
 )]
 struct Args {
     #[arg(long, value_name = "PATH")]

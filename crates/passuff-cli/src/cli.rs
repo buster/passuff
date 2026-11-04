@@ -5,8 +5,8 @@ use clap::{Parser, Subcommand};
 #[derive(Debug, Parser)]
 #[command(
     name = "passuff",
-    version,
-    about = "Watch authored GitHub pull requests and notify on eligible activity"
+    version = passuff::VERSION,
+    about = "Watch authored GitHub pull requests and notify on eligible activity (☞ﾟヮﾟ)☞"
 )]
 pub struct Cli {
     #[command(subcommand)]
