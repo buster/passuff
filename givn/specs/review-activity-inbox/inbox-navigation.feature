@@ -52,8 +52,29 @@ Feature: Inbox navigation
     And  the pull request "acme/api#42" is assigned to "alice"
     And  the watcher has already observed "acme/api#42"
     When  the developer opens the inbox TUI
-    Then  the TUI shows "Creator / Assignee"
+    Then  the TUI shows "☺"
     And  the TUI shows "@octo-personal → @alice"
+
+  @inbox-navigation
+  Scenario: A stack is marked with a symbol and its position
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  an authored pull request "acme/api#43" by "octo-personal"
+    And  GitHub reports stack 7 for "acme/api#42" at position 1 of 2 with base "main"
+    And  GitHub reports stack 7 for "acme/api#43" at position 2 of 2 with base "main"
+    And  the watcher has already observed "acme/api#42"
+    And  the watcher has already observed "acme/api#43"
+    When  the developer opens the inbox TUI
+    Then  the TUI shows "☰"
+    And  the TUI shows "1/2"
+
+  @inbox-navigation
+  Scenario: A standalone pull request shows no stack symbol
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer opens the inbox TUI
+    Then  the TUI does not show "☰"
 
   @inbox-navigation
   Scenario: The developer sorts the watched list
