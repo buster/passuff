@@ -510,7 +510,7 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             .and_then(|author| author.login)
             .unwrap_or_else(|| "ghost".to_string()),
         title: node.title,
-        body: node.body,
+        body: node.body.unwrap_or_default(),
         url: node.url,
         created_at: node.created_at,
         updated_at: node.updated_at,
@@ -561,7 +561,7 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
                     .unwrap_or_else(|| "ghost".to_string()),
                 state: review.state,
                 body: review.body,
-                submitted_at: review.submitted_at,
+                submitted_at: review.submitted_at.unwrap_or_default(),
             })
             .collect(),
         review_comments,
@@ -759,8 +759,8 @@ struct GqlPr {
     id: String,
     number: u64,
     title: String,
-    #[serde(default)]
-    body: String,
+    #[serde(rename = "bodyText", default)]
+    body: Option<String>,
     url: String,
     state: String,
     #[serde(default)]
@@ -865,7 +865,7 @@ struct GqlReview {
     author: Option<GqlActor>,
     state: String,
     body: String,
-    submitted_at: String,
+    submitted_at: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -1015,6 +1015,7 @@ mod tests {
             "id": "node-1",
             "number": 42,
             "title": "Pull request",
+            "bodyText": "PR description",
             "url": "https://github.com/acme/api/pull/42",
             "state": "OPEN",
             "merged": false,
@@ -1100,6 +1101,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn observe_accepts_null_review_submission_and_body_text() {
+        let server = MockServer::start().await;
+        let mut node = node();
+        node["bodyText"] = serde_json::json!(null);
+        node["reviews"]["nodes"][0]["submittedAt"] = serde_json::json!(null);
+        mount(
+            &server,
+            200,
+            serde_json::json!({
+                "data": { "viewer": { "login": "octo", "pullRequests": {
+                    "pageInfo": { "hasNextPage": false, "endCursor": null },
+                    "nodes": [node]
+                } } }
+            }),
+        )
+        .await;
+        let adapter = GitHubApiAdapter::new();
+        let observation = adapter
+            .observe("token", &endpoint(&server), &[])
+            .await
+            .expect("observation");
+        assert_eq!(observation.pull_requests[0].body, "");
+        assert_eq!(observation.pull_requests[0].reviews[0].submitted_at, "");
+    }
+
+    #[tokio::test]
     async fn observe_maps_authored_pull_requests() {
         let server = MockServer::start().await;
         mount(
@@ -1121,6 +1148,7 @@ mod tests {
         let pull_request = &observation.pull_requests[0];
         assert_eq!(pull_request.key.to_string(), "acme/api#42");
         assert_eq!(pull_request.author, "octo");
+        assert_eq!(pull_request.body, "PR description");
         assert_eq!(pull_request.state, PrState::Open);
         assert!(pull_request.is_draft);
         assert_eq!(pull_request.head_oid, "abc123");
