@@ -61,6 +61,16 @@ async fn already_observed_two(world: &mut World, _a: String, _b: String) {
     }
 }
 
+#[given(regex = r#"^the pull request "([^"]+)" has the description "(.*)"$"#)]
+async fn pull_request_description(world: &mut World, key: String, description: String) {
+    world.pr_mut(&key).description = description;
+}
+
+#[given(regex = r#"^the pull request "([^"]+)" is assigned to "([^"]+)"$"#)]
+async fn pull_request_assignee(world: &mut World, key: String, login: String) {
+    world.pr_mut(&key).assignees.push(login);
+}
+
 #[given(regex = r#"^the pull request "([^"]+)" is assigned to me$"#)]
 async fn assigned_pull_request(world: &mut World, key: String) {
     world
