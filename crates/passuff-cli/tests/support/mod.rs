@@ -977,6 +977,7 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
             "F" => crossterm::event::KeyCode::Char('F'),
             "c" => crossterm::event::KeyCode::Char('c'),
             "C" => crossterm::event::KeyCode::Char('C'),
+            "u" => crossterm::event::KeyCode::Char('u'),
             "h" => crossterm::event::KeyCode::Char('h'),
             other => panic!("unknown key {other}"),
         };

@@ -56,6 +56,8 @@ pub struct TuiPreferences {
     pub descending: bool,
     pub filter: Option<String>,
     #[serde(default)]
+    pub unread_only: bool,
+    #[serde(default)]
     pub show_ignored: bool,
 }
 
@@ -65,6 +67,7 @@ impl Default for TuiPreferences {
             sort: "updated".to_string(),
             descending: true,
             filter: None,
+            unread_only: false,
             show_ignored: false,
         }
     }
@@ -378,6 +381,7 @@ pub struct TuiApp {
     sort: SortMode,
     descending: bool,
     activity_filter: Option<ActivityFilter>,
+    unread_only: bool,
     help: Option<Pane>,
     pr_detail: Option<PullRequestView>,
     show_ignored: bool,
@@ -401,6 +405,7 @@ impl TuiApp {
             sort: SortMode::Updated,
             descending: true,
             activity_filter: None,
+            unread_only: false,
             help: None,
             pr_detail: None,
             show_ignored: false,
@@ -499,7 +504,11 @@ impl TuiApp {
     }
 
     fn visible_activity(&self) -> Vec<&ActivityRecord> {
-        let records = self.view.activity.iter();
+        let records = self
+            .view
+            .activity
+            .iter()
+            .filter(|record| !self.unread_only || !record.read);
         match self.activity_filter.as_ref() {
             None => records.collect(),
             Some(ActivityFilter::PullRequest(key)) => {
@@ -547,6 +556,7 @@ impl TuiApp {
                     format!("stack:{repository}#{number}")
                 }
             }),
+            unread_only: self.unread_only,
             show_ignored: self.show_ignored,
         }
     }
@@ -558,6 +568,7 @@ impl TuiApp {
             .filter
             .as_deref()
             .and_then(filter_from_preference);
+        self.unread_only = preferences.unread_only;
         self.show_ignored = preferences.show_ignored;
     }
 
@@ -838,8 +849,14 @@ impl TuiApp {
                 }
                 Ok(TuiAction::Continue)
             }
+            KeyCode::Char('u') => {
+                self.unread_only = !self.unread_only;
+                self.selected = 0;
+                Ok(TuiAction::Continue)
+            }
             KeyCode::Char('c') => {
                 self.activity_filter = None;
+                self.unread_only = false;
                 self.selected = 0;
                 Ok(TuiAction::Continue)
             }
@@ -847,6 +864,7 @@ impl TuiApp {
                 self.sort = SortMode::Updated;
                 self.descending = true;
                 self.activity_filter = None;
+                self.unread_only = false;
                 self.show_ignored = false;
                 self.selected = 0;
                 Ok(TuiAction::ResetView)
@@ -949,7 +967,7 @@ impl TuiApp {
                 "Focus: PRs   Tab activity   j/k move   enter detail   x ignore   ◀/▶ all|filtered   p scope   q quit"
             }
             Pane::Activity => {
-                "Focus: activity   Tab PRs   j/k move   enter detail   r read   a all   p scope   q quit"
+                "Focus: activity   Tab PRs   j/k move   enter detail   r read   a all   u unread   p scope   q quit"
             }
         }
     }
@@ -998,11 +1016,12 @@ impl TuiApp {
         );
         let visible = self.visible_activity();
         let unread = visible.iter().filter(|record| !record.read).count();
-        let filtered = self
-            .activity_filter
-            .as_ref()
-            .map(|_| format!("   (filtered from {})", self.view.activity.len()))
-            .unwrap_or_default();
+        let filtering = self.activity_filter.is_some() || self.unread_only;
+        let filtered = if filtering {
+            format!("   (filtered from {})", self.view.activity.len())
+        } else {
+            String::new()
+        };
         let mut spans = vec![Span::raw(format!(
             "{} unread of {}{}   |   Focus: {}",
             unread,
@@ -1094,16 +1113,26 @@ impl TuiApp {
             frame.render_stateful_widget(table, chunks[2], &mut state);
         }
 
-        let activity_title = match self.activity_filter.as_ref() {
-            Some(filter) => format!(" Activity · {} ", filter.label()),
-            None => " Activity ".to_string(),
+        let activity_title = {
+            let mut parts = Vec::new();
+            if let Some(filter) = self.activity_filter.as_ref() {
+                parts.push(filter.label());
+            }
+            if self.unread_only {
+                parts.push("unread".to_string());
+            }
+            if parts.is_empty() {
+                " Activity ".to_string()
+            } else {
+                format!(" Activity · {} ", parts.join(" · "))
+            }
         };
         let activity_block = Block::bordered()
             .title(Line::from(activity_title).style(self.pane_title_style(Pane::Activity)))
             .border_style(self.pane_border_style(Pane::Activity));
         let visible_activity = self.visible_activity();
         if visible_activity.is_empty() {
-            let empty = if self.activity_filter.is_some() {
+            let empty = if self.activity_filter.is_some() || self.unread_only {
                 "no activity for this filter"
             } else {
                 "no activity yet"
@@ -1215,7 +1244,8 @@ impl TuiApp {
                 ("left/right", "filtered / all"),
                 ("s / S", "sort field / reverse"),
                 ("f / F", "filter activities to PR / stack"),
-                ("c / C", "clear filter / reset view"),
+                ("u", "unread activities only"),
+                ("c / C", "clear filters / reset view"),
                 ("p", "watch scope"),
                 ("h / F1", "this help"),
                 ("q", "quit"),
@@ -1228,7 +1258,8 @@ impl TuiApp {
                 ("r", "mark selected read"),
                 ("a", "mark visible read"),
                 ("f / F", "filter to PR / stack"),
-                ("c / C", "clear filter / reset view"),
+                ("u", "unread activities only"),
+                ("c / C", "clear filters / reset view"),
                 ("h / F1", "this help"),
                 ("q", "quit"),
             ],
@@ -1888,6 +1919,7 @@ mod tests {
         app.sort = SortMode::Name;
         app.descending = false;
         app.activity_filter = Some(ActivityFilter::PullRequest(pr_key("acme/api#42")));
+        app.unread_only = true;
         app.show_ignored = true;
         let preferences = app.preferences();
         let mut restored = TuiApp::new(view(Vec::new()));
@@ -1964,6 +1996,29 @@ mod tests {
         let frame = app.snapshot();
         assert!(frame.contains("Activity · acme/api stack 7"), "{frame}");
         assert!(frame.contains("2 unread of 2"), "{frame}");
+    }
+
+    #[tokio::test]
+    async fn u_filters_the_activity_to_unread_records() {
+        let mut app = TuiApp::new(view(vec![
+            record_on("acme/api#42", "a1", false),
+            record_on("acme/api#42", "a2", true),
+        ]));
+        app.view.pull_requests = vec![standalone("acme/api#42")];
+        let inbox = FakeInbox::new(Vec::new());
+        app.handle_key(key(KeyCode::Char('u')), &inbox, &core_config())
+            .await
+            .expect("unread filter");
+        let frame = app.snapshot();
+        assert!(frame.contains("Activity · unread"), "{frame}");
+        assert!(frame.contains("1 unread of 1"), "{frame}");
+        assert!(frame.contains("(filtered from 2)"), "{frame}");
+        app.handle_key(key(KeyCode::Char('c')), &inbox, &core_config())
+            .await
+            .expect("clear");
+        let frame = app.snapshot();
+        assert!(frame.contains("1 unread of 2"), "{frame}");
+        assert!(!frame.contains("filtered from"), "{frame}");
     }
 
     #[tokio::test]
