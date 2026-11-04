@@ -451,7 +451,6 @@ async fn run_terminal(
     let mut known = known_repositories(editor, &config, store).await;
     let mut picker = start_picker.then(|| ScopePicker::new(&config, known.clone()));
     let mut next_update_at: Option<std::time::Instant> = None;
-    app.set_status(Some("observing...".to_string()));
     let outcome = loop {
         let drawn = match picker.as_mut() {
             Some(active) => terminal.draw(|frame| active.render(frame)),
