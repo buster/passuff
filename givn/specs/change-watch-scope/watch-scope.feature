@@ -156,7 +156,7 @@ Feature: Watch scope editing
     Then  the activity "New comment from @alice" is unread
     And  the transcript does not report "New comment from @alice"
     When  the developer opens the inbox TUI
-    Then  the TUI shows "New comment from @alice"
+    Then  the TUI shows "comment by @alice"
 
   @watch-scope
   Scenario: A scope write failure keeps the previous scope
@@ -181,7 +181,7 @@ Feature: Watch scope editing
     And  the developer asks for status
     Then  the transcript does not report "acme/api#42"
     When  the developer opens the inbox TUI
-    Then  the TUI does not show "New comment from @alice"
+    Then  the TUI does not show "comment by @alice"
     And  the state retains "acme/api#42"
 
   @watch-scope

@@ -32,6 +32,7 @@ pub fn classify(
             if toggles.state_changes {
                 events.push(ActivityEvent::StateChange {
                     state: current.state.clone(),
+                    actor: current.merged_by.clone(),
                 });
             }
         }
@@ -139,6 +140,7 @@ pub fn classify(
         if toggles.state_changes {
             events.push(ActivityEvent::StateChange {
                 state: current.state.clone(),
+                actor: current.merged_by.clone(),
             });
         }
     }
@@ -256,6 +258,7 @@ mod tests {
             labels: Vec::new(),
             milestone: None,
             base_ref: "main".to_string(),
+            merged_by: None,
             stack: None,
             head_oid: "abc123".to_string(),
             ci: CiResult::default(),
@@ -297,7 +300,8 @@ mod tests {
         assert_eq!(
             second.events,
             vec![ActivityEvent::StateChange {
-                state: PrState::Merged
+                state: PrState::Merged,
+                actor: None
             }]
         );
     }
@@ -329,7 +333,8 @@ mod tests {
         assert_eq!(
             later.events,
             vec![ActivityEvent::StateChange {
-                state: PrState::Merged
+                state: PrState::Merged,
+                actor: None
             }]
         );
     }

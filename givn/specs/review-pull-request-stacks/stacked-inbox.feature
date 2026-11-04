@@ -18,7 +18,7 @@ Feature: Stacked inbox
     And  the TUI shows "size 2"
     And  the TUI shows "position 1"
     And  the TUI shows "position 2"
-    And  the TUI shows "New comment from @alice"
+    And  the TUI shows "comment by @alice"
     And  the exit status is 0
 
   @stacked-inbox

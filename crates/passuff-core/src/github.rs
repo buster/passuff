@@ -457,6 +457,7 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
             .collect(),
         milestone: node.milestone.and_then(|milestone| milestone.title),
         base_ref: node.base_ref_name,
+        merged_by: node.merged_by.and_then(|actor| actor.login),
         stack,
         head_oid,
         ci,
@@ -558,6 +559,7 @@ query($after: String) {
         createdAt
         updatedAt
         baseRefName
+        mergedBy { login }
         stack { number size baseRefName }
         stackEntry { position }
         author { login }
@@ -589,6 +591,7 @@ query($ids: [ID!]!) {
       createdAt
       updatedAt
       baseRefName
+      mergedBy { login }
       stack { number size baseRefName }
       stackEntry { position }
       author { login }
@@ -689,6 +692,8 @@ struct GqlPr {
     created_at: String,
     updated_at: String,
     base_ref_name: String,
+    #[serde(rename = "mergedBy")]
+    merged_by: Option<GqlActor>,
     stack: Option<GqlStack>,
     stack_entry: Option<GqlStackEntry>,
     author: Option<GqlActor>,

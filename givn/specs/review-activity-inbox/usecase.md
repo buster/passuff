@@ -50,7 +50,7 @@ The developer lists the inbox or marks activity read.
 - T4: An empty inbox shows "no activity yet".
 - T5: A configuration error exits 2 and a state error exits 3 before the interface starts; the message names the failure.
 - T6: `--snapshot` renders one frame to stdout with the same renderer and data and exits 0 without a terminal.
-- T7: The screen contains no token, comment body, helper command text, or enum name.
+- T7: The screen contains no token, no more than the recorded 80-character event excerpt, no helper command text, and no enum name.
 - T8: `Tab`/`Shift-Tab` cycles focus between the watched pull request pane and the activity pane; the footer names the focused pane.
 - T9: `j`/`k` and the arrow keys move the selected row in the focused pane; the watched table scrolls to keep the selection visible, including large stacks; the activity selection clamps.
 - T10: The terminal inbox observes the configured accounts while it is open and shows the result without a keypress or another command; it probes GitHub for a change and performs the full observation only when the probe reports one, preserving the selected pull request and clamping a vanished selection.

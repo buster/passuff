@@ -151,6 +151,7 @@ pub struct AuthoredPullRequest {
     pub labels: Vec<String>,
     pub milestone: Option<String>,
     pub base_ref: String,
+    pub merged_by: Option<String>,
     pub stack: Option<PullRequestStack>,
     pub head_oid: String,
     pub ci: CiResult,
@@ -192,6 +193,8 @@ pub struct WatchedPullRequest {
     pub url: String,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub merged_by: Option<String>,
     pub baseline: Baseline,
     pub current: CurrentObservation,
     #[serde(default)]
@@ -213,6 +216,7 @@ impl WatchedPullRequest {
             url: pr.url.clone(),
             created_at: pr.created_at.clone(),
             updated_at: pr.updated_at.clone(),
+            merged_by: pr.merged_by.clone(),
             baseline: Baseline {
                 recorded_at,
                 seen_comment_ids: pr.comments.iter().map(|c| c.id.clone()).collect(),
@@ -257,6 +261,8 @@ pub enum ActivityEvent {
     CiRecovery,
     StateChange {
         state: PrState,
+        #[serde(default)]
+        actor: Option<String>,
     },
 }
 
