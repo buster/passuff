@@ -42,20 +42,20 @@ Release note for every batch commit: `Observe only changed open pull requests an
         transcript reports no notifications. The terminal transition itself
         remains covered by the permanent scenarios. D1: terminal records stay
         in state and remain visible.
-  - [x] COMMIT: `4dc4695` -- Batch: `terminal-retirement`
+  - [x] COMMIT: `3ecd00d` -- Batch: `terminal-retirement`
 
 - [x] Scenario: `A review on a merged pull request does not notify`
   - [x] **Design constraints:** the same retirement rule applies to the
         reviews event family; a submitted review on a terminal pull request
         produces no notification.
-  - [x] COMMIT: `4dc4695` -- Batch: `terminal-retirement`
+  - [x] COMMIT: `3ecd00d` -- Batch: `terminal-retirement`
 
 - [x] Scenario: `A comment on a merged pull request reaches the inbox` (removed)
   - [x] **Design constraints:** the permanent `inbox-navigation` scenario is
         removed by the delta; the runner skips the `@givn.removed`
         placeholder. No notification or inbox activity for post-terminal
         comments.
-  - [x] COMMIT: `4dc4695` -- Batch: `terminal-retirement`
+  - [x] COMMIT: `3ecd00d` -- Batch: `terminal-retirement`
 
 ### Batch: `observation-targets`
 
@@ -106,14 +106,14 @@ Release note for every batch commit: `Observe only changed open pull requests an
         `acme/api#42`; the startup reconciliation observes both once; the
         probe-targeted pass observes only `acme/api#42`. The assertion inspects
         the observation request after the startup pass.
-  - [x] COMMIT: `3d9bcb0` -- Batch: `observation-targets`
+  - [x] COMMIT: `099d451` -- Batch: `observation-targets`
 
 - [x] Scenario: `A failed observation keeps the change pending`
   - [x] **Design constraints:** a comment arrives; the next observation fails;
         the transcript reports `account personal failed`; the following check
         reports `New comment`. The probe baseline for the failed account must
         not advance (per-account commitment).
-  - [x] COMMIT: `3d9bcb0` -- Batch: `observation-targets`
+  - [x] COMMIT: `099d451` -- Batch: `observation-targets`
 
 ### Batch: `reconciliation`
 
@@ -131,7 +131,7 @@ Release note for every batch commit: `Observe only changed open pull requests an
         = 2`; the comment is served after the startup pass; the TUI runs for 6
         seconds and shows the comment. The startup pass must not be the pass
         under test.
-  - [x] COMMIT: `3d9bcb0` -- Batch: `reconciliation`
+  - [x] COMMIT: `099d451` -- Batch: `reconciliation`
 
 ### Closeout
 

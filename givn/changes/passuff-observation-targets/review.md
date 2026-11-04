@@ -11,13 +11,13 @@ Reviewer context: passuff maintainer (operator)
   assignments or assertions; the `@givn.removed` placeholder is filtered by
   `features_runner.rs` and has no step definition.
 - **Scenario commits:**
-  - `4dc4695` — Batch `terminal-retirement`; terminal-status and review
+  - `3ecd00d` — Batch `terminal-retirement`; terminal-status and review
     scenarios; touches `crates/passuff-core/src/{cycle,github,domain}.rs` and
     the runner filter.
-  - `3d9bcb0` — Batch `observation-targets` and Batch `reconciliation`;
+  - `099d451` — Batch `observation-targets` and Batch `reconciliation`;
     targeted observation, reconciliation scheduling, the gateway change, and
     the two live-inbox scenarios.
-  - `42ccacf` — test-only: `relevant_targets`, `commit_probe`, and
+  - `90c1330` — test-only: `relevant_targets`, `commit_probe`, and
     `reconciliation_interval_secs` unit tests.
   Both behavior commits contain production code, not comments or transcripts.
 - **Promised components:** `Discovery` (`github.rs`), `ProbePullRequest`
@@ -156,9 +156,7 @@ VISUAL-REVIEW: PASS
 
 ## Split-or-keep
 
-| Scenario | Decision |
-|---|---|
-| The inbox reconciles open pull requests when the interval elapses | keep — the interval setup, the startup pass, and the unseen comment are one timing behavior |
+No delta scenario exceeds the gate's long-scenario threshold.
 
 ## README impact
 

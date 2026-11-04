@@ -38,10 +38,10 @@ The opportunity is to keep the probe as the cheap signal and let it identify the
 
 `givn spec route` reported no signal (top candidates tied). Decision recorded with rationale.
 
-| Proposed capability | Decision | Rationale |
-|---|---|---|
-| `pr-activity-notification` | `EXTEND watch-pull-requests` | The change alters which pull requests are observed and which activity notifies. It adds no new actor goal, channel, or surface; the existing capability already owns observation, classification, and notification. |
-| `inbox-navigation` | `EXTEND review-activity-inbox` | The live inbox stops running a full check cycle on every change signal and gains the configurable reconciliation interval. The screen and its keys do not change; the live observation already belongs to this capability. |
+| Proposed capability | Route's recommendation | Decision | Rationale |
+|---|---|---|---|
+| `pr-activity-notification` | none (no signal) | `EXTEND pr-activity-notification` | The change alters which pull requests are observed and which activity notifies. It adds no new actor goal, channel, or surface; the existing capability already owns observation, classification, and notification. |
+| `inbox-navigation` | none (no signal) | `EXTEND inbox-navigation` | The live inbox stops running a full check cycle on every change signal and gains the configurable reconciliation interval. The screen and its keys do not change; the live observation already belongs to this capability. |
 
 ## Out of Scope
 
