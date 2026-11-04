@@ -2,7 +2,7 @@
 
 <!-- givn:begin:coverage-badge -->
 [![Line Coverage: 88%](https://img.shields.io/badge/line%20coverage-88%25-brightgreen)](coverage/cobertura-coverage.xml)
-[![Branch Coverage: 41%](https://img.shields.io/badge/branch%20coverage-41%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Branch Coverage: 45%](https://img.shields.io/badge/branch%20coverage-45%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
 
 `passuff` watches the GitHub pull requests you authored, are assigned to, or
@@ -194,8 +194,8 @@ GPL-3.0-or-later. See `LICENSE`.
 
 Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
 
-Line coverage: 84% (5263/6302)
-Branch coverage: 33% (708/2148)
+Line coverage: 88% (5750/6544)
+Branch coverage: 45% (982/2168)
 
 Reproduce the result:
 
