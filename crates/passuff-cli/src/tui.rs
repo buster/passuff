@@ -340,23 +340,200 @@ fn event_line(event: &ActivityEvent) -> String {
     }
 }
 
-fn wrap_description(text: &str, width: usize) -> Vec<String> {
-    let mut lines: Vec<String> = Vec::new();
-    for line in text.lines() {
-        let line = line.trim_end();
-        if line.trim().is_empty() {
-            if lines.last().is_some_and(|line| !line.is_empty()) {
-                lines.push(String::new());
+fn strip_html_comments(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    loop {
+        match rest.find("<!--") {
+            Some(start) => {
+                out.push_str(&rest[..start]);
+                match rest[start + 4..].find("-->") {
+                    Some(end) => rest = &rest[start + 4 + end + 3..],
+                    None => return out,
+                }
+            }
+            None => {
+                out.push_str(rest);
+                return out;
+            }
+        }
+    }
+}
+
+fn parse_link(chars: &[char], bracket: usize) -> Option<(String, usize)> {
+    let mut label = String::new();
+    let mut index = bracket + 1;
+    while index < chars.len() {
+        match chars[index] {
+            ']' => {
+                if chars.get(index + 1) != Some(&'(') {
+                    return None;
+                }
+                let mut end = index + 2;
+                while end < chars.len() && chars[end] != ')' {
+                    end += 1;
+                }
+                if end < chars.len() {
+                    return Some((label, end + 1));
+                }
+                return None;
+            }
+            character => label.push(character),
+        }
+        index += 1;
+    }
+    None
+}
+
+fn strip_inline_markdown(text: &str) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = String::new();
+    let mut index = 0;
+    while index < chars.len() {
+        let character = chars[index];
+        let image = character == '!' && chars.get(index + 1) == Some(&'[');
+        if character == '[' || image {
+            let bracket = if image { index + 1 } else { index };
+            if let Some((label, next)) = parse_link(&chars, bracket) {
+                out.push_str(&label);
+                index = next;
+                continue;
+            }
+        }
+        match character {
+            '`' => {}
+            '~' if chars.get(index + 1) == Some(&'~') => index += 1,
+            '*' if chars.get(index + 1) == Some(&'*') => index += 1,
+            '_' if chars.get(index + 1) == Some(&'_') => index += 1,
+            _ => out.push(character),
+        }
+        index += 1;
+    }
+    out
+}
+
+fn heading_text(line: &str) -> Option<&str> {
+    let hashes = line
+        .chars()
+        .take_while(|character| *character == '#')
+        .count();
+    if !(1..=6).contains(&hashes) {
+        return None;
+    }
+    let rest = line[hashes..].strip_prefix(' ')?;
+    Some(rest.trim_end_matches('#').trim_end())
+}
+
+fn is_horizontal_rule(line: &str) -> bool {
+    let compact: String = line
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect();
+    compact.len() >= 3
+        && compact
+            .chars()
+            .all(|character| character == '-' || character == '*' || character == '_')
+}
+
+fn list_item(line: &str) -> Option<(String, &str)> {
+    for marker in ["- ", "* ", "+ "] {
+        if let Some(content) = line.strip_prefix(marker) {
+            let (prefix, content) = if let Some(content) = content.strip_prefix("[ ] ") {
+                ("☐ ", content)
+            } else if let Some(content) = content
+                .strip_prefix("[x] ")
+                .or_else(|| content.strip_prefix("[X] "))
+            {
+                ("☑ ", content)
+            } else {
+                ("• ", content)
+            };
+            return Some((prefix.to_string(), content));
+        }
+    }
+    let digits = line
+        .chars()
+        .take_while(|character| character.is_ascii_digit())
+        .count();
+    if digits > 0 {
+        if let Some(content) = line[digits..].strip_prefix(". ") {
+            return Some((format!("{}. ", &line[..digits]), content));
+        }
+    }
+    None
+}
+
+fn push_wrapped(
+    lines: &mut Vec<Line<'static>>,
+    text: &str,
+    prefix: &str,
+    width: usize,
+    style: Style,
+) {
+    let indent = " ".repeat(prefix.chars().count());
+    let available = width.saturating_sub(indent.chars().count()).max(1);
+    for (index, chunk) in wrap_text(text, available).iter().enumerate() {
+        let lead = if index == 0 { prefix } else { indent.as_str() };
+        lines.push(Line::from(Span::styled(format!("{lead}{chunk}"), style)));
+    }
+}
+
+fn render_description(text: &str, width: usize) -> Vec<Line<'static>> {
+    let width = width.max(1);
+    let heading_style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+    let code_style = Style::new().fg(Color::DarkGray);
+    let mut lines: Vec<Line<'static>> = Vec::new();
+    let body = strip_html_comments(text);
+    let mut in_code = false;
+    for raw in body.lines() {
+        let line = raw.trim_end();
+        let start = line.trim_start();
+        if start.starts_with("```") || start.starts_with("~~~") {
+            in_code = !in_code;
+            continue;
+        }
+        if in_code {
+            if line.is_empty() {
+                lines.push(Line::default());
+            } else {
+                for chunk in wrap_text(line, width) {
+                    lines.push(Line::from(Span::styled(chunk, code_style)));
+                }
             }
             continue;
         }
-        lines.extend(wrap_text(line, width));
+        if start.is_empty() {
+            if lines.last().is_some_and(|line| !line.spans.is_empty()) {
+                lines.push(Line::default());
+            }
+            continue;
+        }
+        if let Some(heading) = heading_text(start) {
+            let text = strip_inline_markdown(heading);
+            for chunk in wrap_text(&text, width) {
+                lines.push(Line::from(Span::styled(chunk, heading_style)));
+            }
+            continue;
+        }
+        if is_horizontal_rule(start) {
+            lines.push(Line::from(Span::styled("─".repeat(width), code_style)));
+            continue;
+        }
+        if let Some((prefix, content)) = list_item(start) {
+            let text = strip_inline_markdown(content);
+            push_wrapped(&mut lines, &text, &prefix, width, Style::new());
+            continue;
+        }
+        let text = strip_inline_markdown(start);
+        for chunk in wrap_text(&text, width) {
+            lines.push(Line::from(chunk));
+        }
     }
-    while lines.last().is_some_and(|line| line.is_empty()) {
+    while lines.last().is_some_and(|line| line.spans.is_empty()) {
         lines.pop();
     }
     if lines.is_empty() {
-        lines.push(String::new());
+        lines.push(Line::default());
     }
     lines
 }
@@ -1584,22 +1761,25 @@ impl TuiApp {
         } else {
             pull_request.description.clone()
         };
-        let mut wrapped = wrap_description(&description, inner_width);
-        if wrapped.len() > body_capacity {
-            wrapped.truncate(body_capacity);
-            if let Some(last) = wrapped.last_mut() {
+        let mut rendered = render_description(&description, inner_width);
+        if rendered.len() > body_capacity {
+            rendered.truncate(body_capacity);
+            if let Some(last) = rendered.last_mut() {
                 let mut truncated: String = last
+                    .spans
+                    .iter()
+                    .map(|span| span.content.as_ref())
+                    .collect();
+                truncated = truncated
                     .chars()
                     .take(inner_width.saturating_sub(1))
                     .collect();
                 truncated.push('…');
-                *last = truncated;
+                *last = Line::from(Span::raw(truncated));
             }
         }
         let mut lines = header;
-        for line in wrapped {
-            lines.push(Line::from(line));
-        }
+        lines.extend(rendered);
         let height = (lines.len() as u16 + 3).min(max_height);
         let rect = Rect::new(
             (area.width - width) / 2,
@@ -2221,17 +2401,64 @@ mod tests {
         assert_eq!(tail_label("acme/api#42", 16), "acme/api#42");
     }
 
+    fn rendered(lines: &[Line]) -> Vec<String> {
+        lines
+            .iter()
+            .map(|line| {
+                line.spans
+                    .iter()
+                    .map(|span| span.content.as_ref())
+                    .collect::<String>()
+            })
+            .collect()
+    }
+
     #[test]
-    fn description_wrapping_keeps_line_and_paragraph_structure() {
+    fn description_rendering_keeps_paragraphs_and_wraps() {
+        let lines = render_description("Summary\nTwo changes\n\n\nFirst\nSecond", 80);
         assert_eq!(
-            wrap_description("Summary\nTwo changes\n\n\nFirst\nSecond", 80),
+            rendered(&lines),
             vec!["Summary", "Two changes", "", "First", "Second"]
         );
-        assert_eq!(
-            wrap_description("one long line that wraps", 8),
-            vec!["one long", "line", "that", "wraps"]
+        let lines = render_description("one long line that wraps", 8);
+        assert_eq!(rendered(&lines), vec!["one long", "line", "that", "wraps"]);
+        let lines = render_description("\n\nlead\n\n", 80);
+        assert_eq!(rendered(&lines), vec!["lead"]);
+    }
+
+    #[test]
+    fn markdown_headings_and_lists_lose_their_markers() {
+        let lines = render_description("## Summary\n- one\n- two", 40);
+        assert_eq!(rendered(&lines), vec!["Summary", "• one", "• two"]);
+        assert_eq!(lines[0].spans[0].style.fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn markdown_inline_markers_and_links_render_as_text() {
+        let lines = render_description(
+            "**bold** and `code` and [link](https://example.com) and ~~old~~",
+            60,
         );
-        assert_eq!(wrap_description("\n\nlead\n\n", 80), vec!["lead"]);
+        assert_eq!(rendered(&lines), vec!["bold and code and link and old"]);
+    }
+
+    #[test]
+    fn markdown_code_fences_render_without_fences() {
+        let lines = render_description("```rust\nlet x = 1;\n```", 40);
+        assert_eq!(rendered(&lines), vec!["let x = 1;"]);
+        assert_eq!(lines[0].spans[0].style.fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn markdown_bullets_wrap_with_a_hanging_indent() {
+        let lines = render_description("- alpha beta gamma delta", 14);
+        assert_eq!(rendered(&lines), vec!["• alpha beta", "  gamma delta"]);
+    }
+
+    #[test]
+    fn markdown_numbered_items_keep_their_number() {
+        let lines = render_description("1. first\n2. second", 20);
+        assert_eq!(rendered(&lines), vec!["1. first", "2. second"]);
     }
 
     #[test]

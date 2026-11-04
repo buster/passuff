@@ -67,7 +67,7 @@ The developer lists the inbox or marks activity read.
 - T21: `h`/`H`/`F1` shows the key reference for the focused pane; Escape closes it.
 - T22: `C` resets the sort, direction, activity filters, and ignored view. Sort, direction, filters, and ignored view persist across runs when the developer confirms saving on exit.
 - T23: The watched table shows a pull request key with its significant end (a leading ellipsis when the column truncates it) and its creator and assignees; when the creator is also an assignee or none is assigned, one login is shown. The `☰` stack column appears only when a visible pull request is stacked, and the `☺` people column is as wide as its longest label.
-- T24: Enter on the focused watched pull request opens its metadata dialog; the description keeps its line and paragraph breaks (consecutive blank lines collapse to one) and ends with an ellipsis when it exceeds the dialog height.
+- T24: Enter on the focused watched pull request opens its metadata dialog; the description keeps its line and paragraph breaks (consecutive blank lines collapse to one), renders a Markdown subset (headings green and bold without markers, bullet and numbered lists with hanging indents, task boxes, code fences dimmed without the fences, horizontal rules, inline emphasis and code markers removed, links reduced to their text, HTML comments removed), and ends with an ellipsis when it exceeds the dialog height.
 
 ## Examples
 

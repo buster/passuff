@@ -623,7 +623,7 @@ query($after: String) {
         id
         number
         title
-        bodyText
+        body
         url
         state
         merged
@@ -656,7 +656,7 @@ query($ids: [ID!]!) {
       id
       number
       title
-      bodyText
+      body
       url
       state
       merged
@@ -754,7 +754,7 @@ struct GqlPr {
     id: String,
     number: u64,
     title: String,
-    #[serde(rename = "bodyText", default)]
+    #[serde(default)]
     body: Option<String>,
     url: String,
     state: String,
@@ -1011,7 +1011,7 @@ mod tests {
             "id": "node-1",
             "number": 42,
             "title": "Pull request",
-            "bodyText": "PR description",
+            "body": "PR description",
             "url": "https://github.com/acme/api/pull/42",
             "state": "OPEN",
             "merged": false,
@@ -1097,10 +1097,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn observe_accepts_null_review_submission_and_body_text() {
+    async fn observe_accepts_null_review_submission_and_body() {
         let server = MockServer::start().await;
         let mut node = node();
-        node["bodyText"] = serde_json::json!(null);
+        node["body"] = serde_json::json!(null);
         node["reviews"]["nodes"][0]["submittedAt"] = serde_json::json!(null);
         mount(
             &server,
