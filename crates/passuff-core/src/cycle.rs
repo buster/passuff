@@ -238,14 +238,18 @@ impl PassuffCore {
                     has_prior_cycle,
                     last_check_at.as_deref(),
                 );
-                let watched = match classification.baseline {
+                let events = classification.events;
+                let silent = classification.silent;
+                let baseline = classification.baseline;
+                let current = classification.current;
+                let watched = match baseline {
                     Some(_) => {
                         let mut watched = WatchedPullRequest::from_baseline(
                             &pull_request,
                             observation.checked_at.clone(),
                         );
-                        watched.current = classification.current;
-                        if classification.events.is_empty() {
+                        watched.current = current;
+                        if events.is_empty() {
                             report.baselines_recorded.push(key.clone());
                         }
                         watched
@@ -263,15 +267,15 @@ impl PassuffCore {
                         watched.is_draft = pull_request.is_draft;
                         watched.merged_by = pull_request.merged_by.clone();
                         watched.stack = pull_request.stack.clone();
-                        watched.current = classification.current;
+                        watched.current = current;
                         watched
                     }
                 };
                 entry.pull_requests.insert(key_string, watched);
-                if !classification.events.is_empty() {
+                if !events.is_empty() {
                     let notification = Notification {
-                        key,
-                        events: classification.events,
+                        key: key.clone(),
+                        events,
                     };
                     for event in &notification.events {
                         state.next_activity_id += 1;
@@ -286,6 +290,16 @@ impl PassuffCore {
                     if !catch_up {
                         report.notifications.push(notification);
                     }
+                }
+                for event in silent {
+                    state.next_activity_id += 1;
+                    state.activity.push(ActivityRecord {
+                        id: format!("a{}", state.next_activity_id),
+                        key: key.clone(),
+                        observed_at: observation.checked_at.clone(),
+                        event,
+                        read: true,
+                    });
                 }
             }
             entry.last_check_at = Some(observation.checked_at);

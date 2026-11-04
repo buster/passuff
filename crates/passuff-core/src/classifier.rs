@@ -9,6 +9,8 @@ use crate::domain::{
 #[derive(Debug, Clone)]
 pub struct Classification {
     pub events: Vec<ActivityEvent>,
+    /// Events recorded as read and never notified, such as own comments.
+    pub silent: Vec<ActivityEvent>,
     pub baseline: Option<Baseline>,
     pub current: CurrentObservation,
 }
@@ -45,12 +47,14 @@ pub fn classify(
         }
         return Classification {
             events,
+            silent: Vec::new(),
             baseline: Some(baseline(current)),
             current: observation,
         };
     };
 
     let mut events = Vec::new();
+    let mut silent = Vec::new();
     let seen_comments: std::collections::HashSet<&str> = previous
         .current
         .seen_comment_ids
@@ -75,25 +79,29 @@ pub fn classify(
             if seen_comments.contains(comment.id.as_str()) {
                 continue;
             }
-            if is_own_or_filtered(&comment.author, login_set, toggles) {
-                continue;
-            }
-            events.push(ActivityEvent::Comment {
+            let event = ActivityEvent::Comment {
                 author: comment.author.clone(),
                 body_excerpt: excerpt(&comment.body),
-            });
+            };
+            match action_filter(&comment.author, login_set, toggles) {
+                ActionFilter::Include => events.push(event),
+                ActionFilter::Silent => silent.push(event),
+                ActionFilter::Skip => {}
+            }
         }
         for comment in &current.review_comments {
             if seen_review_comments.contains(comment.id.as_str()) {
                 continue;
             }
-            if is_own_or_filtered(&comment.author, login_set, toggles) {
-                continue;
-            }
-            events.push(ActivityEvent::ReviewComment {
+            let event = ActivityEvent::ReviewComment {
                 author: comment.author.clone(),
                 body_excerpt: excerpt(&comment.body),
-            });
+            };
+            match action_filter(&comment.author, login_set, toggles) {
+                ActionFilter::Include => events.push(event),
+                ActionFilter::Silent => silent.push(event),
+                ActionFilter::Skip => {}
+            }
         }
     }
 
@@ -102,13 +110,15 @@ pub fn classify(
             if seen_reviews.contains(review.id.as_str()) {
                 continue;
             }
-            if is_own_or_filtered(&review.author, login_set, toggles) {
-                continue;
-            }
-            events.push(ActivityEvent::Review {
+            let event = ActivityEvent::Review {
                 author: review.author.clone(),
                 state: normalize_review_state(&review.state),
-            });
+            };
+            match action_filter(&review.author, login_set, toggles) {
+                ActionFilter::Include => events.push(event),
+                ActionFilter::Silent => silent.push(event),
+                ActionFilter::Skip => {}
+            }
         }
     }
 
@@ -154,6 +164,7 @@ pub fn classify(
 
     Classification {
         events,
+        silent,
         baseline: None,
         current: CurrentObservation {
             seen_comment_ids: current.comments.iter().map(|c| c.id.clone()).collect(),
@@ -215,8 +226,20 @@ fn created_after(created_at: &str, last_check_at: &str) -> bool {
     }
 }
 
-fn is_own_or_filtered(author: &str, login_set: &LoginSet, toggles: &EventToggles) -> bool {
-    login_set.contains(author) || (is_bot(author) && !toggles.bot_comments)
+enum ActionFilter {
+    Include,
+    Silent,
+    Skip,
+}
+
+fn action_filter(author: &str, login_set: &LoginSet, toggles: &EventToggles) -> ActionFilter {
+    if login_set.contains(author) {
+        ActionFilter::Silent
+    } else if is_bot(author) && !toggles.bot_comments {
+        ActionFilter::Skip
+    } else {
+        ActionFilter::Include
+    }
 }
 
 fn is_bot(author: &str) -> bool {
@@ -246,7 +269,7 @@ fn normalize_review_state(state: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::{CiResult, PullRequestKey};
+    use crate::domain::{CiResult, Comment, PullRequestKey};
 
     fn pull_request(state: PrState, created_at: &str) -> AuthoredPullRequest {
         let merged = state == PrState::Merged;
@@ -310,6 +333,31 @@ mod tests {
             vec![ActivityEvent::StateChange {
                 state: PrState::Merged,
                 actor: None
+            }]
+        );
+    }
+
+    #[test]
+    fn own_comments_are_recorded_as_silent_events() {
+        let toggles = EventToggles::default();
+        let open = pull_request(PrState::Open, "2026-11-02T09:00:00Z");
+        let first = classify(None, &open, &toggles, &login_set(), false, None);
+        let mut watched = WatchedPullRequest::from_baseline(&open, "checked".to_string());
+        watched.current = first.current;
+        let mut commented = pull_request(PrState::Open, "2026-11-02T09:00:00Z");
+        commented.comments.push(Comment {
+            id: "own-comment".to_string(),
+            author: "octo".to_string(),
+            body: "my own note".to_string(),
+            created_at: "2026-11-02T09:30:00Z".to_string(),
+        });
+        let second = classify(Some(&watched), &commented, &toggles, &login_set(), true, None);
+        assert!(second.events.is_empty());
+        assert_eq!(
+            second.silent,
+            vec![ActivityEvent::Comment {
+                author: "octo".to_string(),
+                body_excerpt: "my own note".to_string()
             }]
         );
     }

@@ -39,7 +39,7 @@ The developer starts the watcher, or runs a single check pass.
 - 1c. A credential belongs to a login other than the expected one: the watcher reports the account failure with both logins and does not process that account's observation (R36).
 - 2a. No authored pull requests exist: the watcher reports no notifications and completes the pass.
 - 4a. The persisted observation is corrupt or has an unknown version: the watcher sets it aside, records a fresh baseline, and continues. A permission or I/O failure that prevents reading, writing, or quarantining exits 3 in `check` mode.
-- 5a. A change is an own action, a commit push, or activity on a pull request outside the configured login set: the watcher discards it.
+- 5a. A change is an own action, a commit push, or activity on a pull request outside the watched set: the watcher notifies nothing; an own action is still recorded as read.
 - 7a. The desktop notification surface is unavailable: the watcher reports the failure, keeps the terminal transcript, and continues.
 - 7b. The configured sound cannot be played: the watcher reports the failure and still delivers the desktop notification and transcript.
 
@@ -53,7 +53,7 @@ The developer starts the watcher, or runs a single check pass.
 - R6: A CI result transition to failing or erroneous produces a notification.
 - R7: A CI result transition from failing or erroneous to successful produces a notification.
 - R8: A transition of an authored pull request to merged or closed produces a notification, regardless of which actor merged or closed it.
-- R9: A comment or review by a login in the configured login set produces no notification. Own actions are comments and reviews, not state changes.
+- R9: A comment or review by a login in the configured login set produces no notification; it is recorded as read so the activity history stays complete. Own actions are comments and reviews, not state changes.
 - R10: A commit or push to the pull request branch produces no notification.
 - R11: Activity on a pull request authored by a login outside the configured login set produces no notification.
 - R12: A bot-authored comment produces no notification unless bot comments are enabled.
