@@ -133,6 +133,13 @@ rendering are gone; `Involvement::parse` is used by the flags and the steps.
 | Developer toggles a repository in the watch scope | KEEP | It exercises the picker's repository toggle through the real binary: config write, picker frame, TUI frame, and retained state. The similar-shaped permanent scenarios assert either the picker only ("The picker shows the known repositories") or a scope outcome after a check ("Deselecting hides status and activity"). Merging would drop the manual toggle leg through the real interface. |
 | Inbox hides activity outside the focus | KEEP | It asserts the focus rule (R9): a team-requested pull request is watched, recorded, hidden from `inbox --all`, excluded from the unread count, and the authored pull request stays visible. The repository-scope scenarios assert R2 with a deselected repository, a different rule and a different observable. Merging would conflate two independent filters. |
 
+## Split-or-keep
+
+| Scenario | Decision | Reason |
+|---|---|---|
+| Developer toggles a repository in the watch scope | keep | The long scenario drives the picker toggle through the real binary and asserts config, picker frame, TUI frame, and retained state; splitting it would drop one observable leg. |
+| Inbox hides activity outside the focus | keep | The long scenario asserts the focus rule end to end: hidden activity, the visible authored record, and the recomputed unread count; splitting would separate the rule from its observable. |
+
 ## Findings
 
 | ID | Finding | Disposition |
