@@ -87,24 +87,6 @@ async fn switches(world: &mut World, mode: String) {
     }
 }
 
-#[when(regex = r#"^the developer enters "([^"]+)" as a repository$"#)]
-async fn enters(world: &mut World, repository: String) {
-    // Manual entry is gone; selecting by name is the surviving behavior. The
-    // permanent pre-merge corpus still exercises this phrase until archive.
-    if world.e2e {
-        world.e2e_run_scope("add", Some(&repository)).await;
-    } else {
-        let editor = world.scope_editor();
-        match editor.select(&repository) {
-            Ok(_) => world.sync_scope_config(),
-            Err(error) => {
-                world.last_transcript = error.message;
-                world.last_status = error.exit;
-            }
-        }
-    }
-}
-
 #[then(regex = r#"^the watch scope mode is "(all|selected)"$"#)]
 async fn mode_is(world: &mut World, expected: String) {
     assert_eq!(

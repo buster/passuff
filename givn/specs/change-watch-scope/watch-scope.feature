@@ -128,7 +128,7 @@ Feature: Watch scope editing
   Scenario: An invalid repository entry is rejected
     Given  a configured account "personal" with login "octo-personal"
     And  the watch scope mode is "selected"
-    When  the developer enters "acme" as a repository
+    When  the developer selects "acme" in the watch scope
     Then  the TUI reports "owner/repo"
     And  the watch scope does not contain "acme"
 
