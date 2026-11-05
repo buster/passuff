@@ -528,6 +528,8 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
         url: node.url,
         created_at: node.created_at,
         updated_at: node.updated_at,
+        merged_at: node.merged_at,
+        closed_at: node.closed_at,
         state,
         merged: node.merged,
         is_draft: node.is_draft,
@@ -645,6 +647,8 @@ query($ids: [ID!]!) {
       isDraft
       createdAt
       updatedAt
+      mergedAt
+      closedAt
       baseRefName
       mergedBy { login }
       stack { number size baseRefName }
@@ -732,6 +736,10 @@ struct GqlPr {
     is_draft: bool,
     created_at: String,
     updated_at: String,
+    #[serde(default)]
+    merged_at: Option<String>,
+    #[serde(default)]
+    closed_at: Option<String>,
     base_ref_name: String,
     #[serde(rename = "mergedBy")]
     merged_by: Option<GqlActor>,
@@ -990,6 +998,8 @@ mod tests {
             "isDraft": true,
             "createdAt": "2026-11-02T10:00:00Z",
             "updatedAt": "2026-11-02T11:00:00Z",
+            "mergedAt": "2026-11-02T10:55:00Z",
+            "closedAt": null,
             "baseRefName": "main",
             "author": { "login": "octo" },
             "repository": { "nameWithOwner": "acme/api" },
@@ -1111,6 +1121,11 @@ mod tests {
         assert_eq!(pull_request.labels, vec!["bug"]);
         assert_eq!(pull_request.assignees, vec!["alice"]);
         assert_eq!(pull_request.milestone.as_deref(), Some("v1"));
+        assert_eq!(
+            pull_request.merged_at.as_deref(),
+            Some("2026-11-02T10:55:00Z")
+        );
+        assert_eq!(pull_request.closed_at, None);
     }
 
     #[tokio::test]

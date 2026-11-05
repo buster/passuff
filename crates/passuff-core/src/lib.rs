@@ -8,7 +8,7 @@ pub mod github;
 pub mod inbox;
 pub mod state;
 
-pub use classifier::{classify, Classification};
+pub use classifier::{classify, Classification, ClassifiedEvent};
 pub use credential::{CredentialError, CredentialSource, GhLogin, SystemCredentialSource};
 pub use cycle::PassuffCore;
 pub use domain::{
@@ -21,5 +21,8 @@ pub use domain::{
 pub use github::{
     AccountObservation, AccountProbe, Discovery, GitHubApiAdapter, GitHubError, GitHubGateway,
 };
-pub use inbox::{AccountView, Inbox, InboxService, InboxView, PullRequestView, ReadOutcome};
+pub use inbox::{
+    effective_time, is_approximate, AccountView, Inbox, InboxService, InboxView, PullRequestView,
+    ReadOutcome,
+};
 pub use state::{JsonStateStore, SnapshotStore};

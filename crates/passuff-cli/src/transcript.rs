@@ -202,10 +202,15 @@ impl TranscriptRenderer {
         }
         let mut lines = vec!["passuff: inbox".to_string()];
         for record in records {
+            let time = if passuff_core::is_approximate(record) {
+                format!("~{}", record.observed_at)
+            } else {
+                passuff_core::effective_time(record).to_string()
+            };
             lines.push(format!(
                 "  {} {} {} {} {}",
                 record.id,
-                record.observed_at,
+                time,
                 record.key,
                 if record.read { "read" } else { "unread" },
                 render_event(&record.event)

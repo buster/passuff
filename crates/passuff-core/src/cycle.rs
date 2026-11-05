@@ -379,15 +379,19 @@ impl PassuffCore {
                 if !events.is_empty() {
                     let notification = Notification {
                         key: key.clone(),
-                        events,
+                        events: events
+                            .iter()
+                            .map(|classified| classified.event.clone())
+                            .collect(),
                     };
-                    for event in &notification.events {
+                    for classified in &events {
                         state.next_activity_id += 1;
                         state.activity.push(ActivityRecord {
                             id: format!("a{}", state.next_activity_id),
                             key: notification.key.clone(),
                             observed_at: checked_at.clone(),
-                            event: event.clone(),
+                            occurred_at: classified.occurred_at.clone(),
+                            event: classified.event.clone(),
                             read: false,
                         });
                     }
@@ -395,13 +399,14 @@ impl PassuffCore {
                         report.notifications.push(notification);
                     }
                 }
-                for event in silent {
+                for classified in silent {
                     state.next_activity_id += 1;
                     state.activity.push(ActivityRecord {
                         id: format!("a{}", state.next_activity_id),
                         key: key.clone(),
                         observed_at: checked_at.clone(),
-                        event,
+                        occurred_at: classified.occurred_at,
+                        event: classified.event,
                         read: true,
                     });
                 }
@@ -831,6 +836,8 @@ mod tests {
             url: "https://github.com/acme/api/pull/42".to_string(),
             created_at: "2026-11-03T10:00:00Z".to_string(),
             updated_at: "2026-11-03T11:00:00Z".to_string(),
+            merged_at: None,
+            closed_at: None,
             state,
             merged,
             is_draft: false,

@@ -162,7 +162,7 @@ persisted state and mark activity read.
 | Element | Responsibility |
 |---|---|
 | `InboxService` | View configured accounts, watched pull requests, and activity; mark one or all records read. |
-| State version 2 | Bounded activity history (`ActivityRecord`) and a monotonic record id counter. |
+| State version 2 | Bounded activity history (`ActivityRecord`) with a fetch time and an optional occurrence time, and a monotonic record id counter. |
 | Watch scope | Global all/selected scope applied before observation and to the inbox/status read model; excluded records are hidden and retained in state. |
 
 ### CLI delivery

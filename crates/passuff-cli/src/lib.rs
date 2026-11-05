@@ -622,6 +622,8 @@ mod tests {
                     url: "https://github.com/acme/web/pull/1".to_string(),
                     created_at: "2026-11-03T09:00:00Z".to_string(),
                     updated_at: "2026-11-03T09:00:00Z".to_string(),
+                    merged_at: None,
+                    closed_at: None,
                     state: passuff_core::PrState::Open,
                     merged: false,
                     is_draft: false,

@@ -145,6 +145,8 @@ pub struct AuthoredPullRequest {
     pub url: String,
     pub created_at: String,
     pub updated_at: String,
+    pub merged_at: Option<String>,
+    pub closed_at: Option<String>,
     pub state: PrState,
     pub merged: bool,
     pub is_draft: bool,
@@ -399,6 +401,8 @@ pub struct ActivityRecord {
     pub id: String,
     pub key: PullRequestKey,
     pub observed_at: String,
+    #[serde(default)]
+    pub occurred_at: Option<String>,
     pub event: ActivityEvent,
     pub read: bool,
 }

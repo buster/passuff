@@ -595,6 +595,32 @@ fn short_time(observed_at: &str) -> String {
         .unwrap_or_else(|_| observed_at.get(..16).unwrap_or(observed_at).to_string())
 }
 
+fn short_record_time(record: &ActivityRecord) -> String {
+    let time = short_time(passuff_core::effective_time(record));
+    if passuff_core::is_approximate(record) {
+        format!("~{time}")
+    } else {
+        time
+    }
+}
+
+fn activity_time_line(record: &ActivityRecord) -> Line<'static> {
+    let mut spans = vec![
+        Span::styled("When: ", theme::accent()),
+        Span::styled(short_record_time(record), theme::dim()),
+    ];
+    if passuff_core::is_approximate(record) {
+        spans.push(Span::styled(" (fetch time)", theme::dim()));
+    } else {
+        let fetched = short_time(&record.observed_at);
+        if fetched != short_time(passuff_core::effective_time(record)) {
+            spans.push(Span::styled("   Fetched: ", theme::accent()));
+            spans.push(Span::styled(fetched, theme::dim()));
+        }
+    }
+    Line::from(spans)
+}
+
 fn activity_label(record: &ActivityRecord) -> String {
     let repository = record
         .key
@@ -740,6 +766,7 @@ fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'sta
                 width,
                 value_style,
             );
+            lines.push(activity_time_line(&detail.record));
             let mut state = vec![
                 Span::styled("State: ", label_style),
                 Span::styled(state_label(&pull_request.state).to_string(), value_style),
@@ -756,12 +783,15 @@ fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'sta
             }
             lines.push(Line::from(state));
         }
-        None => push_wrapped_styled(
-            &mut lines,
-            &format!("{}   pull request not in view", detail.record.key),
-            width,
-            value_style,
-        ),
+        None => {
+            push_wrapped_styled(
+                &mut lines,
+                &format!("{}   pull request not in view", detail.record.key),
+                width,
+                value_style,
+            );
+            lines.push(activity_time_line(&detail.record));
+        }
     }
     if let Some((label, body)) = activity_body(&detail.record.event) {
         lines.push(separator(width));
@@ -786,7 +816,7 @@ fn activity_detail_lines(detail: &ActivityDetail, width: usize) -> Vec<Line<'sta
             &mut lines,
             &format!(
                 "{}   {}   {}",
-                short_time(&change.observed_at),
+                short_record_time(change),
                 event_line(&change.event),
                 if change.read { "read" } else { "unread" }
             ),
@@ -1909,7 +1939,7 @@ impl TuiApp {
                 .iter()
                 .map(|record| {
                     Row::new(vec![
-                        Cell::from(short_time(&record.observed_at)),
+                        Cell::from(short_record_time(record)),
                         Cell::from(event_line(&record.event)),
                         Cell::from(
                             activity_stack(&self.view, &record.key)
@@ -2339,6 +2369,7 @@ mod tests {
             id: id.to_string(),
             key: PullRequestKey::new("acme/api".to_string(), 42),
             observed_at: "2026-11-02T10:00:00Z".to_string(),
+            occurred_at: None,
             event: ActivityEvent::Comment {
                 author: "alice".to_string(),
                 body: "hi".to_string(),
@@ -2468,6 +2499,7 @@ mod tests {
             id: id.to_string(),
             key: pr_key(key),
             observed_at: "2026-11-02T10:00:00Z".to_string(),
+            occurred_at: None,
             event: ActivityEvent::Comment {
                 author: "alice".to_string(),
                 body: "hi".to_string(),

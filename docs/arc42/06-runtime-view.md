@@ -193,12 +193,12 @@ sequenceDiagram
     CLI->>Core: refresh
     Core->>State: load
     Core->>Core: classify accepted notifications
-    Core->>State: append ActivityRecord per event, cap 500
+    Core->>State: append ActivityRecord per event with fetch and occurrence time, cap 500
     Core->>State: save
     Core-->>CLI: RefreshReport
     CLI->>Core: InboxService.view(config)
     Core->>State: load (migrate v1, normalize)
-    Core-->>CLI: InboxView
+    Core-->>CLI: InboxView ordered by effective activity time
     CLI->>CLI: render accounts, scope, watched PRs, unread/total
 ```
 

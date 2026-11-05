@@ -61,3 +61,4 @@ flowchart LR
 | QS-029 | Timeliness | An assigned pull request receives a comment with no authored change and no probe signal. | The comment is observed and notifies at the next reconciliation pass, at most one configured interval later. |
 | QS-030 | Accuracy | A check pass reports activity on three pull requests. | One desktop notification and one terminal digest name three activities in three pull requests; the body lists each pull request's count; the sound plays once. |
 | QS-031 | Usability | The developer hears the bundled default sound. | The WAV is three short beeps within one second; a configured custom sound is unaffected. |
+| QS-032 | Accuracy | A comment written at 09:15 is fetched by the 12:00 check, and a CI failure is fetched by the same check. | The inbox shows the comment at 09:15 and the CI failure with a `~` fetch-time marker; the popup shows both times for the comment; the record keeps the fetch time. |

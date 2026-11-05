@@ -57,6 +57,27 @@ pub trait InboxService: Send + Sync {
     async fn mark_all_read(&self) -> Result<ReadOutcome, CoreError>;
 }
 
+/// When the activity happened, falling back to the fetch time when GitHub
+/// reported no occurrence time.
+pub fn effective_time(record: &ActivityRecord) -> &str {
+    record
+        .occurred_at
+        .as_deref()
+        .unwrap_or(&record.observed_at)
+}
+
+/// True when the record has no reported occurrence time and shows the fetch
+/// time instead.
+pub fn is_approximate(record: &ActivityRecord) -> bool {
+    record.occurred_at.is_none()
+}
+
+fn record_time(record: &ActivityRecord) -> Option<DateTime<chrono::FixedOffset>> {
+    DateTime::parse_from_rfc3339(effective_time(record))
+        .ok()
+        .or_else(|| DateTime::parse_from_rfc3339(&record.observed_at).ok())
+}
+
 pub struct Inbox {
     store: Arc<dyn SnapshotStore>,
 }
@@ -114,10 +135,8 @@ impl Inbox {
             .map(|(index, record)| (index, record.clone()))
             .collect();
         activity.sort_by(|(left_index, left), (right_index, right)| {
-            let left_at = DateTime::parse_from_rfc3339(&left.observed_at).ok();
-            let right_at = DateTime::parse_from_rfc3339(&right.observed_at).ok();
-            right_at
-                .cmp(&left_at)
+            record_time(right)
+                .cmp(&record_time(left))
                 .then_with(|| right.observed_at.cmp(&left.observed_at))
                 .then_with(|| right_index.cmp(left_index))
         });
@@ -228,6 +247,8 @@ mod tests {
             url: "https://github.com/acme/api/pull/42".to_string(),
             created_at: "2026-11-02T09:00:00Z".to_string(),
             updated_at: "2026-11-02T09:00:00Z".to_string(),
+            merged_at: None,
+            closed_at: None,
             state: PrState::Open,
             merged: false,
             is_draft: false,
@@ -258,6 +279,7 @@ mod tests {
                     id: "a1".to_string(),
                     key: authored().key,
                     observed_at: "2026-11-02T10:00:00Z".to_string(),
+                    occurred_at: None,
                     event: ActivityEvent::Comment {
                         author: "alice".to_string(),
                         body: "hi".to_string(),
@@ -268,6 +290,7 @@ mod tests {
                     id: "a2".to_string(),
                     key: authored().key,
                     observed_at: "2026-11-02T10:01:00Z".to_string(),
+                    occurred_at: None,
                     event: ActivityEvent::CiRecovery,
                     read: true,
                 },
@@ -381,6 +404,7 @@ mod tests {
                 id: "a1".to_string(),
                 key: PullRequestKey::new("acme/api".to_string(), 42),
                 observed_at: "2026-11-02T10:00:00Z".to_string(),
+                occurred_at: None,
                 event: crate::domain::ActivityEvent::Comment {
                     author: "alice".to_string(),
                     body: "hi".to_string(),
@@ -391,6 +415,7 @@ mod tests {
                 id: "a2".to_string(),
                 key: PullRequestKey::new("acme/web".to_string(), 7),
                 observed_at: "2026-11-02T10:00:00Z".to_string(),
+                occurred_at: None,
                 event: crate::domain::ActivityEvent::Comment {
                     author: "bob".to_string(),
                     body: "hi".to_string(),
