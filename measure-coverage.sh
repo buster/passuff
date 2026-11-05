@@ -29,7 +29,7 @@ run_scope() {
   local scope_features="$features"
   if [[ "$scope" == "e2e" ]]; then
     scope_features="${GIVN_COVERAGE_E2E_FEATURES:-$features}"
-    if ! grep -Rqs '@e2e' "$scope_features"; then
+    if ! grep -Rqs --include='*.feature' '@e2e' "$scope_features"; then
       scope_features="$root/givn/specs"
     fi
   fi
