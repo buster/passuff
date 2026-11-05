@@ -157,7 +157,7 @@ async fn every_record_unread(world: &mut World) {
     }
 }
 
-#[then(regex = r#"^the inbox shows an activity id and occurrence time$"#)]
+#[then(regex = r#"^the inbox shows an activity id and (?:observation|occurrence) time$"#)]
 async fn shows_id_and_time(world: &mut World) {
     let lines = record_lines(&world.last_transcript);
     assert!(
