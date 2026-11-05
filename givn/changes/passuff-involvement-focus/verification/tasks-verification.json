@@ -2,7 +2,7 @@
   "schema": 2,
   "change": "passuff-involvement-focus",
   "status": "passed",
-  "head": "c419cef6a4c52194b987da081644f2444d5f13a0",
+  "head": "3f8ef07060900a9f7c11d6b0e06dec9d8d8d6f22",
   "features_path": "givn/changes/passuff-involvement-focus/specs",
   "features_digest": "3e372f05b2592b76ddebddbdf0f6fb555e5b6238a133d45cfaee296a591640ee",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
@@ -17,5 +17,5 @@
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1793872665
+  "finished_at_unix": 1793872702
 }
