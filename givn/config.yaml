@@ -257,3 +257,6 @@ addons:
   readme: true
   communication_policy: true
   arc42: true
+
+record:
+  mode: full
