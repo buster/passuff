@@ -305,6 +305,19 @@ impl PassuffCore {
             entry.login = observation.login;
             let has_prior_cycle = entry.last_check_at.is_some();
             let last_check_at = entry.last_check_at.clone();
+            // Refresh the stored relations from this pass's discovery even for
+            // pull requests that this pass does not observe, so a focus change
+            // does not wait for a reconciliation to hide or show them.
+            for watched in entry.pull_requests.values_mut() {
+                if let Some(relations) = discovered.get(&watched.node_id) {
+                    watched.involvements = relations.clone();
+                }
+                if watched.author.eq_ignore_ascii_case(&login)
+                    && !watched.involvements.contains(&Involvement::Authored)
+                {
+                    watched.involvements.push(Involvement::Authored);
+                }
+            }
 
             for pull_request in observation.pull_requests {
                 if !self

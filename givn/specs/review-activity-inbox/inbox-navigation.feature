@@ -462,3 +462,21 @@ Feature: Inbox navigation
     When  the developer opens the inbox TUI
     Then  the TUI shows "acme/api#42"
     And  the TUI does not show "acme/web#7"
+
+  @inbox-navigation
+  Scenario: Changing the focus in the picker filters the inbox immediately
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  an authored pull request "acme/web#7" by "bob"
+    And  a team review is requested on "acme/web#7"
+    And  the watcher has already observed "acme/api#42"
+    And  the watcher has already observed "acme/web#7"
+    And  the involvement relations are unknown
+    When  the developer opens the inbox TUI
+    Then  the TUI shows "acme/api#42"
+    And  the TUI shows "acme/web#7"
+    When  the developer opens the live scope picker
+    And  the developer presses "space" in the scope picker
+    And  the developer presses "esc" in the scope picker
+    Then  the TUI does not show "acme/api#42"
+    And  the TUI shows "acme/web#7"

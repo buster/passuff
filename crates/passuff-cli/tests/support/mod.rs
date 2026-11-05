@@ -185,6 +185,7 @@ pub struct World {
     pub watch_scope: Vec<String>,
     pub fail_state_write: bool,
     pub tui_app: Option<TuiApp>,
+    pub scope_picker: Option<passuff::scope::ScopePicker>,
     pub tui_closed: bool,
     pub observation: Option<ObservationSession>,
     observation_gateway: Option<FakeGateway>,
@@ -228,6 +229,7 @@ impl Default for World {
             e2e: false,
             e2e_scenario: String::new(),
             e2e_pending_baseline: false,
+            scope_picker: None,
             e2e_config_dir: None,
             e2e_state_path: None,
             e2e_label: String::new(),
@@ -1018,6 +1020,58 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                 self.last_transcript = error.message;
                 self.last_status = error.exit;
                 self.tui_app = None;
+            }
+        }
+    }
+
+    /// Simulate a state file written before involvement relations existed.
+    pub async fn forget_involvements(&mut self) {
+        let store = self.state_store();
+        let mut state = store.load().await.unwrap_or_default();
+        for account in state.accounts.values_mut() {
+            for pull_request in account.pull_requests.values_mut() {
+                pull_request.involvements.clear();
+            }
+        }
+        store.save(&state).await.expect("save state");
+    }
+
+    pub async fn open_live_scope_picker(&mut self) {
+        self.ensure_scope_config();
+        let config = self.scope_config();
+        let editor = self.scope_editor();
+        let state = self.state_store().load().await.unwrap_or_default();
+        let known = editor.known_repositories(&config, &state);
+        self.scope_picker = Some(passuff::scope::ScopePicker::new(&config, known));
+    }
+
+    /// Mirror the binary's picker loop: handle one key, persist, reload the
+    /// config, and refresh the inbox view.
+    pub async fn press_live_scope_picker(&mut self, key: &str) {
+        let editor = self.scope_editor();
+        let mut picker = self.scope_picker.take().expect("picker open");
+        let code = match key {
+            "space" => crossterm::event::KeyCode::Char(' '),
+            "j" => crossterm::event::KeyCode::Char('j'),
+            "k" => crossterm::event::KeyCode::Char('k'),
+            "m" => crossterm::event::KeyCode::Char('m'),
+            "esc" => crossterm::event::KeyCode::Esc,
+            other => panic!("unknown picker key {other}"),
+        };
+        let event = crossterm::event::KeyEvent::new(code, crossterm::event::KeyModifiers::NONE);
+        let outcome = picker.handle_key(event, &editor).expect("picker key");
+        self.last_transcript = picker.snapshot();
+        if outcome == passuff::scope::PickerOutcome::Continue {
+            let config = ConfigLoader::load(editor.config_path()).expect("reload config");
+            let inbox = Inbox::new(self.state_store());
+            let mut app = self.tui_app.take().expect("tui open");
+            app.set_ignored_pull_requests(&config.core.watch.ignored_pull_requests);
+            app.reload(&inbox, &config.core).await.expect("reload view");
+            self.tui_app = Some(app);
+            self.scope_picker = Some(picker);
+        } else {
+            if let Some(app) = self.tui_app.as_ref() {
+                self.last_transcript = app.snapshot();
             }
         }
     }
