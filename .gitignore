@@ -27,6 +27,11 @@
 
 # Editor/agent-local configuration
 /.maki/
+/.claude/
+/.agents/
+/.opencode/
+/.omp/
+/.ralph/
 
 # Agent tooling artefacts
 /paseo.json
