@@ -1,7 +1,7 @@
 # passuff
 
 <!-- givn:begin:coverage-badge -->
-[![Line Coverage: 89%](https://img.shields.io/badge/line%20coverage-89%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Line Coverage: 88%](https://img.shields.io/badge/line%20coverage-88%25-brightgreen)](coverage/cobertura-coverage.xml)
 [![Branch Coverage: 47%](https://img.shields.io/badge/branch%20coverage-47%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
 
@@ -242,8 +242,8 @@ GPL-3.0-or-later. See `LICENSE`.
 
 Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
 
-Line coverage: 89% (6445/7269)
-Branch coverage: 47% (1099/2322)
+Line coverage: 88% (6584/7443)
+Branch coverage: 47% (1118/2362)
 
 Reproduce the result:
 
