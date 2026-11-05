@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "change": "passuff-activity-time",
+  "status": "passed",
+  "head": "9459c99f7dea7597ce11f932d86e78adb94c6013",
+  "features_path": "givn/changes/passuff-activity-time/specs",
+  "features_digest": "e0dd582b8846194165114c49a9ca2d28dbeb1a715c8694771bcb8432c6221304",
+  "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+  "command": "./scripts/verify.sh",
+  "tested_content_digest": "c5cba49f83b5ff1689ac923e2fc364b37c5de1b0202b1201239ec931adaab9dd",
+  "content_scope": "change-proof/v1",
+  "runner_exit": 0,
+  "result": {
+    "scope": null,
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finished_at_unix": 1793871983
+}
