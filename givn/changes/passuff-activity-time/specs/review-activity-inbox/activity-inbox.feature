@@ -2,7 +2,7 @@
 
 Feature: Activity inbox
 
-  @givn.modified @wip
+  @givn.modified
   Scenario: Inbox lists unread activity newest first
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -18,7 +18,7 @@ Feature: Activity inbox
     And  the transcript does not report "Success"
     And  the transcript does not report "Can you split this migration?"
 
-  @givn.added @wip
+  @givn.added
   Scenario: Inbox shows when a comment was written
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -28,7 +28,7 @@ Feature: Activity inbox
     And  the developer lists the inbox
     Then  the inbox shows the occurrence time "2026-11-02T09:15:00Z" for "acme/api#42"
 
-  @givn.added @wip
+  @givn.added
   Scenario: Inbox marks an event without a reported time as approximate
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -38,7 +38,7 @@ Feature: Activity inbox
     And  the developer lists the inbox
     Then  the inbox marks "CI failing" on "acme/api#42" as approximate
 
-  @givn.added @wip
+  @givn.added
   Scenario: Inbox orders activity by when it happened
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
