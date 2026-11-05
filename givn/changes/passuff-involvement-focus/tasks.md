@@ -95,7 +95,7 @@ an implementing component.
 - [x] Scenario: `Developer narrows the focus in the watch scope` (e2e)
   - [x] **Design constraints:** spawn `passuff-tui --snapshot --picker
         --focus-set authored,assigned`; assert the config and the picker frame
-        with `[x] authored` and `[ ] team review`; exit 0.
+        with authored checked and team review unchecked in the picker frame; exit 0.
   - [x] COMMIT: `8359900` -- Batch: `involvement-focus`
 
 - [x] Scenario: `Inbox hides activity outside the focus`
