@@ -243,10 +243,10 @@ givn_config_version: "0.9.17"
 #     - Keep scenarios free of implementation detail.
 #     - Use the project's domain vocabulary in every scenario title.
 
+# --- User overrides preserved from previous version ---
 skills:
   targets: [maki, opencode, agents, claude, omp]
 rules: local-only
-
 addons:
   outline: true
   architecture_principles: true
@@ -257,6 +257,6 @@ addons:
   readme: true
   communication_policy: true
   arc42: true
-
 record:
   mode: full
+# ---
