@@ -496,8 +496,13 @@ impl World {
                     .arg("--scope-deselect")
                     .arg(value.expect("repository"));
             }
+            "focus-set" => {
+                command.arg("--focus-set").arg(value.expect("relations"));
+            }
             "add" => {
-                command.arg("--scope-add").arg(value.expect("repository"));
+                command
+                    .arg("--scope-select")
+                    .arg(value.expect("repository"));
             }
             "mode" => {
                 command.arg("--scope-mode").arg(value.expect("mode"));

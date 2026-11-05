@@ -44,6 +44,23 @@ global watch scope filters observation and the inbox/status read model. Excluded
 watched pull requests and activity are hidden but retained in state; reselecting
 them records a silent catch-up cycle.
 
+## Involvement and focus
+
+Every watched pull request records why passuff watches it: authored by the
+account, assigned to the account, a review requested from the account, or a
+review requested from a team the account belongs to. Discovery reports the
+relations with each search result; a reconciliation pass refreshes them and a
+targeted pass keeps the stored set for pull requests it does not report.
+Authored is derived from the author login.
+
+The focus is a configured set of those relations, defaulting to all four. It
+filters the inbox read model (pull requests, activity, and the unread count) and
+it gates notification production. It never changes observation: every relation
+is fetched and recorded regardless, so widening the focus shows retained
+activity immediately and narrowing it discards nothing. A watched pull request
+with no recorded relation (a state file written before the relation existed)
+stays visible and notifiable until an observation records one.
+
 ## Persistence and deduplication
 
 The watcher state is a versioned JSON file containing, per account, the resolved

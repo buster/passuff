@@ -2342,6 +2342,7 @@ mod tests {
             accounts: Default::default(),
             events: Default::default(),
             watch: Default::default(),
+            focus: Default::default(),
         }
     }
 
@@ -2397,6 +2398,7 @@ mod tests {
             is_draft: false,
             updated_at: "2026-11-02T11:00:00Z".to_string(),
             ignored: false,
+            involvements: Vec::new(),
             stack: Some(PullRequestStack {
                 number,
                 size,
@@ -2420,6 +2422,7 @@ mod tests {
             is_draft: false,
             updated_at: "2026-11-02T11:00:00Z".to_string(),
             ignored: false,
+            involvements: Vec::new(),
             stack: None,
         }
     }

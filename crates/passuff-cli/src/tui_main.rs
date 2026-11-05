@@ -44,8 +44,8 @@ struct Args {
     scope_deselect: Option<String>,
     #[arg(long, value_name = "all|selected")]
     scope_mode: Option<String>,
-    #[arg(long, value_name = "OWNER/REPO")]
-    scope_add: Option<String>,
+    #[arg(long, value_name = "RELATIONS")]
+    focus_set: Option<String>,
     #[arg(long)]
     picker: bool,
     #[arg(long, value_name = "KEYS")]
@@ -99,8 +99,22 @@ async fn main() {
             std::process::exit(error.exit);
         }
     }
-    if let Some(repository) = args.scope_add.as_deref() {
-        if let Err(error) = editor.add(repository) {
+    if let Some(value) = args.focus_set.as_deref() {
+        let mut relations = Vec::new();
+        for label in value.split(',').map(str::trim).filter(|label| !label.is_empty()) {
+            match passuff_config::Involvement::parse(label) {
+                Some(relation) => relations.push(relation),
+                None => {
+                    eprintln!(
+                        "passuff-tui: --focus-set accepts authored, assigned, review-requested, team-review-requested"
+                    );
+                    std::process::exit(2);
+                }
+            }
+        }
+        relations.sort();
+        relations.dedup();
+        if let Err(error) = editor.set_focus(&relations) {
             eprintln!("passuff-tui: {}", error.message);
             std::process::exit(error.exit);
         }

@@ -61,6 +61,9 @@ sound = true
 sound_file = "default"
 urgency = "normal"
 
+[focus]
+relations = ["authored", "assigned", "review-requested", "team-review-requested"]
+
 [events]
 comments = true
 reviews = true
@@ -180,10 +183,12 @@ or `q` closes it, and `enter` in the overlay opens the pull request in your brow
 where `j`/`k` select desktop notifications or sound, `space` toggles, and `esc`
 or `q` closes. Sort, filter, and notification settings are saved to `ui.json` next to
 the state file when you confirm the save prompt on exit. Press `p` to open the
-watch-scope picker: `j`/`k` move,
-`space` toggles, `m` switches all/selected, type `owner/name` and press Enter to
-add, and `esc` closes. Scripted snapshots accept `--picker`,
-`--scope-select`, `--scope-deselect`, `--scope-mode`, and `--scope-add`.
+watch-scope picker: `j`/`k` move through
+the focus relations and the repositories, `space` toggles the focused row, `m`
+switches all/selected, and `esc` closes. The focus decides which watched pull
+requests the inbox shows, counts, and notifies; it never changes what passuff
+fetches. Scripted snapshots accept `--picker`, `--scope-select`,
+`--scope-deselect`, `--scope-mode`, and `--focus-set`.
 
 ```
 passuff --config PATH       use a specific configuration file

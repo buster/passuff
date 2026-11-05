@@ -202,6 +202,31 @@ sequenceDiagram
     CLI->>CLI: render accounts, scope, watched PRs, unread/total
 ```
 
+## Scenario: Focus the inbox
+
+**Trigger:** A discovery pass reports a team review request, and the configured
+focus excludes it.
+
+```mermaid
+sequenceDiagram
+    participant CLI
+    participant Core
+    participant State
+    CLI->>Core: refresh (targeted or reconciliation)
+    Core->>Core: search assigned, direct-review, team-review
+    Core->>Core: classify events for every observed pull request
+    Core->>State: append ActivityRecord for every event, cap 500
+    Core->>Core: focus.includes(stored involvement relations)
+    Core-->>CLI: RefreshReport with notifications for focused pull requests only
+    CLI->>Core: InboxService.view(config)
+    Core->>State: load
+    Core-->>CLI: InboxView filtered by the focus, unread recomputed
+```
+
+The activity for an excluded pull request is recorded and no notification names
+it. Widening the focus shows the recorded activity on the next read without a
+fetch.
+
 ## Scenario: Stacked inbox
 
 **Trigger:** The developer opens the terminal inbox with watched pull requests

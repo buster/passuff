@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crossterm::event::{KeyCode, KeyEvent};
-use passuff_config::{AppConfig, ConfigLoader, WatchMode};
+use passuff_config::{AppConfig, ConfigLoader, Involvement, WatchMode};
 use passuff_core::{ScopeSnapshot, WatcherState};
 use ratatui::layout::{Constraint, Layout};
 use ratatui::style::Modifier;
@@ -90,9 +90,27 @@ impl ScopeEditor {
         self.write(mode, &config.core.watch.repositories)
     }
 
-    pub fn add(&self, repository: &str) -> Result<ScopeSnapshot, ScopeError> {
-        self.select(repository)
+    /// Persist the focus relations shown and notified, never observed.
+    pub fn set_focus(&self, relations: &[Involvement]) -> Result<(), ScopeError> {
+        let text = fs::read_to_string(&self.config_path)
+            .map_err(|error| ScopeError::new(format!("cannot read configuration: {error}")))?;
+        let mut document: toml_edit::DocumentMut = text
+            .parse()
+            .map_err(|error| ScopeError::new(format!("cannot read configuration: {error}")))?;
+        if document.get("focus").is_none() {
+            document["focus"] = toml_edit::Item::Table(toml_edit::Table::new());
+        }
+        let focus = document["focus"]
+            .as_table_mut()
+            .ok_or_else(|| ScopeError::new("cannot write configuration: [focus] is not a table"))?;
+        let mut array = toml_edit::Array::new();
+        for relation in relations {
+            array.push(relation.as_str());
+        }
+        focus["relations"] = toml_edit::value(array);
+        self.write_document(document)
     }
+
 
     pub fn known_repositories(&self, config: &AppConfig, state: &WatcherState) -> Vec<String> {
         let mut known: Vec<String> = config.core.watch.repositories.clone();
@@ -231,10 +249,9 @@ pub struct ScopePicker {
     pub mode: WatchMode,
     pub repositories: Vec<String>,
     pub selected: BTreeSet<String>,
+    pub focus: Vec<Involvement>,
     pub known: Vec<String>,
     pub cursor: usize,
-    pub input: String,
-    pub insert: bool,
     pub error: Option<String>,
 }
 
@@ -250,10 +267,9 @@ impl ScopePicker {
                 .iter()
                 .map(|repository| repository.to_ascii_lowercase())
                 .collect(),
+            focus: config.core.focus.relations.clone(),
             known,
             cursor: 0,
-            input: String::new(),
-            insert: false,
             error: None,
         }
     }
@@ -268,9 +284,23 @@ impl ScopePicker {
             .iter()
             .map(|repository| repository.to_ascii_lowercase())
             .collect();
-        if self.cursor >= self.known.len() {
-            self.cursor = self.known.len().saturating_sub(1);
+        self.focus = config.core.focus.relations.clone();
+        if self.cursor >= self.rows() {
+            self.cursor = self.rows().saturating_sub(1);
         }
+    }
+
+    fn rows(&self) -> usize {
+        Involvement::ALL.len() + self.known.len()
+    }
+
+    fn focused_relation(&self) -> Option<Involvement> {
+        Involvement::ALL.get(self.cursor).copied()
+    }
+
+    fn focused_repository(&self) -> Option<&String> {
+        let index = self.cursor.checked_sub(Involvement::ALL.len())?;
+        self.known.get(index)
     }
 
     pub fn render(&self, frame: &mut Frame) {
@@ -309,50 +339,31 @@ impl ScopePicker {
         }
         frame.render_widget(Paragraph::new(Line::from(mode_line)), chunks[0]);
 
-        let mut lines: Vec<Line> = Vec::new();
+        let mut lines: Vec<Line> = vec![Line::from(Span::styled(
+            "Focus:",
+            theme::accent_bold(),
+        ))];
+        for (index, involvement) in Involvement::ALL.iter().enumerate() {
+            let checked = self.focus.contains(involvement);
+            lines.push(self.row_line(index, checked, involvement.label()));
+        }
+        lines.push(Line::default());
+        lines.push(Line::from(Span::styled(
+            "Repositories:",
+            theme::accent_bold(),
+        )));
         if self.known.is_empty() {
             lines.push(Line::from(Span::styled(
-                "(no known repositories — type owner/name)",
+                "(no known repositories)",
                 theme::dim(),
             )));
         }
         for (index, repository) in self.known.iter().enumerate() {
+            let row = index + Involvement::ALL.len();
             let checked = self.mode == WatchMode::All
                 || self.selected.contains(&repository.to_ascii_lowercase());
-            let marker = if checked { "[x]" } else { "[ ]" };
-            let cursor = if index == self.cursor { "▶ " } else { "  " };
-            lines.push(Line::from(vec![
-                Span::styled(cursor, theme::gold_bold()),
-                Span::styled(
-                    format!("{marker} "),
-                    if checked {
-                        theme::green()
-                    } else {
-                        theme::dim()
-                    },
-                ),
-                Span::styled(
-                    repository.clone(),
-                    if index == self.cursor {
-                        theme::bright()
-                    } else {
-                        theme::body()
-                    },
-                ),
-            ]));
+            lines.push(self.row_line(row, checked, repository));
         }
-        lines.push(Line::default());
-        lines.push(Line::from(vec![
-            Span::styled(
-                if self.insert {
-                    "Add (insert): "
-                } else {
-                    "Add: "
-                },
-                theme::accent(),
-            ),
-            Span::styled(self.input.clone(), theme::bright()),
-        ]));
         if let Some(error) = &self.error {
             lines.push(Line::from(vec![
                 Span::styled("Error: ", theme::gold()),
@@ -362,8 +373,6 @@ impl ScopePicker {
         frame.render_widget(Paragraph::new(lines), chunks[1]);
         let entries = [
             ("↑↓", "move"),
-            ("type", "owner/name"),
-            ("enter", "add"),
             ("space", "toggle"),
             ("m", "mode"),
             ("esc/q", "close"),
@@ -377,6 +386,26 @@ impl ScopePicker {
             footer.push(Span::styled(format!(" {label}"), theme::dim()));
         }
         frame.render_widget(Paragraph::new(Line::from(footer)), chunks[2]);
+    }
+
+    fn row_line(&self, index: usize, checked: bool, text: &str) -> Line<'static> {
+        let marker = if checked { "[x]" } else { "[ ]" };
+        let cursor = if index == self.cursor { "▶ " } else { "  " };
+        Line::from(vec![
+            Span::styled(cursor, theme::gold_bold()),
+            Span::styled(
+                format!("{marker} "),
+                if checked { theme::green() } else { theme::dim() },
+            ),
+            Span::styled(
+                text.to_string(),
+                if index == self.cursor {
+                    theme::bright()
+                } else {
+                    theme::body()
+                },
+            ),
+        ])
     }
 
     pub fn snapshot(&self) -> String {
@@ -404,36 +433,10 @@ impl ScopePicker {
         editor: &ScopeEditor,
     ) -> Result<PickerOutcome, ScopeError> {
         self.error = None;
-        if self.insert {
-            match key.code {
-                KeyCode::Esc => self.insert = false,
-                KeyCode::Enter => {
-                    let repository = self.input.trim().to_string();
-                    if !repository.is_empty() {
-                        match editor.add(&repository) {
-                            Ok(snapshot) => {
-                                self.apply(snapshot);
-                                self.input.clear();
-                                self.insert = false;
-                                self.reload_known(editor);
-                            }
-                            Err(error) => self.error = Some(error.message),
-                        }
-                    }
-                }
-                KeyCode::Backspace => {
-                    self.input.pop();
-                }
-                KeyCode::Char(character) => self.input.push(character),
-                _ => {}
-            }
-            return Ok(PickerOutcome::Continue);
-        }
         match key.code {
             KeyCode::Esc | KeyCode::Char('q') => return Ok(PickerOutcome::Close),
-            KeyCode::Char('i') => self.insert = true,
             KeyCode::Down | KeyCode::Char('j') => {
-                if self.cursor + 1 < self.known.len() {
+                if self.cursor + 1 < self.rows() {
                     self.cursor += 1;
                 }
             }
@@ -451,7 +454,20 @@ impl ScopePicker {
                 }
             }
             KeyCode::Char(' ') => {
-                if let Some(repository) = self.known.get(self.cursor).cloned() {
+                if let Some(involvement) = self.focused_relation() {
+                    let mut relations = self.focus.clone();
+                    if relations.contains(&involvement) {
+                        relations.retain(|relation| relation != &involvement);
+                    } else {
+                        relations.push(involvement);
+                    }
+                    relations.sort();
+                    relations.dedup();
+                    match editor.set_focus(&relations) {
+                        Ok(()) => self.focus = relations,
+                        Err(error) => self.error = Some(error.message),
+                    }
+                } else if let Some(repository) = self.focused_repository().cloned() {
                     let result = if self.mode == WatchMode::All {
                         editor.select(&repository)
                     } else if self.selected.contains(&repository.to_ascii_lowercase()) {
@@ -478,13 +494,6 @@ impl ScopePicker {
             .iter()
             .map(|repository| repository.to_ascii_lowercase())
             .collect();
-    }
-
-    fn reload_known(&mut self, editor: &ScopeEditor) {
-        if let Ok(config) = editor.config() {
-            let state = passuff_core::WatcherState::default();
-            self.known = editor.known_repositories(&config, &state);
-        }
     }
 }
 
@@ -513,10 +522,27 @@ mod tests {
         );
         editor.set_mode(WatchMode::All).expect("all");
         assert_eq!(editor.snapshot().expect("snapshot").mode, WatchMode::All);
-        editor.add("acme/new").expect("add");
+        editor.select("acme/new").expect("select new");
         let snapshot = editor.snapshot().expect("snapshot");
         assert_eq!(snapshot.mode, WatchMode::Selected);
         assert!(snapshot.repositories.iter().any(|r| r == "acme/new"));
+    }
+
+    #[test]
+    fn set_focus_persists_the_relation_set() {
+        let dir = tempfile::tempdir().expect("dir");
+        let editor = editor(dir.path());
+        editor
+            .set_focus(&[Involvement::Authored, Involvement::Assigned])
+            .expect("focus");
+        let config = editor.config().expect("config");
+        assert_eq!(
+            config.core.focus.relations,
+            vec![Involvement::Authored, Involvement::Assigned]
+        );
+        assert!(config.core.focus.includes(&[Involvement::Assigned]));
+        assert!(!config.core.focus.includes(&[Involvement::TeamReviewRequested]));
+        assert!(config.core.focus.includes(&[]));
     }
 
     #[test]
@@ -560,7 +586,7 @@ mod tests {
     }
 
     #[test]
-    fn picker_switches_mode_toggles_and_accepts_inserted_names() {
+    fn picker_switches_mode_toggles_and_narrows_the_focus() {
         let dir = tempfile::tempdir().expect("dir");
         let editor = editor(dir.path());
         let config = editor.config().expect("config");
@@ -569,27 +595,24 @@ mod tests {
             .handle_key(key(KeyCode::Char('m')), &editor)
             .expect("mode");
         assert_eq!(picker.mode, WatchMode::Selected);
+        // The cursor starts on the first focus row; the repository rows follow.
         picker
             .handle_key(key(KeyCode::Char(' ')), &editor)
-            .expect("toggle");
-        assert!(picker.selected.contains("acme/api"));
-        picker
-            .handle_key(key(KeyCode::Char('i')), &editor)
-            .expect("insert");
-        for character in "acme/j".chars() {
+            .expect("toggle focus");
+        assert!(!picker.focus.contains(&Involvement::Authored));
+        assert_eq!(
+            editor.config().expect("config").core.focus.relations.len(),
+            3
+        );
+        for _ in 0..4 {
             picker
-                .handle_key(key(KeyCode::Char(character)), &editor)
-                .expect("type");
+                .handle_key(key(KeyCode::Char('j')), &editor)
+                .expect("move");
         }
         picker
-            .handle_key(key(KeyCode::Enter), &editor)
-            .expect("add");
-        assert!(editor
-            .snapshot()
-            .expect("snapshot")
-            .repositories
-            .iter()
-            .any(|repository| repository == "acme/j"));
+            .handle_key(key(KeyCode::Char(' ')), &editor)
+            .expect("toggle repository");
+        assert!(picker.selected.contains("acme/api"));
         assert_eq!(
             picker.handle_key(key(KeyCode::Esc), &editor).expect("esc"),
             PickerOutcome::Close

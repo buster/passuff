@@ -96,7 +96,20 @@ async fn assigned_pull_request(world: &mut World, key: String) {
         .involved_pull_requests
         .lock()
         .expect("involved")
-        .push(key);
+        .entry(key)
+        .or_default()
+        .push(passuff_config::Involvement::Assigned);
+}
+
+#[given(regex = r#"^a team review is requested on "([^"]+)"$"#)]
+async fn team_review_requested(world: &mut World, key: String) {
+    world
+        .involved_pull_requests
+        .lock()
+        .expect("involved")
+        .entry(key)
+        .or_default()
+        .push(passuff_config::Involvement::TeamReviewRequested);
 }
 
 #[given(regex = r#"^the pull request "([^"]+)" is ignored$"#)]

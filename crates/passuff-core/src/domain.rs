@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use passuff_config::{WatchConfig, WatchMode};
+use passuff_config::{Involvement, WatchConfig, WatchMode};
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -208,6 +208,8 @@ pub struct WatchedPullRequest {
     pub current: CurrentObservation,
     #[serde(default)]
     pub stack: Option<PullRequestStack>,
+    #[serde(default)]
+    pub involvements: Vec<Involvement>,
 }
 
 impl WatchedPullRequest {
@@ -239,6 +241,7 @@ impl WatchedPullRequest {
                 state: pr.state.clone(),
             },
             stack: pr.stack.clone(),
+            involvements: Vec::new(),
             current: CurrentObservation {
                 seen_comment_ids: pr.comments.iter().map(|c| c.id.clone()).collect(),
                 seen_review_ids: pr.reviews.iter().map(|r| r.id.clone()).collect(),

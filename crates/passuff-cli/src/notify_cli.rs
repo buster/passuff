@@ -155,6 +155,7 @@ mod tests {
                 accounts: BTreeMap::new(),
                 events: EventToggles::default(),
                 watch: WatchConfig::default(),
+                focus: passuff_config::FocusConfig::default(),
             },
             notifications,
         }

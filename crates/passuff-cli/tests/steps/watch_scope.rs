@@ -89,11 +89,13 @@ async fn switches(world: &mut World, mode: String) {
 
 #[when(regex = r#"^the developer enters "([^"]+)" as a repository$"#)]
 async fn enters(world: &mut World, repository: String) {
+    // Manual entry is gone; selecting by name is the surviving behavior. The
+    // permanent pre-merge corpus still exercises this phrase until archive.
     if world.e2e {
         world.e2e_run_scope("add", Some(&repository)).await;
     } else {
         let editor = world.scope_editor();
-        match editor.add(&repository) {
+        match editor.select(&repository) {
             Ok(_) => world.sync_scope_config(),
             Err(error) => {
                 world.last_transcript = error.message;
@@ -175,12 +177,81 @@ async fn opens_picker(world: &mut World) {
     if world.e2e {
         world.e2e_run_scope("picker", None).await;
     } else {
+        world.ensure_scope_config();
         let config = world.scope_config();
         let editor = world.scope_editor();
         let state = world.state_store().load().await.unwrap_or_default();
         let known = editor.known_repositories(&config, &state);
         world.last_transcript = passuff::scope::ScopePicker::new(&config, known).snapshot();
     }
+}
+
+#[when(regex = r#"^the developer narrows the focus to "([^"]+)"$"#)]
+async fn focuses(world: &mut World, relations: String) {
+    if world.e2e {
+        world.e2e_run_scope("focus-set", Some(&relations)).await;
+    } else {
+        let editor = world.scope_editor();
+        let parsed = parse_relations(&relations);
+        match editor.set_focus(&parsed) {
+            Ok(()) => {
+                world.focus = parsed;
+                world.sync_scope_config();
+            }
+            Err(error) => {
+                world.last_transcript = error.message;
+                world.last_status = error.exit;
+            }
+        }
+    }
+}
+
+fn parse_relations(value: &str) -> Vec<passuff_config::Involvement> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|label| !label.is_empty())
+        .map(|label| {
+            passuff_config::Involvement::parse(label)
+                .unwrap_or_else(|| panic!("unknown involvement {label}"))
+        })
+        .collect()
+}
+
+#[given(regex = r#"^the focus relations are "([^"]+)"$"#)]
+async fn given_focus_relations(world: &mut World, expected: String) {
+    let editor = world.scope_editor();
+    let parsed = parse_relations(&expected);
+    if world.e2e {
+        world.e2e_run_scope("focus-set", Some(&expected)).await;
+    } else {
+        editor.set_focus(&parsed).expect("set focus");
+        world.focus = parsed;
+        world.sync_scope_config();
+    }
+}
+
+#[then(regex = r#"^the focus relations are "([^"]+)"$"#)]
+async fn focus_relations(world: &mut World, expected: String) {
+    let config = config(world);
+    let actual: Vec<&str> = config
+        .core
+        .focus
+        .relations
+        .iter()
+        .map(|involvement| involvement.as_str())
+        .collect();
+    let expected: Vec<&str> = expected.split(',').map(str::trim).collect();
+    assert_eq!(actual, expected);
+}
+
+#[then(regex = r#"^the picker does not show "([^"]+)"$"#)]
+async fn picker_does_not_show(world: &mut World, unexpected: String) {
+    assert!(
+        !world.last_transcript.contains(&unexpected),
+        "expected picker not to contain {unexpected:?}: {:?}",
+        world.last_transcript
+    );
 }
 
 #[then(regex = r#"^the picker shows "([^"]+)"$"#)]

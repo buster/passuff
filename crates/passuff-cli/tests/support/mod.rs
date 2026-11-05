@@ -141,6 +141,7 @@ pub struct World {
     pub accounts: BTreeMap<String, AccountFixture>,
     pub pull_requests: BTreeMap<String, PullRequestFixture>,
     pub events: EventToggles,
+    pub focus: Vec<passuff_config::Involvement>,
     pub notifications: NotificationsConfig,
     pub invalid_config: bool,
     pub corrupt_state: bool,
@@ -192,7 +193,8 @@ pub struct World {
     pub planned_delay: Option<Duration>,
     pub e2e_pending_comment: Option<(String, String, String, String)>,
     pub ignored_pull_requests: Vec<String>,
-    pub involved_pull_requests: Arc<Mutex<Vec<String>>>,
+    pub involved_pull_requests:
+        Arc<Mutex<std::collections::BTreeMap<String, Vec<passuff_config::Involvement>>>>,
     pub browser_log: Arc<Mutex<Vec<String>>>,
     pub browser_fails: bool,
     pub e2e_browser_log: Option<PathBuf>,
@@ -207,6 +209,7 @@ impl Default for World {
             accounts: BTreeMap::new(),
             pull_requests: BTreeMap::new(),
             events: EventToggles::default(),
+            focus: passuff_config::Involvement::all(),
             notifications: NotificationsConfig::default(),
             invalid_config: false,
             corrupt_state: false,
@@ -258,7 +261,7 @@ impl Default for World {
             planned_delay: None,
             e2e_pending_comment: None,
             ignored_pull_requests: Vec::new(),
-            involved_pull_requests: Arc::new(Mutex::new(Vec::new())),
+            involved_pull_requests: Arc::new(Mutex::new(std::collections::BTreeMap::new())),
             browser_log: Arc::new(Mutex::new(Vec::new())),
             browser_fails: false,
             e2e_browser_log: None,
@@ -622,6 +625,9 @@ if [ \"$1\" = \"auth\" ] && [ \"$2\" = \"token\" ]; then\n  shift 2\n  user=\"\"
                     },
                     repositories: self.watch_scope.clone(),
                     ignored_pull_requests: self.ignored_pull_requests.clone(),
+                },
+                focus: passuff_config::FocusConfig {
+                    relations: self.focus.clone(),
                 },
             },
             notifications: self.notifications.clone(),
@@ -1511,7 +1517,7 @@ struct FakeGateway {
     fail_probe: Arc<AtomicBool>,
     fail_observe: Arc<AtomicBool>,
     allowance: Arc<Mutex<Option<ApiAllowance>>>,
-    involved: Arc<Mutex<Vec<String>>>,
+    involved: Arc<Mutex<std::collections::BTreeMap<String, Vec<passuff_config::Involvement>>>>,
     observe_targets: Arc<Mutex<Vec<Vec<String>>>>,
 }
 
@@ -1519,7 +1525,7 @@ impl FakeGateway {
     fn new(
         snapshot: Vec<(String, String, Vec<AuthoredPullRequest>)>,
         clock: Arc<Mutex<u64>>,
-        involved: Arc<Mutex<Vec<String>>>,
+        involved: Arc<Mutex<std::collections::BTreeMap<String, Vec<passuff_config::Involvement>>>>,
     ) -> Self {
         let live = snapshot
             .into_iter()
@@ -1604,12 +1610,15 @@ impl GitHubGateway for FakeGateway {
         Ok(AccountObservation {
             login: login.clone(),
             pull_requests: pull_requests.clone(),
-            involved_node_ids: self
+            discovered: self
                 .involved
                 .lock()
                 .expect("involved")
                 .iter()
-                .map(|key| format!("node-{key}"))
+                .map(|(key, involvements)| passuff_core::DiscoveredPullRequest {
+                    node_id: format!("node-{key}"),
+                    involvements: involvements.clone(),
+                })
                 .collect(),
             checked_at,
         })

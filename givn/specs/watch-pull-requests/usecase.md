@@ -55,7 +55,7 @@ The developer starts the watcher, or runs a single check pass.
 - R8: A transition of an authored pull request to merged or closed produces a notification, regardless of which actor merged or closed it.
 - R9: A comment or review by a login in the configured login set produces no notification; it is recorded as read so the activity history stays complete. Own actions are comments and reviews, not state changes.
 - R10: A commit or push to the pull request branch produces no notification.
-- R11: Activity on a pull request authored by a login outside the configured login set produces no notification.
+- R11: Activity on a watched pull request whose involvement relations do not intersect the configured focus produces no notification; the activity is still recorded.
 - R12: A bot-authored comment produces no notification unless bot comments are enabled.
 - R13: All new activity in one observation pass is grouped into one delivered notification: one pull request keeps its events together, several pull requests become one digest naming the total activity count and each pull request's count. The terminal transcript keeps the per-event detail; the sound plays once for the delivered notification.
 - R14: The first observation of an authored pull request records a baseline without notifying about existing activity, except the R27 short-lived state change.
@@ -86,6 +86,7 @@ The developer starts the watcher, or runs a single check pass.
 - R39: When a repository scope excludes a repository, an authored pull request outside it is not observed or notified; already watched pull requests and activity are hidden from the inbox and status but retained in state.
 - R40: Activity on an already-merged or already-closed watched pull request does not notify. The transition that made it terminal, a short-lived pull request (R27), and a reopen (R28) are still reported.
 - R41: A check cycle observes only the pull requests selected from the change probe and the discovery search; a reconciliation pass observes every watched open pull request and every open assigned or review-requested pull request.
+- R44: A focus relation is one of authored, assigned, review requested from the developer, or review requested from a team the developer belongs to. Discovery reports the relations of each open pull request; a pull request may have several.
 - R42: A digest notification names the total activity count and the number of pull requests; the desktop body lists each pull request's activity count, capped at five pull requests followed by the number of remaining pull requests.
 - R43: The bundled default sound is three short beeps within one second.
 - R42: `notify-test` sends one test notification through the configured desktop and sound surfaces, reports the result of each enabled surface, exits 0 when every enabled surface succeeds, 1 when an enabled surface fails, and 2 for a configuration error or when both surfaces are disabled. On macOS the desktop notification is delivered through Notification Center via `osascript`.
@@ -107,7 +108,7 @@ The developer starts the watcher, or runs a single check pass.
 
 ## Minimal guarantee
 
-The watcher never notifies about activity on a pull request that was not authored by a configured account.
+The watcher never notifies about activity on a pull request outside the watch scope or outside the configured focus.
 
 ## Success guarantee
 
@@ -142,7 +143,7 @@ The developer receives one delivered desktop notification with sound, when both 
 ## Out of scope
 
 - Webhooks, a public endpoint, or a hosted service.
-- Notifications for review requests, mentions, or activity on pull requests the developer did not author.
+- Notifications for review requests or mentions as such; discovery watches assigned and review-requested pull requests, and notifications report their activity, not the request.
 - Notifications for code changes, diffs, or commits.
 - Replying to comments, approving, merging, or otherwise changing GitHub state.
 - Mobile push, email, Slack, Telegram, or other external delivery channels.

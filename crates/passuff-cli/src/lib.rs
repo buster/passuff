@@ -560,6 +560,7 @@ mod tests {
             reconciliation_interval_secs: 3600,
             core: CoreConfig {
                 watch: passuff_config::WatchConfig::default(),
+                focus: passuff_config::FocusConfig::default(),
                 accounts: BTreeMap::from([(
                     "work".to_string(),
                     AccountConfig {
@@ -612,7 +613,7 @@ mod tests {
         ) -> Result<AccountObservation, GitHubError> {
             Ok(AccountObservation {
                 login: "octo".to_string(),
-                involved_node_ids: Vec::new(),
+                discovered: Vec::new(),
                 pull_requests: vec![passuff_core::AuthoredPullRequest {
                     key: passuff_core::PullRequestKey::new("acme/web".to_string(), 1),
                     node_id: "node-1".to_string(),

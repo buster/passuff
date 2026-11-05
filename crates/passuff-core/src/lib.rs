@@ -19,7 +19,8 @@ pub use domain::{
     ScopeSnapshot, StateError, WatchedPullRequest, WatcherState,
 };
 pub use github::{
-    AccountObservation, AccountProbe, Discovery, GitHubApiAdapter, GitHubError, GitHubGateway,
+    AccountObservation, AccountProbe, DiscoveredPullRequest, Discovery, GitHubApiAdapter,
+    GitHubError, GitHubGateway,
 };
 pub use inbox::{
     effective_time, is_approximate, AccountView, Inbox, InboxService, InboxView, PullRequestView,

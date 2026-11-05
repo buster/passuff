@@ -43,6 +43,7 @@ The developer lists the inbox or marks activity read.
 - R6: Read state persists across restarts and is independent of notification delivery.
 - R7: A version-1 state loads with an empty history, preserves its watched pull requests, and is rewritten as version 2.
 - R8: A missing state file is an empty inbox and exit 0.
+- R9: The inbox, the status unread count, and the watched table show only pull requests whose involvement relations intersect the focus; a pull request with unknown relations stays visible. Activity outside the focus is retained and appears when the focus widens.
 - R9: Recording history never replays a notification.
 - T1: The terminal UI shows the unread and total activity counts, configured accounts, watch scope, watched pull requests, and the activity list on one screen.
 - T2: `j`/down and `k`/up move the selection and clamp at the list ends; Home and End jump to the first and last row; `q` quits, and Escape or `q` closes the focused dialog.
