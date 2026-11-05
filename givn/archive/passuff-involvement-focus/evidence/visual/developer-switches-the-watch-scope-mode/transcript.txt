@@ -1,0 +1,31 @@
+┌ passuff — Watch scope ───────────────────────────────────────────────────────────────────────────┐
+│Mode: selected   (m switches all/selected)                                                        │
+│                                                                                                  │
+│Focus:                                                                                            │
+│▶ [x] authored                                                                                    │
+│  [x] assigned                                                                                    │
+│  [x] review requested                                                                            │
+│  [x] team review                                                                                 │
+│                                                                                                  │
+│Repositories:                                                                                     │
+│  [x] acme/api                                                                                    │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│↑↓ move · space toggle · m mode · esc/q close                                                     │
+│                                                                                                  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+exit status: 0
