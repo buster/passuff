@@ -1713,11 +1713,8 @@ impl TuiApp {
         self.viewport.set((area.width, area.height));
         let outer = Block::bordered()
             .title(Line::from(vec![
-                Span::styled(
-                    " passuff (☞ﾟヮﾟ)☞",
-                    theme::bright().add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(" — Inbox ", theme::dim()),
+                Span::styled(" passuff ", theme::bright().add_modifier(Modifier::BOLD)),
+                Span::styled("— Inbox ", theme::dim()),
             ]))
             .border_style(theme::border());
         let inner = outer.inner(area);
@@ -2598,6 +2595,14 @@ mod tests {
         let frame = app.snapshot();
         assert!(frame.contains("no activity yet"), "{frame}");
         assert!(frame.contains("0 unread of 0"), "{frame}");
+    }
+
+    #[test]
+    fn the_inbox_title_has_no_emoji() {
+        let app = TuiApp::new(view(Vec::new()));
+        let frame = app.snapshot();
+        assert!(frame.contains(" passuff — Inbox "), "{frame}");
+        assert!(!frame.contains('☞'), "{frame}");
     }
 
     #[test]
