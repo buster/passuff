@@ -129,6 +129,7 @@ The developer receives one delivered desktop notification with sound, when both 
 | pr-activity-notification | run one observation pass | Developer runs a single check and sees the current activity |
 | pr-activity-notification | show usage | Developer asks for usage |
 | pr-activity-notification | show version | Developer asks for the version |
+| pr-activity-notification | test the notification surfaces on the command line | The developer tests notifications on the command line |
 
 ## Includes
 
