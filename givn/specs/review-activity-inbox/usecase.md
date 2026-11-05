@@ -35,7 +35,7 @@ The developer lists the inbox or marks activity read.
 
 ## Rules
 
-- R1: `inbox` lists unread activity newest first with the observation time, pull request, event summary, and read state.
+- R1: `inbox` lists unread activity newest first with when the activity happened, the pull request, the event summary, and the read state. An activity with no reported time shows its fetch time marked approximate with a leading `~`; the order follows the shown time.
 - R2: `inbox --all` lists unread and read activity newest first.
 - R3: `read <id>` marks one activity record read and reports the new unread count; an unknown id is refused with exit 2.
 - R4: `read --all` marks every activity record read and reports the number changed.
@@ -43,6 +43,7 @@ The developer lists the inbox or marks activity read.
 - R6: Read state persists across restarts and is independent of notification delivery.
 - R7: A version-1 state loads with an empty history, preserves its watched pull requests, and is rewritten as version 2.
 - R8: A missing state file is an empty inbox and exit 0.
+- R9: The inbox, the status unread count, and the watched table show only pull requests whose involvement relations intersect the focus; a pull request with unknown relations stays visible. Activity outside the focus is retained and appears when the focus widens.
 - R9: Recording history never replays a notification.
 - T1: The terminal UI shows the unread and total activity counts, configured accounts, watch scope, watched pull requests, and the activity list on one screen.
 - T2: `j`/down and `k`/up move the selection and clamp at the list ends; Home and End jump to the first and last row; `q` quits, and Escape or `q` closes the focused dialog.
@@ -57,7 +58,7 @@ The developer lists the inbox or marks activity read.
 - T11: A refresh never changes focus or replays a notification.
 - T12: The inbox paces observation against the account's remaining API allowance; it never spends the allowance faster than it is replenished.
 - T13: A failed observation keeps the last view and is retried without ending the program.
-- T14: Enter on the focused activity opens a detail popup with the recorded id, event summary, observation time, read state, the pull request's key, title, state, CI result, and stack position, and the selected comment or review body in full, rendered as Markdown; the metadata values are muted, a rule separates them from the indented body, and `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and `Home`/`End` scroll it.
+- T14: Enter on the focused activity opens a detail popup with the recorded id, event summary, the occurrence time and the fetch time, read state, the pull request's key, title, state, CI result, and stack position, and the selected comment or review body in full, rendered as Markdown; the metadata values are muted, a rule separates them from the indented body, and `j`/`k`, the arrow keys, `PgUp`/`PgDn`, and `Home`/`End` scroll it.
 - T15: Escape or `q` closes the detail popup and returns to the unchanged inbox.
 - T16: Enter in the detail popup opens the pull request's URL in the system browser and closes the popup; a launch failure keeps the popup open and reports the failure.
 - T17: Enter outside the activity pane, or with no selected activity, changes nothing.
@@ -71,6 +72,7 @@ The developer lists the inbox or marks activity read.
 - T25: The terminal interface follows watn's palette: dim borders; cyan-blue labels, key hints, and table headers; bold key hints; gold selected rows and attention text; green focus borders and Markdown headings; muted metadata values; bright-gray description and activity body text.
 - T27: An ignored pull request remains in the watched list in both views, prefixed with `⊘` and dimmed, while its activity is hidden in the filtered view and shown in the all view. The footer's `x` control reads `unignore` while the selected row is ignored.
 - T26: `,` opens the settings dialog; `j`/`k` or the arrow keys select desktop notifications or sound, `space`/`Enter` toggles the selected surface, and `esc` closes it. The settings persist in `ui.json`, default to on, and apply immediately to the live inbox delivery; Escape or `q` closes the dialog.
+- T28: The activity table's `When` column shows when the activity happened as `MM-DD HH:MM`; an activity with no reported time shows its fetch time prefixed with `~`. The detail popup shows `When:` with the same value and adds `Fetched:` beside it when the fetch time differs; an approximate activity reads `When: ~MM-DD HH:MM (fetch time)` instead.
 
 ## Examples
 

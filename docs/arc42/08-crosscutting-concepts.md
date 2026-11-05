@@ -20,13 +20,46 @@ once per gh login per process.
 ## Activity history and watch scope
 
 Watch state version 2 carries up to 500 activity records: one per event, with a
-stable `a<n>` id, the observation time, the pull request key, and a read flag.
-The oldest records are dropped on append. Version-1 files load with their
+stable `a<n>` id, the fetch time, the occurrence time when GitHub reports one,
+the pull request key, and a read flag. The oldest records are dropped on append.
+
+### Activity time
+
+An activity record keeps two times. The fetch time is when the check cycle
+observed the event. The occurrence time is when the event happened upstream:
+comment and review-comment creation, review submission, pull request creation
+for an opened event, and the merge or close time for a terminal state change.
+CI failures and recoveries have no upstream time, so their occurrence time is
+absent. `ActivityRecord.occurred_at` is `Option<String>` with a serde default;
+an older state file loads with no occurrence times.
+
+Every surface renders the occurrence time and falls back to the fetch time
+marked approximate with a leading `~`. The activity list is ordered newest
+first by the same effective time, so the order always matches the visible
+times. The detail popup shows both times when the activity has a reported one.
+`Notification` carries no time. Version-1 files load with their
 watched pull requests and are rewritten as version 2; unknown versions are
 quarantined. Read state persists and is independent of delivery. The optional
 global watch scope filters observation and the inbox/status read model. Excluded
 watched pull requests and activity are hidden but retained in state; reselecting
 them records a silent catch-up cycle.
+
+## Involvement and focus
+
+Every watched pull request records why passuff watches it: authored by the
+account, assigned to the account, a review requested from the account, or a
+review requested from a team the account belongs to. Discovery reports the
+relations with each search result; a reconciliation pass refreshes them and a
+targeted pass keeps the stored set for pull requests it does not report.
+Authored is derived from the author login.
+
+The focus is a configured set of those relations, defaulting to all four. It
+filters the inbox read model (pull requests, activity, and the unread count) and
+it gates notification production. It never changes observation: every relation
+is fetched and recorded regardless, so widening the focus shows retained
+activity immediately and narrowing it discards nothing. A watched pull request
+with no recorded relation (a state file written before the relation existed)
+stays visible and notifiable until an observation records one.
 
 ## Persistence and deduplication
 

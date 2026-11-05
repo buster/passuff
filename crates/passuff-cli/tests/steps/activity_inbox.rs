@@ -2,6 +2,7 @@ use cucumber::{then, when};
 use regex::Regex;
 
 use crate::support::World;
+use passuff_core::Comment;
 
 #[when(regex = r#"^the developer lists the inbox$"#)]
 async fn lists_inbox(world: &mut World) {
@@ -70,7 +71,7 @@ async fn runs_notification_test_with(world: &mut World, flag: String) {
 }
 
 fn record_lines(transcript: &str) -> Vec<&str> {
-    let pattern = Regex::new(r"^\s+a\d+\s+\d{4}-\d{2}-\d{2}T").expect("record regex");
+    let pattern = Regex::new(r"^\s+a\d+\s+~?\d{4}-\d{2}-\d{2}T").expect("record regex");
     transcript
         .lines()
         .filter(|line| pattern.is_match(line))
@@ -100,6 +101,49 @@ async fn shows_before(world: &mut World, first: String, second: String, key: Str
     );
 }
 
+#[when(regex = r#"^"([^"]+)" comments "(.*)" on "([^"]+)" at "([^"]+)"$"#)]
+async fn comments_at(world: &mut World, author: String, body: String, key: String, time: String) {
+    world.ensure_baseline().await;
+    let pull_request = world.pr_mut(&key);
+    let id = format!("comment-{}", pull_request.comments.len() + 1);
+    pull_request.comments.push(Comment {
+        id,
+        author,
+        body,
+        created_at: time.clone(),
+    });
+    pull_request.updated_at = time;
+}
+
+#[then(regex = r#"^the inbox shows the occurrence time "([^"]+)" for "([^"]+)"$"#)]
+async fn shows_occurrence_time(world: &mut World, time: String, key: String) {
+    let line = record_lines(&world.last_transcript)
+        .into_iter()
+        .find(|line| line.contains(&key))
+        .unwrap_or_else(|| panic!("missing a record for {key}: {:?}", world.last_transcript));
+    let field = line.split_whitespace().nth(1).expect("time field");
+    assert_eq!(
+        field, time,
+        "wrong occurrence time in {line:?}: {:?}",
+        world.last_transcript
+    );
+}
+
+#[then(regex = r#"^the inbox marks "([^"]+)" on "([^"]+)" as approximate$"#)]
+async fn marks_approximate(world: &mut World, summary: String, key: String) {
+    let line = record_lines(&world.last_transcript)
+        .into_iter()
+        .find(|line| line.contains(&key) && line.contains(&summary))
+        .unwrap_or_else(|| {
+            panic!("missing {summary:?} for {key}: {:?}", world.last_transcript)
+        });
+    let field = line.split_whitespace().nth(1).expect("time field");
+    assert!(
+        field.starts_with('~'),
+        "record is not marked approximate: {line:?}"
+    );
+}
+
 #[then(regex = r#"^every inbox record is unread$"#)]
 async fn every_record_unread(world: &mut World) {
     let lines = record_lines(&world.last_transcript);
@@ -113,7 +157,7 @@ async fn every_record_unread(world: &mut World) {
     }
 }
 
-#[then(regex = r#"^the inbox shows an activity id and observation time$"#)]
+#[then(regex = r#"^the inbox shows an activity id and (?:observation|occurrence) time$"#)]
 async fn shows_id_and_time(world: &mut World) {
     let lines = record_lines(&world.last_transcript);
     assert!(

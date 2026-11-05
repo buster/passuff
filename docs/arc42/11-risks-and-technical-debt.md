@@ -38,6 +38,8 @@
 | R-032 | Terminal retirement means activity after a merge or close is never reported. | High | Low | Accepted by the operator; the transition itself, a short-lived pull request, and a reopen are still observed and notified. |
 | R-033 | An involved (assigned or review-requested) pull request is only as fresh as the reconciliation pass. | Medium | Low | Discovery runs on every pass; the reconciliation interval is configurable and defaults to one hour. |
 | R-034 | The desktop digest body lists at most five pull requests, so the remaining pull requests appear only in the terminal transcript. | Low | Low | The title names the total activity and pull request count; the transcript lists every pull request and event. |
+| R-035 | Reported and fetch times share one list, so an approximate event can sort above a reported event that happened later. | Medium | Low | The `~` marker keeps an estimate visible as an estimate; the detail popup shows both times, and ordering uses the same effective time the row shows. |
+| R-036 | `team-review-requested-user:@me` may be unavailable on an older GitHub version, so team-requested pull requests stop being discovered. | Low | Medium | The search failure is logged at `warn`; the account is not failed, the other queries still run, and authored, assigned, and direct review requests keep working. |
 
 ## Technical debt
 

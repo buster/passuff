@@ -1,11 +1,11 @@
 # passuff
 
-[![crates.io](https://img.shields.io/crates/v/passuff?logo=rust)](https://crates.io/crates/passuff)
-
 <!-- givn:begin:coverage-badge -->
-[![Line Coverage: 89%](https://img.shields.io/badge/line%20coverage-89%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Line Coverage: 88%](https://img.shields.io/badge/line%20coverage-88%25-brightgreen)](coverage/cobertura-coverage.xml)
 [![Branch Coverage: 47%](https://img.shields.io/badge/branch%20coverage-47%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
+
+[![crates.io](https://img.shields.io/crates/v/passuff?logo=rust)](https://crates.io/crates/passuff)
 
 ```text
 ╭────────────╮
@@ -60,6 +60,9 @@ desktop = true
 sound = true
 sound_file = "default"
 urgency = "normal"
+
+[focus]
+relations = ["authored", "assigned", "review-requested", "team-review-requested"]
 
 [events]
 comments = true
@@ -180,10 +183,12 @@ or `q` closes it, and `enter` in the overlay opens the pull request in your brow
 where `j`/`k` select desktop notifications or sound, `space` toggles, and `esc`
 or `q` closes. Sort, filter, and notification settings are saved to `ui.json` next to
 the state file when you confirm the save prompt on exit. Press `p` to open the
-watch-scope picker: `j`/`k` move,
-`space` toggles, `m` switches all/selected, type `owner/name` and press Enter to
-add, and `esc` closes. Scripted snapshots accept `--picker`,
-`--scope-select`, `--scope-deselect`, `--scope-mode`, and `--scope-add`.
+watch-scope picker: `j`/`k` move through
+the focus relations and the repositories, `space` toggles the focused row, `m`
+switches all/selected, and `esc` closes. The focus decides which watched pull
+requests the inbox shows, counts, and notifies; it never changes what passuff
+fetches. Scripted snapshots accept `--picker`, `--scope-select`,
+`--scope-deselect`, `--scope-mode`, and `--focus-set`.
 
 ```
 passuff --config PATH       use a specific configuration file
@@ -237,8 +242,8 @@ GPL-3.0-or-later. See `LICENSE`.
 
 Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
 
-Line coverage: 89% (6326/7147)
-Branch coverage: 47% (1087/2306)
+Line coverage: 88% (6584/7443)
+Branch coverage: 47% (1118/2362)
 
 Reproduce the result:
 

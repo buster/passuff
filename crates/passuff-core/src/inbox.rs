@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::DateTime;
-use passuff_config::CoreConfig;
+use passuff_config::{CoreConfig, Involvement};
 
 use crate::domain::{
     ActivityRecord, CiState, CoreError, PrState, PullRequestKey, PullRequestStack, WatcherState,
@@ -31,6 +31,7 @@ pub struct PullRequestView {
     pub updated_at: String,
     pub stack: Option<PullRequestStack>,
     pub ignored: bool,
+    pub involvements: Vec<Involvement>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,6 +56,27 @@ pub trait InboxService: Send + Sync {
     async fn view(&self, config: &CoreConfig) -> Result<InboxView, CoreError>;
     async fn mark_read(&self, id: &str) -> Result<ReadOutcome, CoreError>;
     async fn mark_all_read(&self) -> Result<ReadOutcome, CoreError>;
+}
+
+/// When the activity happened, falling back to the fetch time when GitHub
+/// reported no occurrence time.
+pub fn effective_time(record: &ActivityRecord) -> &str {
+    record
+        .occurred_at
+        .as_deref()
+        .unwrap_or(&record.observed_at)
+}
+
+/// True when the record has no reported occurrence time and shows the fetch
+/// time instead.
+pub fn is_approximate(record: &ActivityRecord) -> bool {
+    record.occurred_at.is_none()
+}
+
+fn record_time(record: &ActivityRecord) -> Option<DateTime<chrono::FixedOffset>> {
+    DateTime::parse_from_rfc3339(effective_time(record))
+        .ok()
+        .or_else(|| DateTime::parse_from_rfc3339(&record.observed_at).ok())
 }
 
 pub struct Inbox {
@@ -97,9 +119,15 @@ impl Inbox {
                 updated_at: pr.updated_at.clone(),
                 stack: pr.stack.clone(),
                 ignored: config.watch.ignores(&pr.repository, pr.number),
+                involvements: pr.involvements.clone(),
             })
             .collect();
         pull_requests.retain(|pr| config.watch.allows_repository(&pr.key.repository));
+        let involvements: std::collections::BTreeMap<String, Vec<Involvement>> = pull_requests
+            .iter()
+            .map(|pr| (pr.key.to_string(), pr.involvements.clone()))
+            .collect();
+        pull_requests.retain(|pr| config.focus.includes(&pr.involvements));
         pull_requests.sort_by(|a, b| a.key.cmp(&b.key));
         let mut activity: Vec<(usize, ActivityRecord)> = state
             .activity
@@ -110,14 +138,15 @@ impl Inbox {
                     && !config
                         .watch
                         .ignores(&record.key.repository, record.key.number)
+                    && involvements
+                        .get(&record.key.to_string())
+                        .is_none_or(|relations| config.focus.includes(relations))
             })
             .map(|(index, record)| (index, record.clone()))
             .collect();
         activity.sort_by(|(left_index, left), (right_index, right)| {
-            let left_at = DateTime::parse_from_rfc3339(&left.observed_at).ok();
-            let right_at = DateTime::parse_from_rfc3339(&right.observed_at).ok();
-            right_at
-                .cmp(&left_at)
+            record_time(right)
+                .cmp(&record_time(left))
                 .then_with(|| right.observed_at.cmp(&left.observed_at))
                 .then_with(|| right_index.cmp(left_index))
         });
@@ -215,6 +244,7 @@ mod tests {
             )]),
             events: EventToggles::default(),
             watch: WatchConfig::default(),
+            focus: passuff_config::FocusConfig::default(),
         }
     }
 
@@ -228,6 +258,8 @@ mod tests {
             url: "https://github.com/acme/api/pull/42".to_string(),
             created_at: "2026-11-02T09:00:00Z".to_string(),
             updated_at: "2026-11-02T09:00:00Z".to_string(),
+            merged_at: None,
+            closed_at: None,
             state: PrState::Open,
             merged: false,
             is_draft: false,
@@ -258,6 +290,7 @@ mod tests {
                     id: "a1".to_string(),
                     key: authored().key,
                     observed_at: "2026-11-02T10:00:00Z".to_string(),
+                    occurred_at: None,
                     event: ActivityEvent::Comment {
                         author: "alice".to_string(),
                         body: "hi".to_string(),
@@ -268,6 +301,7 @@ mod tests {
                     id: "a2".to_string(),
                     key: authored().key,
                     observed_at: "2026-11-02T10:01:00Z".to_string(),
+                    occurred_at: None,
                     event: ActivityEvent::CiRecovery,
                     read: true,
                 },
@@ -350,6 +384,73 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn view_hides_out_of_focus_records_and_counts_visible_unread() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = JsonStateStore::new(dir.path().join("state.json"));
+        let mut state = WatcherState {
+            version: 2,
+            ..WatcherState::default()
+        };
+        let mut account = crate::domain::AccountState {
+            login: "octo".to_string(),
+            last_check_at: None,
+            pull_requests: Default::default(),
+        };
+        let mut authored_pr =
+            WatchedPullRequest::from_baseline(&authored(), "2026-11-02T10:00:00Z".to_string());
+        authored_pr.involvements = vec![passuff_config::Involvement::Authored];
+        let mut team_pr =
+            WatchedPullRequest::from_baseline(&authored(), "2026-11-02T10:00:00Z".to_string());
+        team_pr.repository = "acme/web".to_string();
+        team_pr.number = 7;
+        team_pr.involvements = vec![passuff_config::Involvement::TeamReviewRequested];
+        account
+            .pull_requests
+            .insert("acme/api#42".to_string(), authored_pr);
+        account
+            .pull_requests
+            .insert("acme/web#7".to_string(), team_pr);
+        state.accounts.insert("personal".to_string(), account);
+        state.activity = vec![
+            ActivityRecord {
+                id: "a1".to_string(),
+                key: PullRequestKey::new("acme/api".to_string(), 42),
+                observed_at: "2026-11-02T10:00:00Z".to_string(),
+                occurred_at: None,
+                event: ActivityEvent::Comment {
+                    author: "alice".to_string(),
+                    body: "hi".to_string(),
+                },
+                read: false,
+            },
+            ActivityRecord {
+                id: "a2".to_string(),
+                key: PullRequestKey::new("acme/web".to_string(), 7),
+                observed_at: "2026-11-02T10:00:00Z".to_string(),
+                occurred_at: None,
+                event: ActivityEvent::Comment {
+                    author: "bob".to_string(),
+                    body: "team".to_string(),
+                },
+                read: false,
+            },
+        ];
+        store.save(&state).await.unwrap();
+        let mut config = config();
+        config.focus = passuff_config::FocusConfig {
+            relations: vec![passuff_config::Involvement::Authored],
+        };
+        let view = Inbox::new(Arc::new(store))
+            .view(&config)
+            .await
+            .expect("view");
+        assert_eq!(view.pull_requests.len(), 1);
+        assert_eq!(view.pull_requests[0].key.to_string(), "acme/api#42");
+        assert_eq!(view.activity.len(), 1);
+        assert_eq!(view.activity[0].id, "a1");
+        assert_eq!(view.unread, 1);
+    }
+
     async fn view_hides_out_of_scope_records_and_counts_visible_unread() {
         let dir = tempfile::tempdir().unwrap();
         let store = JsonStateStore::new(dir.path().join("state.json"));
@@ -381,6 +482,7 @@ mod tests {
                 id: "a1".to_string(),
                 key: PullRequestKey::new("acme/api".to_string(), 42),
                 observed_at: "2026-11-02T10:00:00Z".to_string(),
+                occurred_at: None,
                 event: crate::domain::ActivityEvent::Comment {
                     author: "alice".to_string(),
                     body: "hi".to_string(),
@@ -391,6 +493,7 @@ mod tests {
                 id: "a2".to_string(),
                 key: PullRequestKey::new("acme/web".to_string(), 7),
                 observed_at: "2026-11-02T10:00:00Z".to_string(),
+                occurred_at: None,
                 event: crate::domain::ActivityEvent::Comment {
                     author: "bob".to_string(),
                     body: "hi".to_string(),
@@ -407,6 +510,7 @@ mod tests {
                 repositories: vec!["acme/api".to_string()],
                 ignored_pull_requests: Vec::new(),
             },
+            focus: passuff_config::FocusConfig::default(),
         };
         let view = Inbox::new(Arc::new(store))
             .view(&config)

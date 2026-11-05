@@ -31,6 +31,81 @@ pub struct CoreConfig {
     pub accounts: BTreeMap<String, AccountConfig>,
     pub events: EventToggles,
     pub watch: WatchConfig,
+    pub focus: FocusConfig,
+}
+
+/// Why passuff watches a pull request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Involvement {
+    Authored,
+    Assigned,
+    ReviewRequested,
+    TeamReviewRequested,
+}
+
+impl Involvement {
+    pub const ALL: [Involvement; 4] = [
+        Involvement::Authored,
+        Involvement::Assigned,
+        Involvement::ReviewRequested,
+        Involvement::TeamReviewRequested,
+    ];
+
+    pub fn all() -> Vec<Involvement> {
+        Self::ALL.to_vec()
+    }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            Involvement::Authored => "authored",
+            Involvement::Assigned => "assigned",
+            Involvement::ReviewRequested => "review requested",
+            Involvement::TeamReviewRequested => "team review",
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Involvement::Authored => "authored",
+            Involvement::Assigned => "assigned",
+            Involvement::ReviewRequested => "review-requested",
+            Involvement::TeamReviewRequested => "team-review-requested",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Involvement> {
+        Self::ALL
+            .into_iter()
+            .find(|involvement| involvement.as_str() == value.trim())
+    }
+}
+
+/// The involvement relations whose pull requests are shown, counted, and
+/// notified. Observation is never filtered by the focus.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct FocusConfig {
+    pub relations: Vec<Involvement>,
+}
+
+impl Default for FocusConfig {
+    fn default() -> Self {
+        Self {
+            relations: Involvement::all(),
+        }
+    }
+}
+
+impl FocusConfig {
+    /// A pull request with unknown relations stays visible; an empty focus
+    /// matches no known relation.
+    pub fn includes(&self, involvements: &[Involvement]) -> bool {
+        involvements.is_empty()
+            || involvements
+                .iter()
+                .any(|involvement| self.relations.contains(involvement))
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -184,6 +259,7 @@ struct FileConfig {
     events: EventToggles,
     notifications: NotificationsConfig,
     watch: FileWatchConfig,
+    focus: FocusConfig,
     accounts: BTreeMap<String, AccountToml>,
 }
 
@@ -195,6 +271,7 @@ impl Default for FileConfig {
             events: EventToggles::default(),
             notifications: NotificationsConfig::default(),
             watch: FileWatchConfig::default(),
+            focus: FocusConfig::default(),
             accounts: BTreeMap::new(),
         }
     }
@@ -387,6 +464,7 @@ impl FileConfig {
                 accounts,
                 events: self.events,
                 watch: self.watch.resolve(),
+                focus: self.focus,
             },
             notifications: self.notifications,
         })
@@ -885,6 +963,29 @@ mod tests {
         );
         let error = parse(&text).unwrap_err();
         assert!(error.to_string().contains("not a regular file"));
+    }
+
+    #[test]
+    fn the_focus_defaults_to_every_relation() {
+        let config = parse("[accounts.personal]\ntoken_env = \"A\"\n").unwrap();
+        assert_eq!(config.core.focus.relations, Involvement::all());
+        assert!(config.core.focus.includes(&[]));
+        assert!(config.core.focus.includes(&[Involvement::Authored]));
+    }
+
+    #[test]
+    fn the_focus_relations_are_parsed_and_unknown_values_are_rejected() {
+        let config = parse(
+            "[focus]\nrelations = [\"authored\", \"team-review-requested\"]\n[accounts.personal]\ntoken_env = \"A\"\n",
+        )
+        .unwrap();
+        assert_eq!(
+            config.core.focus.relations,
+            vec![Involvement::Authored, Involvement::TeamReviewRequested]
+        );
+        assert!(config.core.focus.includes(&[Involvement::TeamReviewRequested]));
+        assert!(!config.core.focus.includes(&[Involvement::Assigned]));
+        assert!(parse("[focus]\nrelations = [\"owner\"]\n[accounts.personal]\ntoken_env = \"A\"\n").is_err());
     }
 
     #[test]

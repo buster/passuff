@@ -5,6 +5,8 @@ use serde::Deserialize;
 use thiserror::Error;
 use url::Url;
 
+use passuff_config::Involvement;
+
 use crate::domain::{
     AccountFailureKind, ApiAllowance, AuthoredPullRequest, CiResult, CiState, Comment, PrState,
     ProbePullRequest, PullRequestKey, PullRequestStack, Review, ReviewComment,
@@ -14,8 +16,15 @@ use crate::domain::{
 pub struct AccountObservation {
     pub login: String,
     pub pull_requests: Vec<AuthoredPullRequest>,
-    pub involved_node_ids: Vec<String>,
+    pub discovered: Vec<DiscoveredPullRequest>,
     pub checked_at: String,
+}
+
+/// A pull request found by discovery, with why it matched.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiscoveredPullRequest {
+    pub node_id: String,
+    pub involvements: Vec<Involvement>,
 }
 
 /// One account's cheap change probe: open pull requests without observations.
@@ -209,23 +218,42 @@ impl GitHubApiAdapter {
         let mut seen: std::collections::HashSet<String> =
             pull_requests.iter().map(|pr| pr.node_id.clone()).collect();
 
-        let mut discovered: Vec<String> = Vec::new();
+        let mut discovered: Vec<DiscoveredPullRequest> = Vec::new();
         if discovery != Discovery::None {
-            for query in [
-                "is:pr is:open assignee:@me",
-                "is:pr is:open review-requested:@me",
+            for (query, involvement) in [
+                ("is:pr is:open assignee:@me", Involvement::Assigned),
+                (
+                    "is:pr is:open user-review-requested:@me",
+                    Involvement::ReviewRequested,
+                ),
+                (
+                    "is:pr is:open team-review-requested-user:@me",
+                    Involvement::TeamReviewRequested,
+                ),
             ] {
                 for id in self
                     .search_pull_request_ids(token, graphql_url, query)
                     .await
                 {
-                    if !discovered.contains(&id) {
-                        discovered.push(id);
+                    match discovered
+                        .iter_mut()
+                        .find(|discovered| discovered.node_id == id)
+                    {
+                        Some(existing) => {
+                            if !existing.involvements.contains(&involvement) {
+                                existing.involvements.push(involvement);
+                            }
+                        }
+                        None => discovered.push(DiscoveredPullRequest {
+                            node_id: id,
+                            involvements: vec![involvement],
+                        }),
                     }
                 }
             }
             let extra: Vec<String> = discovered
                 .iter()
+                .map(|discovered| &discovered.node_id)
                 .filter(|id| !seen.contains(*id))
                 .filter(|id| match discovery {
                     Discovery::New => !known_node_ids.contains(*id),
@@ -254,7 +282,7 @@ impl GitHubApiAdapter {
         Ok(AccountObservation {
             login,
             pull_requests,
-            involved_node_ids: discovered,
+            discovered,
             checked_at: Utc::now().to_rfc3339(),
         })
     }
@@ -324,9 +352,11 @@ impl GitHubApiAdapter {
             )
             .await
         else {
+            tracing::warn!(query, "pull request discovery search failed; continuing");
             return Vec::new();
         };
         let Ok(response) = serde_json::from_str::<GqlSearchResponse>(&body) else {
+            tracing::warn!(query, "pull request discovery search returned a malformed body");
             return Vec::new();
         };
         if response
@@ -334,7 +364,7 @@ impl GitHubApiAdapter {
             .as_ref()
             .is_some_and(|errors| !errors.is_empty())
         {
-            tracing::debug!("involved pull request search failed; skipping it");
+            tracing::warn!(query, "pull request discovery search failed; continuing");
             return Vec::new();
         }
         response
@@ -528,6 +558,8 @@ fn map_pull_request(node: GqlPr) -> AuthoredPullRequest {
         url: node.url,
         created_at: node.created_at,
         updated_at: node.updated_at,
+        merged_at: node.merged_at,
+        closed_at: node.closed_at,
         state,
         merged: node.merged,
         is_draft: node.is_draft,
@@ -645,6 +677,8 @@ query($ids: [ID!]!) {
       isDraft
       createdAt
       updatedAt
+      mergedAt
+      closedAt
       baseRefName
       mergedBy { login }
       stack { number size baseRefName }
@@ -732,6 +766,10 @@ struct GqlPr {
     is_draft: bool,
     created_at: String,
     updated_at: String,
+    #[serde(default)]
+    merged_at: Option<String>,
+    #[serde(default)]
+    closed_at: Option<String>,
     base_ref_name: String,
     #[serde(rename = "mergedBy")]
     merged_by: Option<GqlActor>,
@@ -990,6 +1028,8 @@ mod tests {
             "isDraft": true,
             "createdAt": "2026-11-02T10:00:00Z",
             "updatedAt": "2026-11-02T11:00:00Z",
+            "mergedAt": "2026-11-02T10:55:00Z",
+            "closedAt": null,
             "baseRefName": "main",
             "author": { "login": "octo" },
             "repository": { "nameWithOwner": "acme/api" },
@@ -1058,6 +1098,50 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn discovery_tags_each_search_result_with_its_relation() {
+        let server = MockServer::start().await;
+        for (marker, id) in [
+            ("assignee:@me", "node-1"),
+            ("user-review-requested:@me", "node-2"),
+            ("team-review-requested-user:@me", "node-3"),
+        ] {
+            Mock::given(method("POST"))
+                .and(path("/graphql"))
+                .and(body_string_contains("search("))
+                .and(body_string_contains(marker))
+                .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                    "data": { "search": { "nodes": [{ "id": id }] } }
+                })))
+                .mount(&server)
+                .await;
+        }
+        Mock::given(method("POST"))
+            .and(path("/graphql"))
+            .and(body_string_contains("nodes(ids:"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": { "viewer": { "login": "octo" }, "nodes": [] }
+            })))
+            .mount(&server)
+            .await;
+        let observation = GitHubApiAdapter::new()
+            .observe("token", &endpoint(&server), &[], Discovery::All, &[])
+            .await
+            .expect("observation");
+        let mut discovered = observation.discovered;
+        discovered.sort_by(|left, right| left.node_id.cmp(&right.node_id));
+        assert_eq!(discovered.len(), 3);
+        assert_eq!(discovered[0].involvements, vec![Involvement::Assigned]);
+        assert_eq!(
+            discovered[1].involvements,
+            vec![Involvement::ReviewRequested]
+        );
+        assert_eq!(
+            discovered[2].involvements,
+            vec![Involvement::TeamReviewRequested]
+        );
+    }
+
+    #[tokio::test]
     async fn observe_accepts_null_review_submission_and_body() {
         let server = MockServer::start().await;
         let mut node = node();
@@ -1111,6 +1195,11 @@ mod tests {
         assert_eq!(pull_request.labels, vec!["bug"]);
         assert_eq!(pull_request.assignees, vec!["alice"]);
         assert_eq!(pull_request.milestone.as_deref(), Some("v1"));
+        assert_eq!(
+            pull_request.merged_at.as_deref(),
+            Some("2026-11-02T10:55:00Z")
+        );
+        assert_eq!(pull_request.closed_at, None);
     }
 
     #[tokio::test]

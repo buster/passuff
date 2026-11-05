@@ -36,7 +36,7 @@ case "$features" in
   /*) ;;
   *) features="$root/$features" ;;
 esac
-if [[ "$scope" == "e2e" ]] && ! grep -Rqs '@e2e' "$features"; then
+if [[ "$scope" == "e2e" ]] && ! grep -Rqs --include='*.feature' '@e2e' "$features"; then
   features="$root/givn/specs"
 fi
 export GIVN_FEATURES="$features"

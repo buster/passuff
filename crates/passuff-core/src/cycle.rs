@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use passuff_config::CoreConfig;
+use passuff_config::{CoreConfig, Involvement};
 
 use crate::classifier::{classify, created_after};
 use crate::credential::CredentialSource;
@@ -289,7 +289,16 @@ impl PassuffCore {
                 }
             }
 
-            let involved = observation.involved_node_ids.clone();
+            let discovered: std::collections::HashMap<String, Vec<Involvement>> = observation
+                .discovered
+                .iter()
+                .map(|discovered| {
+                    (
+                        discovered.node_id.clone(),
+                        discovered.involvements.clone(),
+                    )
+                })
+                .collect();
             let checked_at = observation.checked_at.clone();
             let seen: Vec<String> = observation
                 .pull_requests
@@ -314,14 +323,23 @@ impl PassuffCore {
                 {
                     continue;
                 }
-                if !pull_request.author.eq_ignore_ascii_case(&login)
-                    && !involved.contains(&pull_request.node_id)
-                {
+                let reported = discovered.get(&pull_request.node_id);
+                if !pull_request.author.eq_ignore_ascii_case(&login) && reported.is_none() {
                     continue;
                 }
                 let key = pull_request.key.clone();
                 let key_string = key.to_string();
                 let previous = entry.pull_requests.get(&key_string);
+                let mut involvements = reported.cloned().unwrap_or_else(|| {
+                    previous
+                        .map(|watched| watched.involvements.clone())
+                        .unwrap_or_default()
+                });
+                if pull_request.author.eq_ignore_ascii_case(&login)
+                    && !involvements.contains(&Involvement::Authored)
+                {
+                    involvements.push(Involvement::Authored);
+                }
                 let retired = previous.is_some_and(|watched| watched.current.state.is_terminal())
                     && pull_request.state.is_terminal();
                 let catch_up = previous_scope.as_ref().is_some_and(|scope| {
@@ -352,6 +370,7 @@ impl PassuffCore {
                     Some(_) => {
                         let mut watched =
                             WatchedPullRequest::from_baseline(&pull_request, checked_at.clone());
+                        watched.involvements = involvements.clone();
                         watched.current = current;
                         if events.is_empty() {
                             report.baselines_recorded.push(key.clone());
@@ -371,6 +390,7 @@ impl PassuffCore {
                         watched.is_draft = pull_request.is_draft;
                         watched.merged_by = pull_request.merged_by.clone();
                         watched.stack = pull_request.stack.clone();
+                        watched.involvements = involvements.clone();
                         watched.current = current;
                         watched
                     }
@@ -379,29 +399,34 @@ impl PassuffCore {
                 if !events.is_empty() {
                     let notification = Notification {
                         key: key.clone(),
-                        events,
+                        events: events
+                            .iter()
+                            .map(|classified| classified.event.clone())
+                            .collect(),
                     };
-                    for event in &notification.events {
+                    for classified in &events {
                         state.next_activity_id += 1;
                         state.activity.push(ActivityRecord {
                             id: format!("a{}", state.next_activity_id),
                             key: notification.key.clone(),
                             observed_at: checked_at.clone(),
-                            event: event.clone(),
+                            occurred_at: classified.occurred_at.clone(),
+                            event: classified.event.clone(),
                             read: false,
                         });
                     }
-                    if !catch_up {
+                    if !catch_up && self.config.focus.includes(&involvements) {
                         report.notifications.push(notification);
                     }
                 }
-                for event in silent {
+                for classified in silent {
                     state.next_activity_id += 1;
                     state.activity.push(ActivityRecord {
                         id: format!("a{}", state.next_activity_id),
                         key: key.clone(),
                         observed_at: checked_at.clone(),
-                        event,
+                        occurred_at: classified.occurred_at,
+                        event: classified.event,
                         read: true,
                     });
                 }
@@ -698,6 +723,7 @@ mod tests {
                 repositories,
                 ignored_pull_requests: Vec::new(),
             },
+            focus: passuff_config::FocusConfig::default(),
         }
     }
 
@@ -831,6 +857,8 @@ mod tests {
             url: "https://github.com/acme/api/pull/42".to_string(),
             created_at: "2026-11-03T10:00:00Z".to_string(),
             updated_at: "2026-11-03T11:00:00Z".to_string(),
+            merged_at: None,
+            closed_at: None,
             state,
             merged,
             is_draft: false,
@@ -852,7 +880,7 @@ mod tests {
         AccountObservation {
             login: "octo".to_string(),
             pull_requests: vec![pull_request],
-            involved_node_ids: Vec::new(),
+            discovered: Vec::new(),
             checked_at: "2026-11-03T12:00:00Z".to_string(),
         }
     }

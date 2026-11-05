@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use passuff_config::{WatchConfig, WatchMode};
+use passuff_config::{Involvement, WatchConfig, WatchMode};
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -145,6 +145,8 @@ pub struct AuthoredPullRequest {
     pub url: String,
     pub created_at: String,
     pub updated_at: String,
+    pub merged_at: Option<String>,
+    pub closed_at: Option<String>,
     pub state: PrState,
     pub merged: bool,
     pub is_draft: bool,
@@ -206,6 +208,8 @@ pub struct WatchedPullRequest {
     pub current: CurrentObservation,
     #[serde(default)]
     pub stack: Option<PullRequestStack>,
+    #[serde(default)]
+    pub involvements: Vec<Involvement>,
 }
 
 impl WatchedPullRequest {
@@ -237,6 +241,7 @@ impl WatchedPullRequest {
                 state: pr.state.clone(),
             },
             stack: pr.stack.clone(),
+            involvements: Vec::new(),
             current: CurrentObservation {
                 seen_comment_ids: pr.comments.iter().map(|c| c.id.clone()).collect(),
                 seen_review_ids: pr.reviews.iter().map(|r| r.id.clone()).collect(),
@@ -399,6 +404,8 @@ pub struct ActivityRecord {
     pub id: String,
     pub key: PullRequestKey,
     pub observed_at: String,
+    #[serde(default)]
+    pub occurred_at: Option<String>,
     pub event: ActivityEvent,
     pub read: bool,
 }

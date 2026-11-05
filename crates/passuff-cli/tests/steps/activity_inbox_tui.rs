@@ -41,6 +41,19 @@ async fn shows(world: &mut World, expected: String) {
     );
 }
 
+#[then(regex = r#"^the TUI marks "([^"]+)" on "([^"]+)" as approximate$"#)]
+async fn marks_approximate(world: &mut World, summary: String, key: String) {
+    let marked = world
+        .last_transcript
+        .lines()
+        .any(|line| line.contains(&summary) && line.contains('~'));
+    assert!(
+        marked,
+        "no approximate activity row for {summary:?} on {key}: {:?}",
+        world.last_transcript
+    );
+}
+
 #[then(regex = r#"^the TUI does not show "([^"]+)"$"#)]
 async fn does_not_show(world: &mut World, unexpected: String) {
     assert!(

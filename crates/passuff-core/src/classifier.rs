@@ -6,13 +6,41 @@ use crate::domain::{
     WatchedPullRequest,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClassifiedEvent {
+    pub event: ActivityEvent,
+    pub occurred_at: Option<String>,
+}
+
+impl From<ActivityEvent> for ClassifiedEvent {
+    fn from(event: ActivityEvent) -> Self {
+        Self {
+            event,
+            occurred_at: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Classification {
-    pub events: Vec<ActivityEvent>,
+    pub events: Vec<ClassifiedEvent>,
     /// Events recorded as read and never notified, such as own comments.
-    pub silent: Vec<ActivityEvent>,
+    pub silent: Vec<ClassifiedEvent>,
     pub baseline: Option<Baseline>,
     pub current: CurrentObservation,
+}
+
+fn occurrence(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
+fn state_change_time(pull_request: &AuthoredPullRequest) -> Option<String> {
+    match pull_request.state {
+        PrState::Merged => pull_request.merged_at.clone(),
+        PrState::Closed => pull_request.closed_at.clone(),
+        PrState::Open => None,
+    }
 }
 
 pub fn classify(
@@ -32,17 +60,23 @@ pub fn classify(
         if short_lived {
             observation.state_reported = true;
             if toggles.state_changes {
-                events.push(ActivityEvent::StateChange {
-                    state: current.state.clone(),
-                    actor: current.merged_by.clone(),
+                events.push(ClassifiedEvent {
+                    occurred_at: state_change_time(current),
+                    event: ActivityEvent::StateChange {
+                        state: current.state.clone(),
+                        actor: current.merged_by.clone(),
+                    },
                 });
             }
         } else if created_since_last_check
             && current.state == PrState::Open
             && toggles.state_changes
         {
-            events.push(ActivityEvent::Opened {
-                author: current.author.clone(),
+            events.push(ClassifiedEvent {
+                occurred_at: occurrence(&current.created_at),
+                event: ActivityEvent::Opened {
+                    author: current.author.clone(),
+                },
             });
         }
         return Classification {
@@ -79,9 +113,12 @@ pub fn classify(
             if seen_comments.contains(comment.id.as_str()) {
                 continue;
             }
-            let event = ActivityEvent::Comment {
-                author: comment.author.clone(),
-                body: comment.body.clone(),
+            let event = ClassifiedEvent {
+                event: ActivityEvent::Comment {
+                    author: comment.author.clone(),
+                    body: comment.body.clone(),
+                },
+                occurred_at: occurrence(&comment.created_at),
             };
             match action_filter(&comment.author, login_set, toggles) {
                 ActionFilter::Include => events.push(event),
@@ -93,9 +130,12 @@ pub fn classify(
             if seen_review_comments.contains(comment.id.as_str()) {
                 continue;
             }
-            let event = ActivityEvent::ReviewComment {
-                author: comment.author.clone(),
-                body: comment.body.clone(),
+            let event = ClassifiedEvent {
+                event: ActivityEvent::ReviewComment {
+                    author: comment.author.clone(),
+                    body: comment.body.clone(),
+                },
+                occurred_at: occurrence(&comment.created_at),
             };
             match action_filter(&comment.author, login_set, toggles) {
                 ActionFilter::Include => events.push(event),
@@ -110,10 +150,13 @@ pub fn classify(
             if seen_reviews.contains(review.id.as_str()) {
                 continue;
             }
-            let event = ActivityEvent::Review {
-                author: review.author.clone(),
-                state: normalize_review_state(&review.state),
-                body: review.body.clone(),
+            let event = ClassifiedEvent {
+                event: ActivityEvent::Review {
+                    author: review.author.clone(),
+                    state: normalize_review_state(&review.state),
+                    body: review.body.clone(),
+                },
+                occurred_at: occurrence(&review.submitted_at),
             };
             match action_filter(&review.author, login_set, toggles) {
                 ActionFilter::Include => events.push(event),
@@ -129,8 +172,11 @@ pub fn classify(
         if current.ci.state.failed() {
             ci_failed = true;
             if toggles.ci_failure {
-                events.push(ActivityEvent::CiFailure {
-                    failed_checks: current.ci.failed_checks.clone(),
+                events.push(ClassifiedEvent {
+                    event: ActivityEvent::CiFailure {
+                        failed_checks: current.ci.failed_checks.clone(),
+                    },
+                    occurred_at: None,
                 });
             }
         }
@@ -138,15 +184,21 @@ pub fn classify(
         if !ci_failed {
             ci_failed = true;
             if toggles.ci_failure {
-                events.push(ActivityEvent::CiFailure {
-                    failed_checks: current.ci.failed_checks.clone(),
+                events.push(ClassifiedEvent {
+                    event: ActivityEvent::CiFailure {
+                        failed_checks: current.ci.failed_checks.clone(),
+                    },
+                    occurred_at: None,
                 });
             }
         }
     } else if matches!(current.ci.state, CiState::Success) && ci_failed {
         ci_failed = false;
         if toggles.ci_recovery {
-            events.push(ActivityEvent::CiRecovery);
+            events.push(ClassifiedEvent {
+                event: ActivityEvent::CiRecovery,
+                occurred_at: None,
+            });
         }
     }
 
@@ -156,9 +208,12 @@ pub fn classify(
     } else if !state_reported {
         state_reported = true;
         if toggles.state_changes {
-            events.push(ActivityEvent::StateChange {
-                state: current.state.clone(),
-                actor: current.merged_by.clone(),
+            events.push(ClassifiedEvent {
+                occurred_at: state_change_time(current),
+                event: ActivityEvent::StateChange {
+                    state: current.state.clone(),
+                    actor: current.merged_by.clone(),
+                },
             });
         }
     }
@@ -261,6 +316,10 @@ mod tests {
     use super::*;
     use crate::domain::{CiResult, Comment, PullRequestKey};
 
+    fn plain_events(events: &[ClassifiedEvent]) -> Vec<ActivityEvent> {
+        events.iter().map(|event| event.event.clone()).collect()
+    }
+
     fn pull_request(state: PrState, created_at: &str) -> AuthoredPullRequest {
         let merged = state == PrState::Merged;
         AuthoredPullRequest {
@@ -272,6 +331,8 @@ mod tests {
             url: "https://github.com/acme/api/pull/42".to_string(),
             created_at: created_at.to_string(),
             updated_at: created_at.to_string(),
+            merged_at: (state == PrState::Merged).then(|| created_at.to_string()),
+            closed_at: (state == PrState::Closed).then(|| created_at.to_string()),
             state,
             merged,
             is_draft: false,
@@ -319,7 +380,7 @@ mod tests {
         let merged = pull_request(PrState::Merged, "2026-11-02T09:00:00Z");
         let second = classify(Some(&watched), &merged, &toggles, &login_set(), true, None);
         assert_eq!(
-            second.events,
+            plain_events(&second.events),
             vec![ActivityEvent::StateChange {
                 state: PrState::Merged,
                 actor: None
@@ -351,7 +412,7 @@ mod tests {
         );
         assert!(second.events.is_empty());
         assert_eq!(
-            second.silent,
+            plain_events(&second.silent),
             vec![ActivityEvent::Comment {
                 author: "octo".to_string(),
                 body: "my own note".to_string()
@@ -366,7 +427,7 @@ mod tests {
         let opened = pull_request(PrState::Open, "2026-11-02T10:00:01Z");
         let classification = classify(None, &opened, &toggles, &login_set(), true, Some(last));
         assert_eq!(
-            classification.events,
+            plain_events(&classification.events),
             vec![ActivityEvent::Opened {
                 author: "octo".to_string()
             }]
@@ -407,12 +468,54 @@ mod tests {
             Some(last),
         );
         assert_eq!(
-            later.events,
+            plain_events(&later.events),
             vec![ActivityEvent::StateChange {
                 state: PrState::Merged,
                 actor: None
             }]
         );
+    }
+
+    #[test]
+    fn a_comment_carries_its_creation_time() {
+        let toggles = EventToggles::default();
+        let open = pull_request(PrState::Open, "2026-11-02T09:00:00Z");
+        let first = classify(None, &open, &toggles, &login_set(), false, None);
+        let mut watched = WatchedPullRequest::from_baseline(&open, "checked".to_string());
+        watched.current = first.current;
+        let mut commented = pull_request(PrState::Open, "2026-11-02T09:00:00Z");
+        commented.comments.push(Comment {
+            id: "comment-1".to_string(),
+            author: "alice".to_string(),
+            body: "hello".to_string(),
+            created_at: "2026-11-02T09:15:00Z".to_string(),
+        });
+        let second = classify(Some(&watched), &commented, &toggles, &login_set(), true, None);
+        assert_eq!(second.events.len(), 1);
+        assert_eq!(
+            second.events[0].occurred_at.as_deref(),
+            Some("2026-11-02T09:15:00Z")
+        );
+    }
+
+    #[test]
+    fn a_review_without_a_submitted_time_has_no_occurrence_time() {
+        let toggles = EventToggles::default();
+        let open = pull_request(PrState::Open, "2026-11-02T09:00:00Z");
+        let first = classify(None, &open, &toggles, &login_set(), false, None);
+        let mut watched = WatchedPullRequest::from_baseline(&open, "checked".to_string());
+        watched.current = first.current;
+        let mut reviewed = pull_request(PrState::Open, "2026-11-02T09:00:00Z");
+        reviewed.reviews.push(crate::domain::Review {
+            id: "review-1".to_string(),
+            author: "alice".to_string(),
+            state: "APPROVED".to_string(),
+            body: String::new(),
+            submitted_at: String::new(),
+        });
+        let second = classify(Some(&watched), &reviewed, &toggles, &login_set(), true, None);
+        assert_eq!(second.events.len(), 1);
+        assert_eq!(second.events[0].occurred_at, None);
     }
 
     #[test]

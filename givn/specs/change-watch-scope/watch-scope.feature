@@ -11,8 +11,6 @@ Feature: Watch scope editing
     And  the watch scope contains "acme/api"
     And  the picker shows "Watch scope"
     And  the picker shows "[x] acme/api"
-    When  the developer enters "acme/web" as a repository
-    Then  the watch scope contains "acme/web"
     When  the developer opens the inbox TUI
     Then  the TUI shows "acme/api#42"
     When  the developer deselects "acme/api" in the watch scope
@@ -46,14 +44,6 @@ Feature: Watch scope editing
     And  the state retains "acme/api#42"
     When  the developer opens the inbox TUI
     Then  the TUI does not show "acme/api#42"
-
-  @watch-scope
-  Scenario: Adding a repository by owner/name
-    Given  a configured account "personal" with login "octo-personal"
-    And  the watch scope mode is "selected"
-    When  the developer enters "acme/new" as a repository
-    Then  the watch scope contains "acme/new"
-    And  the watch scope mode is "selected"
 
   @watch-scope
   Scenario: The watcher reloads the scope without a restart
@@ -138,7 +128,7 @@ Feature: Watch scope editing
   Scenario: An invalid repository entry is rejected
     Given  a configured account "personal" with login "octo-personal"
     And  the watch scope mode is "selected"
-    When  the developer enters "acme" as a repository
+    When  the developer selects "acme" in the watch scope
     Then  the TUI reports "owner/repo"
     And  the watch scope does not contain "acme"
 
@@ -210,3 +200,35 @@ Feature: Watch scope editing
     When  the configuration file is corrupted
     And  the watcher runs another cycle
     Then  the transcript reports "configuration error"
+
+  @watch-scope
+  Scenario: The picker shows the focus relations
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer opens the scope picker
+    Then  the picker shows "Focus"
+    And  the picker shows "[x] authored"
+    And  the picker shows "[x] assigned"
+    And  the picker shows "[x] review requested"
+    And  the picker shows "[x] team review"
+    And  the picker does not show "Add:"
+    And  the picker does not show "owner/name"
+
+  @watch-scope
+  Scenario: Narrowing the focus persists the relation set
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer narrows the focus to "authored,assigned"
+    Then  the focus relations are "authored,assigned"
+
+  @e2e @watch-scope
+  Scenario: Developer narrows the focus in the watch scope
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer narrows the focus to "authored,assigned"
+    Then  the focus relations are "authored,assigned"
+    And  the picker shows "[x] authored"
+    And  the picker shows "[ ] team review"
