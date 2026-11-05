@@ -2,7 +2,7 @@ Review kind: self-review
 Author: passuff maintainer (operator)
 Reviewer context: passuff maintainer (operator)
 PERSONAS: multi-account-developer
-README-IMPACT: none - the README documents commands and configuration, not the activity table's time column
+README-IMPACT: none
 
 # Review: passuff-activity-time
 
