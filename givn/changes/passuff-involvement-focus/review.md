@@ -126,6 +126,13 @@ inspection:
 No dead code remains: `add`, `--scope-add`, the insert state, and the add
 rendering are gone; `Involvement::parse` is used by the flags and the steps.
 
+## Overlap dispositions
+
+| Scenario | Decision | Reason |
+|---|---|---|
+| Developer toggles a repository in the watch scope | KEEP | It exercises the picker's repository toggle through the real binary: config write, picker frame, TUI frame, and retained state. The similar-shaped permanent scenarios assert either the picker only ("The picker shows the known repositories") or a scope outcome after a check ("Deselecting hides status and activity"). Merging would drop the manual toggle leg through the real interface. |
+| Inbox hides activity outside the focus | KEEP | It asserts the focus rule (R9): a team-requested pull request is watched, recorded, hidden from `inbox --all`, excluded from the unread count, and the authored pull request stays visible. The repository-scope scenarios assert R2 with a deselected repository, a different rule and a different observable. Merging would conflate two independent filters. |
+
 ## Findings
 
 | ID | Finding | Disposition |
