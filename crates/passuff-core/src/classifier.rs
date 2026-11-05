@@ -490,7 +490,14 @@ mod tests {
             body: "hello".to_string(),
             created_at: "2026-11-02T09:15:00Z".to_string(),
         });
-        let second = classify(Some(&watched), &commented, &toggles, &login_set(), true, None);
+        let second = classify(
+            Some(&watched),
+            &commented,
+            &toggles,
+            &login_set(),
+            true,
+            None,
+        );
         assert_eq!(second.events.len(), 1);
         assert_eq!(
             second.events[0].occurred_at.as_deref(),
@@ -513,7 +520,14 @@ mod tests {
             body: String::new(),
             submitted_at: String::new(),
         });
-        let second = classify(Some(&watched), &reviewed, &toggles, &login_set(), true, None);
+        let second = classify(
+            Some(&watched),
+            &reviewed,
+            &toggles,
+            &login_set(),
+            true,
+            None,
+        );
         assert_eq!(second.events.len(), 1);
         assert_eq!(second.events[0].occurred_at, None);
     }

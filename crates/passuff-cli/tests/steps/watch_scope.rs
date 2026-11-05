@@ -236,6 +236,21 @@ async fn picker_does_not_show(world: &mut World, unexpected: String) {
     );
 }
 
+#[given(regex = r#"^the involvement relations are unknown$"#)]
+async fn unknown_involvements(world: &mut World) {
+    world.forget_involvements().await;
+}
+
+#[when(regex = r#"^the developer opens the live scope picker$"#)]
+async fn opens_live_picker(world: &mut World) {
+    world.open_live_scope_picker().await;
+}
+
+#[when(regex = r#"^the developer presses "([^"]+)" in the scope picker$"#)]
+async fn presses_in_picker(world: &mut World, key: String) {
+    world.press_live_scope_picker(&key).await;
+}
+
 #[then(regex = r#"^the picker shows "([^"]+)"$"#)]
 async fn picker_shows(world: &mut World, expected: String) {
     assert!(

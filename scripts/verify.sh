@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Gherkin runner for the givn verify contract.
 #
-#   scripts/verify.sh          regular scope (non-@e2e, or $GIVN_RESULT_SCOPE)
+#   scripts/verify.sh          formatting, clippy, library tests, regular scope
 #   scripts/verify.sh --e2e    only @e2e scenarios
 #
 # givn passes GIVN_FEATURES and GIVN_RESULT_SCOPE; both are honoured. The
 # feature path is made absolute because cargo runs the test binary from the
-# crate directory.
+# crate directory. The static gates run in the regular scope only, so the e2e
+# invocation stays a single test pass.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -47,7 +48,10 @@ rm -f "$result_file"
 export GIVN_RESULT_FILE="$result_file"
 
 if [[ "$scope" != "e2e" ]]; then
-  cargo test --workspace --lib
+  cargo fmt --all -- --check
+  cargo clippy --locked --all-targets -- -D warnings
+  cargo clippy --locked -p passuff --all-targets --features test-support -- -D warnings
+  cargo test --locked --workspace --lib
 fi
 
 cargo test -p passuff --features test-support --test features_runner

@@ -356,7 +356,10 @@ impl GitHubApiAdapter {
             return Vec::new();
         };
         let Ok(response) = serde_json::from_str::<GqlSearchResponse>(&body) else {
-            tracing::warn!(query, "pull request discovery search returned a malformed body");
+            tracing::warn!(
+                query,
+                "pull request discovery search returned a malformed body"
+            );
             return Vec::new();
         };
         if response

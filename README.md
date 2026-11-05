@@ -214,7 +214,7 @@ transition itself and a reopen are still reported.
 Run the project-owned scripts configured in `givn/commands.yaml`:
 
 ```sh
-./scripts/verify.sh          # regular Gherkin suite (non-@e2e)
+./scripts/verify.sh          # formatting, clippy, library tests, regular Gherkin suite
 ./scripts/verify.sh --e2e    # @e2e smoke suite against a fake GitHub and D-Bus
 ./measure-coverage.sh        # writes the non-E2E and E2E Cobertura reports
 ./merge-coverages.sh         # combines them into the merged report
@@ -230,7 +230,8 @@ split per capability under `crates/passuff-cli/tests/steps/`.
 - Keep the `.feature` file as the executable source of behaviour; do not
   weaken scenarios to fit the implementation.
 - Run `./scripts/verify.sh` and `./scripts/verify.sh --e2e` before a change is
-  reviewed.
+  reviewed. The regular scope also enforces `cargo fmt --check` and clippy with
+  `-D warnings`, matching CI.
 - One commit per coherent behaviour batch, created with `givn commit`.
 
 ## License

@@ -5,7 +5,8 @@ use chrono::DateTime;
 use passuff_config::{CoreConfig, Involvement};
 
 use crate::domain::{
-    ActivityRecord, CiState, CoreError, PrState, PullRequestKey, PullRequestStack, WatcherState,
+    ActivityRecord, CiState, CoreError, PrState, PullRequestKey, PullRequestStack,
+    WatchedPullRequest, WatcherState,
 };
 use crate::state::SnapshotStore;
 
@@ -61,16 +62,23 @@ pub trait InboxService: Send + Sync {
 /// When the activity happened, falling back to the fetch time when GitHub
 /// reported no occurrence time.
 pub fn effective_time(record: &ActivityRecord) -> &str {
-    record
-        .occurred_at
-        .as_deref()
-        .unwrap_or(&record.observed_at)
+    record.occurred_at.as_deref().unwrap_or(&record.observed_at)
 }
 
 /// True when the record has no reported occurrence time and shows the fetch
 /// time instead.
 pub fn is_approximate(record: &ActivityRecord) -> bool {
     record.occurred_at.is_none()
+}
+
+/// The stored relations, plus `authored` when the state predates relations and
+/// the account login names the author. An unknown relation is still derivable.
+fn recorded_involvements(pr: &WatchedPullRequest, login: &str) -> Vec<Involvement> {
+    let mut involvements = pr.involvements.clone();
+    if involvements.is_empty() && !login.is_empty() && pr.author.eq_ignore_ascii_case(login) {
+        involvements.push(Involvement::Authored);
+    }
+    involvements
 }
 
 fn record_time(record: &ActivityRecord) -> Option<DateTime<chrono::FixedOffset>> {
@@ -104,22 +112,30 @@ impl Inbox {
         let mut pull_requests: Vec<PullRequestView> = state
             .accounts
             .values()
-            .flat_map(|account| account.pull_requests.values())
-            .map(|pr| PullRequestView {
-                key: PullRequestKey::new(pr.repository.clone(), pr.number),
-                state: pr.current.state.clone(),
-                ci_state: pr.current.ci_state.clone(),
-                title: pr.title.clone(),
-                url: pr.url.clone(),
-                author: pr.author.clone(),
-                created_at: pr.created_at.clone(),
-                description: pr.description.clone(),
-                assignees: pr.assignees.clone(),
-                is_draft: pr.is_draft,
-                updated_at: pr.updated_at.clone(),
-                stack: pr.stack.clone(),
-                ignored: config.watch.ignores(&pr.repository, pr.number),
-                involvements: pr.involvements.clone(),
+            .flat_map(|account| {
+                account
+                    .pull_requests
+                    .values()
+                    .map(move |pr| (pr, account.login.as_str()))
+            })
+            .map(|(pr, login)| {
+                let involvements = recorded_involvements(pr, login);
+                PullRequestView {
+                    key: PullRequestKey::new(pr.repository.clone(), pr.number),
+                    state: pr.current.state.clone(),
+                    ci_state: pr.current.ci_state.clone(),
+                    title: pr.title.clone(),
+                    url: pr.url.clone(),
+                    author: pr.author.clone(),
+                    created_at: pr.created_at.clone(),
+                    description: pr.description.clone(),
+                    assignees: pr.assignees.clone(),
+                    is_draft: pr.is_draft,
+                    updated_at: pr.updated_at.clone(),
+                    stack: pr.stack.clone(),
+                    ignored: config.watch.ignores(&pr.repository, pr.number),
+                    involvements,
+                }
             })
             .collect();
         pull_requests.retain(|pr| config.watch.allows_repository(&pr.key.repository));
@@ -451,6 +467,7 @@ mod tests {
         assert_eq!(view.unread, 1);
     }
 
+    #[tokio::test]
     async fn view_hides_out_of_scope_records_and_counts_visible_unread() {
         let dir = tempfile::tempdir().unwrap();
         let store = JsonStateStore::new(dir.path().join("state.json"));

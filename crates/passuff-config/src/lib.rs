@@ -983,9 +983,15 @@ mod tests {
             config.core.focus.relations,
             vec![Involvement::Authored, Involvement::TeamReviewRequested]
         );
-        assert!(config.core.focus.includes(&[Involvement::TeamReviewRequested]));
+        assert!(config
+            .core
+            .focus
+            .includes(&[Involvement::TeamReviewRequested]));
         assert!(!config.core.focus.includes(&[Involvement::Assigned]));
-        assert!(parse("[focus]\nrelations = [\"owner\"]\n[accounts.personal]\ntoken_env = \"A\"\n").is_err());
+        assert!(parse(
+            "[focus]\nrelations = [\"owner\"]\n[accounts.personal]\ntoken_env = \"A\"\n"
+        )
+        .is_err());
     }
 
     #[test]
