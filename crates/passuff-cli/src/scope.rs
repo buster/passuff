@@ -111,7 +111,6 @@ impl ScopeEditor {
         self.write_document(document)
     }
 
-
     pub fn known_repositories(&self, config: &AppConfig, state: &WatcherState) -> Vec<String> {
         let mut known: Vec<String> = config.core.watch.repositories.clone();
         for account in state.accounts.values() {
@@ -339,10 +338,7 @@ impl ScopePicker {
         }
         frame.render_widget(Paragraph::new(Line::from(mode_line)), chunks[0]);
 
-        let mut lines: Vec<Line> = vec![Line::from(Span::styled(
-            "Focus:",
-            theme::accent_bold(),
-        ))];
+        let mut lines: Vec<Line> = vec![Line::from(Span::styled("Focus:", theme::accent_bold()))];
         for (index, involvement) in Involvement::ALL.iter().enumerate() {
             let checked = self.focus.contains(involvement);
             lines.push(self.row_line(index, checked, involvement.label()));
@@ -395,7 +391,11 @@ impl ScopePicker {
             Span::styled(cursor, theme::gold_bold()),
             Span::styled(
                 format!("{marker} "),
-                if checked { theme::green() } else { theme::dim() },
+                if checked {
+                    theme::green()
+                } else {
+                    theme::dim()
+                },
             ),
             Span::styled(
                 text.to_string(),
@@ -541,7 +541,10 @@ mod tests {
             vec![Involvement::Authored, Involvement::Assigned]
         );
         assert!(config.core.focus.includes(&[Involvement::Assigned]));
-        assert!(!config.core.focus.includes(&[Involvement::TeamReviewRequested]));
+        assert!(!config
+            .core
+            .focus
+            .includes(&[Involvement::TeamReviewRequested]));
         assert!(config.core.focus.includes(&[]));
     }
 

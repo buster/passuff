@@ -292,12 +292,7 @@ impl PassuffCore {
             let discovered: std::collections::HashMap<String, Vec<Involvement>> = observation
                 .discovered
                 .iter()
-                .map(|discovered| {
-                    (
-                        discovered.node_id.clone(),
-                        discovered.involvements.clone(),
-                    )
-                })
+                .map(|discovered| (discovered.node_id.clone(), discovered.involvements.clone()))
                 .collect();
             let checked_at = observation.checked_at.clone();
             let seen: Vec<String> = observation

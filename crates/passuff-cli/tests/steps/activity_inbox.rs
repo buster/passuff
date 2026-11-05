@@ -134,9 +134,7 @@ async fn marks_approximate(world: &mut World, summary: String, key: String) {
     let line = record_lines(&world.last_transcript)
         .into_iter()
         .find(|line| line.contains(&key) && line.contains(&summary))
-        .unwrap_or_else(|| {
-            panic!("missing {summary:?} for {key}: {:?}", world.last_transcript)
-        });
+        .unwrap_or_else(|| panic!("missing {summary:?} for {key}: {:?}", world.last_transcript));
     let field = line.split_whitespace().nth(1).expect("time field");
     assert!(
         field.starts_with('~'),

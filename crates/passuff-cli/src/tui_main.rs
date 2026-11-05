@@ -101,7 +101,11 @@ async fn main() {
     }
     if let Some(value) = args.focus_set.as_deref() {
         let mut relations = Vec::new();
-        for label in value.split(',').map(str::trim).filter(|label| !label.is_empty()) {
+        for label in value
+            .split(',')
+            .map(str::trim)
+            .filter(|label| !label.is_empty())
+        {
             match passuff_config::Involvement::parse(label) {
                 Some(relation) => relations.push(relation),
                 None => {

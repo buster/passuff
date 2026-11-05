@@ -61,10 +61,7 @@ pub trait InboxService: Send + Sync {
 /// When the activity happened, falling back to the fetch time when GitHub
 /// reported no occurrence time.
 pub fn effective_time(record: &ActivityRecord) -> &str {
-    record
-        .occurred_at
-        .as_deref()
-        .unwrap_or(&record.observed_at)
+    record.occurred_at.as_deref().unwrap_or(&record.observed_at)
 }
 
 /// True when the record has no reported occurrence time and shows the fetch
@@ -451,6 +448,7 @@ mod tests {
         assert_eq!(view.unread, 1);
     }
 
+    #[tokio::test]
     async fn view_hides_out_of_scope_records_and_counts_visible_unread() {
         let dir = tempfile::tempdir().unwrap();
         let store = JsonStateStore::new(dir.path().join("state.json"));
