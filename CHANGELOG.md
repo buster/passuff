@@ -6,6 +6,12 @@ The release sections are generated with [git-cliff](https://git-cliff.org/).
 Versions are selected manually and use annotated `vX.Y.Z` Git tags.
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-06
+
+### Changes
+
+- Fix formatting of 'Pass uff!' in README
+
 ## [0.1.2] - 2026-11-05
 
 ### Changes
@@ -180,3 +186,5 @@ Batch: sound-asset
 [0.1.1]: https://github.com/buster/passuff/compare/v0.1.0...v0.1.1
 
 [0.1.2]: https://github.com/buster/passuff/compare/v0.1.1...v0.1.2
+
+[0.1.3]: https://github.com/buster/passuff/compare/v0.1.2...v0.1.3

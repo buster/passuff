@@ -13,7 +13,7 @@ keywords = ["github", "pull-requests", "notifications"]
 [dependencies]
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
-passuff-config = { path = "../passuff-config", version = "0.1.2" }
+passuff-config = { path = "../passuff-config", version = "0.1.3" }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
