@@ -8,7 +8,7 @@ CLI on the developer's workstation.
 ```mermaid
 flowchart TB
     subgraph workstation["Developer workstation (Linux or macOS)"]
-        binary["passuff binary"]
+        app["passuff CLI"]
         files["Config and state files"]
         desktop["Desktop notification service"]
         player["Audio player"]
@@ -16,10 +16,10 @@ flowchart TB
 
     github["GitHub GraphQL API (cloud)"]
 
-    binary -->|HTTPS| github
-    binary -->|D-Bus or macOS notification surface| desktop
-    binary -->|child process| player
-    binary -->|read and write| files
+    app -->|HTTPS| github
+    app -->|D-Bus or macOS notification surface| desktop
+    app -->|child process| player
+    app -->|read and write| files
 ```
 
 | Node / Environment | Description |
@@ -37,21 +37,21 @@ flowchart TB
 |---|---|
 | Hardware / VM | Any macOS or Linux machine that runs the developer's desktop session. |
 | OS | macOS or a Linux desktop with a notification daemon and a sound player. |
-| Middleware / Runtime | Rust stable binary; Tokio runtime; no database, queue, or container. |
-| Key software deployed | `passuff` from the `passuff` crate, linking the `passuff-core` and `passuff-config` libraries; on macOS, the `Passuff.app` bundle for a stable notification identity. |
+| Middleware / Runtime | Python 3 runtime; no database, queue, or container. |
+| Key software deployed | The `passuff` CLI package, importing the core and config libraries; on macOS, the `Passuff.app` bundle for a stable notification identity. |
 | Configuration | `~/.config/passuff/config.toml` on Linux; `~/Library/Application Support/passuff/config.toml` on macOS. |
 | State | `~/.local/state/passuff/state.json` on Linux; `~/Library/Application Support/passuff/state.json` on macOS. |
 | Sound cache | Platform cache directory, written from the embedded WAV. |
 
 ## Packaging and operation
 
-- Linux: a single executable. The developer can run it from a terminal or a
+- Linux: a single installed command. The developer can run it from a terminal or a
   user-level service manager. This change does not install a system service.
-- macOS: the binary plus a generated `Passuff.app` bundle with
+- macOS: the command plus a generated `Passuff.app` bundle with
   `CFBundleIdentifier = dev.passuff.app`, `CFBundleName = passuff`, and
   `LSUIElement = true`. The bundle is the supported path for stable
-  notification attribution. The bare binary remains usable for diagnostics.
-- Upgrades replace the binary; config and state are versioned and preserved.
+  notification attribution. The command remains directly runnable for diagnostics.
+- Upgrades replace the package; config and state are versioned and preserved.
 - No inbound port, TLS certificate, container, or cloud resource is deployed.
 
 

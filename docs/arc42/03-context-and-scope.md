@@ -38,7 +38,7 @@ flowchart LR
 |---|---|---|
 | GitHub observation | GraphQL over HTTPS | Outbound |
 | Desktop notification on Linux | D-Bus `org.freedesktop.Notifications` | Outbound |
-| Desktop notification on macOS | macOS notification surface through `notify-rust` | Outbound |
+| Desktop notification on macOS | macOS notification surface | Outbound |
 | Sound playback | Child process: `afplay`, `paplay`, `pw-play`, or `aplay` | Outbound |
 | Configuration | TOML file | Read and write |
 | Persisted observation | Versioned JSON file plus atomic replacement | Read and write |

@@ -27,13 +27,11 @@
 # The coverage commands below are separate archive inputs. They must produce
 # distinct regular and E2E Cobertura reports; selecting a coverage-instrumented
 # runner alone is not a complete coverage setup.
-verify:
-  command: "./scripts/verify.sh"
-
-  # --- E2E test runner --------------------------------------------------------
-  # Command to run @e2e-tagged scenarios. If unconfigured, the review gate and
-  # archive gate will reject any change whose specs include @e2e scenarios.
-  e2e_command: "./scripts/verify.sh --e2e"
+# The runner is re-created with the Python package. Until the keys below are
+# configured, givn reports the runner as unconfigured and no gate can pass.
+# verify:
+#   command: "./scripts/verify.sh"
+#   e2e_command: "./scripts/verify.sh --e2e"
 
 # --- Coverage gate (requires addons.coverage: true) ---------------------------
 # Commands that produce Cobertura XML coverage data. The measurement script
@@ -46,12 +44,13 @@ verify:
 #
 # The archive gate validates that both reports come from distinct
 # instrumentation runs — do not copy the non-e2e XML to the e2e path.
-coverage:
-  measure_command: "./measure-coverage.sh"
-  merge_command: "./merge-coverages.sh"
-  non_e2e_path: "coverage/non-e2e-cobertura.xml"
-  e2e_path: "coverage/e2e-cobertura.xml"
-  output_path: "coverage/cobertura-coverage.xml"
+# Coverage commands are re-created with the Python package.
+# coverage:
+#   measure_command: "./measure-coverage.sh"
+#   merge_command: "./merge-coverages.sh"
+#   non_e2e_path: "coverage/non-e2e-cobertura.xml"
+#   e2e_path: "coverage/e2e-cobertura.xml"
+#   output_path: "coverage/cobertura-coverage.xml"
 
 # The scripts receive GIVN_COVERAGE_NON_E2E_PATH,
 # GIVN_COVERAGE_E2E_PATH, GIVN_COVERAGE_OUTPUT_PATH, and GIVN_FEATURES.
@@ -77,13 +76,13 @@ coverage:
 #     ready_timeout_s: 60
 #
 #   run:
-#     command: "cargo run --release -- --help"
+#     command: "python -m passuff --help"
 #     product_type: cli
 #
 # Overlay semantics match `verify:` — this block replaces the default as a
 # whole, so list every field you need.
 run:
-  command: "cargo run --release -p passuff -- --help"
+  command: "python -m passuff --help"
   product_type: cli
   # product_type: server
   # port_env: "PORT"

@@ -120,7 +120,7 @@ The developer can review the retained activity and mark it read; the history and
 ## Out of scope
 
 - The status summary (inspect-watch-status).
-- A separate `passuff-tui` workspace crate; the interface ships as a second binary in the CLI package.
+- A separately distributed `passuff-tui`; the interface ships as a second binary in the same package as `passuff`.
 - Editing configuration or deleting history.
 
 ## Diagram

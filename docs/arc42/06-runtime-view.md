@@ -37,7 +37,7 @@ sequenceDiagram
 **Steps:**
 
 1. The CLI loads and validates configuration.
-2. The CLI calls `PassuffCore::refresh_reconciliation`.
+2. The CLI calls the core reconciliation refresh.
 3. The core loads the persisted state.
 4. The core probes each account, compares the fingerprint with the accepted one,
    and selects changed open, new open, transitioned, short-lived, and
@@ -234,7 +234,7 @@ that belong to a stack.
 
 1. The observation records the stack number, size, base, and the pull request's
    position on each watched pull request.
-2. `InboxService::view` returns the membership with the pull request view.
+2. The inbox view returns the membership with the pull request view.
 3. `TuiApp` groups members by repository and stack number, sorts by position,
    and renders one summary line per stack with base, size, and unread count.
 4. Activity records stay newest first and carry the stack label; the group
@@ -255,7 +255,7 @@ repository or switches the mode.
 3. The watcher compares the new scope with `WatcherState.last_scope`; a newly
    selected repository with retained watched pull requests becomes a catch-up
    repository for the next cycle.
-4. `InboxService::view` filters out records outside the selected scope; the
+4. The inbox view filters out records outside the selected scope; the
    status view uses the same filter.
 5. A running watcher reloads the configuration before its next cycle. On a
    catch-up cycle, activity is recorded as unread without a notification;
@@ -288,19 +288,19 @@ repository or switches the mode.
 
 **Trigger:** The terminal inbox is open; the observation task's delay expires.
 
-1. `PassuffCore::probe` queries every authored pull request of each account,
+1. The core change probe queries every authored pull request of each account,
    compares identity, update time, creation time, state, head commit, and CI
    state with the accepted probe, and reports the GraphQL allowance.
 2. A known terminal pull request whose only change is its update time is not a
    target; no cycle runs for activity after the terminal state.
 3. A relevant change starts a deferred targeted pass when the allowance can
-   afford it; `PassuffCore::refresh_targeted` observes only the selected ids,
-   records activity, `CliRuntime` delivers the notifications, and the account's
+   afford it; the core targeted refresh observes only the selected ids,
+   records activity, the CLI runtime delivers the notifications, and the account's
    probe baseline advances only after its observation succeeded.
 4. When the configured reconciliation interval elapses, a reconciliation pass
    observes every watched open id and every open assigned/review-requested id,
    even without a probe signal.
-5. The terminal loop reloads `InboxService::view`, redraws, and preserves focus
+5. The terminal loop reloads the inbox view, redraws, and preserves focus
    and the selected pull request.
 6. A failed probe or pass backs off and keeps the current view; the program
    continues.
@@ -310,7 +310,7 @@ repository or switches the mode.
 **Trigger:** The developer presses Enter on the focused activity, then Escape or
 Enter.
 
-1. `TuiApp::handle_key` finds the selected activity and the matching
+1. The TUI key handler finds the selected activity and the matching
    `PullRequestView`, and stores an `ActivityDetail` with the record, the pull
    request, and its URL.
 2. The renderer draws a centered `Clear` + bordered overlay with the activity id,
@@ -326,7 +326,7 @@ Enter.
 
 **Trigger:** The developer marks one record or all records read.
 
-1. `InboxService::mark_read` loads state, finds the id, sets `read`, and saves.
+1. The inbox mark-read entry point loads state, finds the id, sets `read`, and saves.
 2. An unknown id returns `found = false`; the CLI prints `no activity with id`
    and exits 2.
 3. `mark_all_read` sets every record read, saves, and returns the changed count.

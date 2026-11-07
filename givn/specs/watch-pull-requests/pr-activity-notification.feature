@@ -338,11 +338,11 @@ Feature: Pull request activity notification
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
     And  the watcher has already observed "acme/api#42"
-    And  the sound is configured to "crates/passuff-cli/assets/notification.wav"
+    And  the sound is configured to "assets/notification.wav"
     When  "alice" comments "Can you split this migration?" on "acme/api#42"
     And  passuff runs one check
     Then  the transcript reports "New comment from @alice"
-    And  the configured sound file "crates/passuff-cli/assets/notification.wav" is played once
+    And  the configured sound file "assets/notification.wav" is played once
 
   @pr-activity-notification
   Scenario: A disabled sound produces no sound

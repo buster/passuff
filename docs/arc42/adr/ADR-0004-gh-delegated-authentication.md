@@ -88,7 +88,7 @@ credential matrix. The archive's regular and E2E suites must stay green.
 
 ## More Information
 
-- Design: `givn/archive/passuff-auth-modes/design.md` after archive.
+- Design: the `passuff-auth-modes` change record in git history.
 - Rules R32–R38: `docs/arc42/12-glossary.md` links the glossary; the owning use
   case is `givn/specs/watch-pull-requests/usecase.md`.
 - Supersedes nothing; ADR-0001 covers observation, ADR-0003 covers the core/UI

@@ -22,7 +22,7 @@ observation rules. First-run use lives in [README.md](../README.md).
 |---|---|
 | `--config <PATH>` | Use a specific configuration file |
 | `--state <PATH>` | Use a specific state file |
-| `--verbose` | Diagnostic logs on stderr; `RUST_LOG` overrides the filter |
+| `--verbose` | Diagnostic logs on stderr |
 | `--no-desktop` | Suppress desktop notifications for this run |
 | `--no-sound` | Suppress the notification sound for this run |
 | `-h`, `--help` | Print help |
@@ -276,7 +276,7 @@ stdout are terminals; otherwise it exits 2 with a setup instruction.
 
 ## Notification delivery
 
-- Linux desktop notifications use the session D-Bus through `notify-rust`;
+- Linux desktop notifications use the session D-Bus notification service;
   `urgency` maps to the notification urgency.
 - Linux sound uses the first available player: `paplay`, `pw-play`, `aplay`, or
   `canberra-gtk-play`.
@@ -296,5 +296,5 @@ stdout are terminals; otherwise it exits 2 with a setup instruction.
 | `$XDG_STATE_HOME/passuff/state.json` | Activity, watched pull requests, and read state |
 | Same directory as the state file, `ui.json` | TUI sort, filter, and notification preferences |
 
-On macOS the `directories` crate uses the platform configuration and data/state
+On macOS the platform configuration and data/state
 directories instead of the XDG paths.

@@ -30,35 +30,36 @@ does not want.
 ## Considered Options
 
 - One binary with domain, delivery, and CLI concerns mixed together.
-- One package with `src/lib.rs` and `src/main.rs`, sharing one dependency graph.
-- A Cargo workspace with `passuff-config` and `passuff-core` as libraries and
+- One package with a library module and a CLI entry point, sharing one dependency graph.
+- A workspace with a config library, a core library, and
   `passuff` as the first binary adapter; a future `passuff-tui` member.
 
 ## Decision Outcome
 
-Chosen option: "A Cargo workspace with `passuff-config` and `passuff-core` as
-libraries and `passuff` as the first binary adapter; a future `passuff-tui`
-member", because it gives the core a UI-neutral contract while keeping the CLI's
-terminal and notification dependencies out of the libraries.
+Chosen option: "A workspace with a config library, a core library, and
+`passuff` as the first binary adapter; a future `passuff-tui` member", because it
+gives the core a UI-neutral contract while keeping the CLI's terminal and
+notification dependencies out of the libraries.
 
 ### Consequences
 
-- Good, because `passuff-config` and `passuff-core` can be consumed by the CLI,
+- Good, because the config and core libraries can be consumed by the CLI,
   the future TUI, and the Gherkin harness without a process boundary.
-- Good, because `clap`, `notify-rust`, `ratatui`, and `crossterm` stay in the UI
-  adapter crates; the shared config crate has no UI dependency.
-- Good, because `PassuffCore::refresh` returns a `RefreshReport`, so a UI decides
+- Good, because argument parsing, notification, terminal rendering, and terminal
+  input stay in the UI adapter packages; the shared config library has no UI dependency.
+- Good, because the core refresh returns a `RefreshReport`, so a UI decides
   how to present and deliver notifications.
-- Bad, because the workspace adds crate boundaries, a public core API, and
-  runner and coverage commands that target `-p passuff`.
+- Bad, because the workspace adds package boundaries, a public core API, and
+  runner and coverage commands that target the CLI package.
 - Bad, because the core API and config schema become contracts that must be
   maintained as the inbox and TUI arrive.
 
 ### Confirmation
 
-`cargo tree -p passuff-core` contains no `clap`, `notify-rust`, `ratatui`, or
-`crossterm`; it may contain `passuff-config` for the shared `CoreConfig` type.
-The regular Gherkin scenarios call `CliRuntime::run_check` with injected ports
+The core library's dependency graph contains no argument parsing, notification,
+terminal rendering, or terminal input library; it may depend on the config library
+for the shared `CoreConfig` type.
+The regular Gherkin scenarios call the CLI runtime's check entry point with injected ports
 and assert the returned `RefreshReport` and exit code. The CLI E2E scenarios
 spawn the `passuff` binary. The follow-up TUI and inbox changes will validate
 the contracts when they are designed.
@@ -67,24 +68,24 @@ the contracts when they are designed.
 
 ### One binary with mixed concerns
 
-- Good, because it has the fewest crates and the least setup.
+- Good, because it has the fewest packages and the least setup.
 - Bad, because the future TUI cannot reuse the core without moving modules.
 - Bad, because domain tests can accidentally depend on CLI or delivery code.
-- Bad, because the dependency graph includes terminal and notification crates
+- Bad, because the dependency graph includes terminal and notification libraries
   for every consumer.
 
-### One package with `src/lib.rs` and `src/main.rs`
+### One package with a library module and a CLI entry point
 
-- Good, because it provides a library target with little setup.
+- Good, because it provides a library entry point with little setup.
 - Good, because the CLI can call the library directly.
 - Bad, because the package's dependency graph still includes CLI and delivery
-  crates for any library consumer.
+  libraries for any library consumer.
 - Bad, because a future TUI would either join the same package or need a
   dependency feature split.
 
-### Workspace with `passuff-config`, `passuff-core`, and `passuff`
+### Workspace with a config library, a core library, and `passuff`
 
-- Good, because the dependency direction is explicit and enforced by Cargo.
+- Good, because the dependency direction is explicit and enforced by the package layout.
 - Good, because the config schema and core can be tested and consumed without a
   terminal or desktop surface.
 - Good, because the future TUI is a natural sibling member.
@@ -102,6 +103,6 @@ the contracts when they are designed.
 
 The TUI ships as a second binary (`passuff-tui`) in the `passuff` package
 rather than a sibling workspace member. The decision outcome is unchanged: the
-core stays UI-agnostic and the TUI consumes `passuff-config`, `passuff-core`,
+core stays UI-agnostic and the TUI consumes the config and core libraries
 and `InboxService`. The package choice shares the Gherkin runner and the
-`CARGO_BIN_EXE_passuff-tui` test seam; a future split is a packaging change.
+CLI binary test seam; a future split is a packaging change.

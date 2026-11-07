@@ -1,7 +1,0 @@
-passuff: accounts
-  personal @octo-personal last check 2026-11-02T22:07:53.629311181+00:00
-passuff: watch scope: all authored pull requests
-passuff: watched pull requests
-  acme/api#42 open CI passing Pull request acme/api#42
-passuff: activity: 0 unread of 0
-exit status: 0

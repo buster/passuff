@@ -56,6 +56,6 @@ with their feature files under `givn/specs/`.
 | Role | Expectation |
 |---|---|
 | Developer (operator) | Sees only relevant activity on their own pull requests, with a clear notification and sound, without checking multiple GitHub accounts manually. |
-| Maintainer (same person) | A small, testable Rust codebase with an executable specification, no hosted infrastructure, and a clear path to extend or debug. |
+| Maintainer (same person) | A small, testable Python codebase with an executable specification, no hosted infrastructure, and a clear path to extend or debug. |
 | GitHub | Receives read-only GraphQL queries and no mutation requests. |
 | Desktop environment | Receives standard notifications and an audio-player invocation; no privileged integration. |

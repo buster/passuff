@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: cargo
+  - package-ecosystem: pip
     directory: "/"
     schedule:
       interval: weekly
@@ -9,7 +9,7 @@ updates:
       timezone: UTC
     open-pull-requests-limit: 5
     groups:
-      cargo-minor-patch:
+      python-minor-patch:
         applies-to: version-updates
         patterns:
           - "*"

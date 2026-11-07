@@ -55,7 +55,7 @@ a hosted account or an audio build dependency.
 ### Confirmation
 
 The E2E scenarios assert the recorded notification content and the fake sound
-player invocation; on Linux the real `notify-rust` adapter runs against a
+player invocation; on Linux the real platform notification adapter runs against a
 private D-Bus fake. Unit tests assert the notification title/body and platform
 player selection. A recorded manual smoke test on macOS confirms that the real
 desktop notification and sound are delivered.

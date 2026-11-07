@@ -1,12 +1,5 @@
 # passuff
 
-<!-- givn:begin:coverage-badge -->
-[![Line Coverage: 88%](https://img.shields.io/badge/line%20coverage-88%25-brightgreen)](coverage/cobertura-coverage.xml)
-[![Branch Coverage: 47%](https://img.shields.io/badge/branch%20coverage-47%25-brightgreen)](coverage/cobertura-coverage.xml)
-<!-- givn:end:coverage-badge -->
-
-[![crates.io](https://img.shields.io/crates/v/passuff?logo=rust)](https://crates.io/crates/passuff)
-
 ```text
 ╭────────────╮
 │ Pass uff!  │
@@ -26,13 +19,9 @@ raises one desktop notification per check pass, and plays a sound.
 
 ## Install
 
-```sh
-cargo install passuff
-```
-
-Installs `passuff` and `passuff-tui`. Releases are source-only: `passuff-config`,
-`passuff-core`, and `passuff` are published to crates.io in dependency order; the
-GitHub release carries the changelog.
+passuff is being rebuilt in Python from its specification. Run it from a
+checkout with `python -m passuff`; the package provides the `passuff` and
+`passuff-tui` entry points. The GitHub release carries the changelog.
 
 ## Quick start
 
@@ -59,7 +48,7 @@ passuff-tui
 
 | Requirement | Needed for |
 |---|---|
-| Rust stable (`rust-toolchain.toml`) | Build and install |
+| Python 3 | Run and develop |
 | GitHub token with `read:user` and repository read access | `github_pat` accounts |
 | `gh` 2.40 or newer | `gh_oauth` accounts |
 | D-Bus and `paplay`, `pw-play`, `aplay`, or `canberra-gtk-play` | Sound on Linux |
@@ -143,24 +132,16 @@ Full schema, validation rules, and account semantics:
 Run the tool:
 
 ```sh
-cargo run --release -p passuff -- --help
+python -m passuff --help
 ```
 
 <!-- givn:end:run -->
 
 ## Development
 
-```sh
-./scripts/verify.sh          # formatting, clippy, library tests, regular Gherkin suite
-./scripts/verify.sh --e2e    # @e2e smoke suite against a fake GitHub and D-Bus
-./measure-coverage.sh        # non-E2E and E2E Cobertura reports
-./merge-coverages.sh         # merged report
-```
-
-Coverage requires `cargo-llvm-cov` and the `llvm-tools` component. The Gherkin
-runner is `crates/passuff-cli/tests/features_runner.rs`; feature files live under
-`givn/specs/`, and step definitions are split per capability under
-`crates/passuff-cli/tests/steps/`.
+The Python rebuild recreates the Gherkin runner, the verify script, and the
+coverage scripts. Until they exist, `givn check` reports the runner as
+unconfigured. Feature files live under `givn/specs/`.
 
 Project workflow: `givn status` shows the next step; keep the `.feature` file as
 the executable source of behaviour; run both verify scopes before review; create
@@ -173,15 +154,6 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 <!-- givn:begin:coverage -->
 ## Coverage
 
-Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
-
-Line coverage: 88% (6584/7443)
-Branch coverage: 47% (1118/2362)
-
-Reproduce the result:
-
-```sh
-./measure-coverage.sh
-./merge-coverages.sh
-```
+Coverage is regenerated with the Python rebuild. The previous report described
+the removed implementation and is no longer valid.
 <!-- givn:end:coverage -->

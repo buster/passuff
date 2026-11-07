@@ -4,7 +4,7 @@ This directory contains the project's arc42 architecture documentation.
 Maintained by the `arc42-docs` givn artifact — updated with each change via `givn`.
 
 Current baseline: established by `passuff-pr-watch` (2026-11-02), a local
-Rust CLI that observes GitHub pull requests authored by configured accounts and
+Python CLI that observes GitHub pull requests authored by configured accounts and
 delivers grouped desktop notifications with sound.
 
 | Chapter | File | Description |

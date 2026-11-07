@@ -4,11 +4,11 @@
 
 ```mermaid
 flowchart TB
-    subgraph configBoundary["passuff-config (library)"]
+    subgraph configBoundary["config library"]
         Config["ConfigLoader"]
     end
 
-    subgraph coreBoundary["passuff-core (library)"]
+    subgraph coreBoundary["core library"]
         Core["PassuffCore"]
         Classifier["ActivityClassifier"]
         GitHubPort["GitHubGateway port"]
@@ -20,7 +20,7 @@ flowchart TB
         Inbox["Inbox / InboxService"]
     end
 
-    subgraph cliBoundary["passuff (binary)"]
+    subgraph cliBoundary["passuff CLI"]
         CLI["CLI"]
         InboxCli["InboxCli"]
         Renderer["TranscriptRenderer"]
@@ -29,7 +29,7 @@ flowchart TB
         Sound["SystemSoundPlayer"]
     end
 
-    subgraph tuiBoundary["passuff-tui (binary)"]
+    subgraph tuiBoundary["passuff-tui CLI"]
         TUI["TUI"]
     end
 
@@ -56,9 +56,9 @@ flowchart TB
 
 | Building block | Responsibility |
 |---|---|
-| `passuff-config` | Shared TOML schema, validation, `AppConfig`, `CoreConfig`, and `NotificationsConfig`. No UI or terminal dependency. |
-| `passuff-core` | UI-agnostic observation, classification, credential resolution, state, `InboxService`, and the `RefreshReport` contract. |
-| `PassuffCore` | Expose `with_ports`, `probe`, `refresh_targeted`, and `refresh_reconciliation`; compare a cheap change probe with the last successful cycle, select changed, new, transitioned, and short-lived targets, run the selected pass over all accounts, validate expected logins, and return notifications, account failures, and baselines. |
+| Config library | Shared TOML schema, validation, `AppConfig`, `CoreConfig`, and `NotificationsConfig`. No UI or terminal dependency. |
+| Core library | UI-agnostic observation, classification, credential resolution, state, `InboxService`, and the `RefreshReport` contract. |
+| `PassuffCore` | Expose the construction, change-probe, targeted-refresh, and reconciliation-refresh entry points; compare a cheap change probe with the last successful cycle, select changed, new, transitioned, and short-lived targets, run the selected pass over all accounts, validate expected logins, and return notifications, account failures, and baselines. |
 | `ActivityClassifier` | Pure classification of comments, reviews, review comments, CI transitions, state transitions, short-lived PRs, and reopen resets. |
 | `GitHubGateway` / `GitHubApiAdapter` | Port and GraphQL adapter for the cheap change probe, the observation of selected node ids, and the assigned/review-requested discovery search, including GitHub-reported stack membership and the GraphQL allowance. |
 | `PullRequestStack` | Value object carrying the stack number, size, position, and ultimate base on a watched pull request; absent means standalone. |
@@ -68,14 +68,14 @@ flowchart TB
 | `SetupSession` | Line-based first-run prompts, validation, and atomic configuration creation; never stores a token. |
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
 | `CredentialSource` / `SystemCredentialSource` | Port and environment/command/file/gh credential resolution; tokens never persisted. |
-| `passuff` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its `CliRuntime` is also the regular Gherkin harness's entry point. |
+| `passuff` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. Its CLI runtime is also the regular Gherkin harness's entry point. |
 | `InboxService` / `Inbox` | Build the status and activity read model over the state store and mark activity read. |
 | `InboxCli` | Render `status`, `inbox`, and `read` from `InboxService`; no GitHub calls. |
-| `TuiApp` / `passuff-tui` | Render the inbox with ratatui, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, show an activity detail overlay, return an open intent for the pull request URL, handle keys, and mark records read; a blocking input thread feeds keys, and `--snapshot` prints one frame. |
+| `TuiApp` / `passuff-tui` | Render the inbox with the terminal UI library, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, show an activity detail overlay, return an open intent for the pull request URL, handle keys, and mark records read; a blocking input thread feeds keys, and `--snapshot` prints one frame. |
 | `SystemBrowserOpener` | Launch the platform browser with a pull request URL; report a missing or failing opener as a status line. |
 | `ObservationSession` | Decide when to probe, when to run a targeted pass, and when the reconciliation interval has elapsed; deliver the cycle's notifications, keep the last view on failure, and hand updates to the terminal loop. |
 | `TranscriptRenderer` | Render notifications, the per-pass digest, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
-| `DesktopDelivery` | Real `notify-rust` delivery of one digest per check pass; production path on Linux E2E and macOS. |
+| `DesktopDelivery` | Real platform notification delivery of one digest per check pass; production path on Linux E2E and macOS. |
 | `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |
 
 ## Level 2 — Key building blocks
@@ -175,6 +175,6 @@ block, a desktop message, and at most one sound.
 | Element | Responsibility |
 |---|---|
 | TranscriptRenderer | Stable summary, per-pass digest with count, event lines, account failures, baselines, and empty-cycle text. |
-| DesktopDelivery | Platform notification delivery of one digest per check pass through `notify-rust`. |
+| DesktopDelivery | Platform notification delivery of one digest per check pass. |
 | SystemSoundPlayer | Choose the platform player, play the bundled WAV, fall back to the XDG hint. |
 | RecordingDelivery | Record the same title and body for macOS E2E and diagnostics. |

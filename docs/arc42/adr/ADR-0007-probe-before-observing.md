@@ -66,7 +66,7 @@ a useful rate.
 `The inbox reconciles open pull requests when the interval elapses`, and
 `The inbox shows activity observed while it is open` execute the probe,
 targeting, reconciliation, and pacing paths through the Gherkin harness;
-`PassuffCore::probe` and `ObservationSession::next_delay` carry unit tests for
+The core change probe and the observation session's delay policy carry unit tests for
 the fingerprint and the delay formula.
 
 ## Pros and Cons of the Options
@@ -98,7 +98,7 @@ the fingerprint and the delay formula.
 ## More Information
 
 The measured costs and the delay formula are recorded in the
-`passuff-tui-live` design (`givn/archive/passuff-tui-live/design.md`). The
+`passuff-tui-live` change record in git history. The
 full-cycle query cost is tracked as technical debt TD-003; reducing it would
 raise the ceiling for how often a changed account can be fully observed.
 

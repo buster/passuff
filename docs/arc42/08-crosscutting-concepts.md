@@ -30,8 +30,8 @@ observed the event. The occurrence time is when the event happened upstream:
 comment and review-comment creation, review submission, pull request creation
 for an opened event, and the merge or close time for a terminal state change.
 CI failures and recoveries have no upstream time, so their occurrence time is
-absent. `ActivityRecord.occurred_at` is `Option<String>` with a serde default;
-an older state file loads with no occurrence times.
+absent. `ActivityRecord.occurred_at` is an optional string that defaults to
+absent; an older state file loads with no occurrence times.
 
 Every surface renders the occurrence time and falls back to the fetch time
 marked approximate with a leading `~`. The activity list is ordered newest
@@ -77,22 +77,23 @@ is the deliberate priority.
 
 ## UI adapter boundary
 
-`passuff-config` owns the shared TOML schema and validation; it has no UI or
-terminal dependency. `passuff-core` is UI-agnostic. It exposes `PassuffCore::with_ports` and
-`refresh`, and returns a `RefreshReport` containing notifications, account failures, and
-baselines recorded. It has no `clap`, `notify-rust`, `ratatui`, `crossterm`,
-terminal formatting, or delivery dependency. `passuff` is the first adapter;
-it owns the transcript, desktop delivery, sound, signals, and exit codes. A
-`passuff-tui` consumes `passuff-config` and the same core contract. The
-regular Gherkin scenarios call `CliRuntime::run_check` with injected ports; the
-E2E scenarios spawn the CLI binary.
+The config library owns the shared TOML schema and validation; it has no UI or
+terminal dependency. The core library is UI-agnostic. It exposes the core
+construction and refresh entry points, and returns a `RefreshReport` containing
+notifications, account failures, and baselines recorded. It has no argument
+parsing, desktop notification, terminal rendering, terminal input, terminal
+formatting, or delivery dependency. `passuff` is the first adapter; it owns the
+transcript, desktop delivery, sound, signals, and exit codes. A `passuff-tui`
+consumes the config library and the same core contract. The regular Gherkin
+scenarios call the CLI runtime's check entry point with injected ports; the E2E
+scenarios spawn the CLI binary.
 
 ## Error handling and isolation
 
 Each account is an isolation boundary. Authentication failures, identity
 mismatches, rate limits, timeouts, malformed responses, and transport errors are
 mapped to an account failure, reported with the account label, and do not stop other accounts.
-Configuration errors are returned by `passuff-config` and mapped by the CLI to
+Configuration errors are returned by the config library and mapped by the CLI to
 status 2. A core state read/write failure in `check` maps to status 3. `check`
 exits 1 when the report contains an account failure but other work completed.
 Continuous mode reports failures and retries on the next cycle.
@@ -105,7 +106,7 @@ total activity count and the per-pull-request counts, and the terminal transcrip
 keeps the event detail. The sound plays once per delivered notification. The core returns a
 `Notification` value; the CLI formats the transcript block and the desktop
 title and body. The transcript is the primary observable output and is always
-printed. The desktop adapter uses `notify-rust`. The sound adapter plays a
+printed. The desktop adapter uses the platform notification surface. The sound adapter plays a
 bundled WAV through the platform player and falls back to the XDG sound hint.
 Delivery and playback failures are reported but do not affect core state or the
 transcript.
@@ -124,9 +125,9 @@ The TUI is a second adapter over `InboxService` and a second watcher. It renders
 the same view as the read commands, marks records through the same service, and
 runs check cycles through `ObservationSession` while it is open. A blocking input
 thread feeds keys; observation updates arrive over a channel and redraw the
-frame. `--snapshot` uses ratatui's `TestBackend` and prints the frame for scripts
+frame. `--snapshot` renders against the terminal library's test backend and prints the frame for scripts
 and E2E; `--observe` performs one probe and cycle first, and `--observe-for`
-runs the real loop against the test backend. Interactive mode uses crossterm raw
+runs the real loop against the test backend. Interactive mode uses raw terminal
 mode and the alternate screen. No token, body, command text, or enum name is
 rendered.
 
@@ -176,7 +177,7 @@ opener, or a spawn error is a footer status line and the overlay stays open.
 ## First-run setup
 
 Setup is line-based and shared by `passuff setup` and the first-run terminal
-UI. It validates the configuration with `ConfigLoader::parse` before writing,
+UI. It validates the configuration with the configuration parser before writing,
 creates parent directories, writes a temporary file plus rename, and never
 reads or stores a token: only an environment variable name, a command, or a
 permission-checked token-file path is recorded. A missing terminal and a
@@ -219,20 +220,20 @@ response reports the reset time and skips only that account for the cycle.
 ## Testing and coverage
 
 The Gherkin `.feature` files are the executable specification. A custom
-cucumber-rs runner in `crates/passuff-cli/tests` honors the Givn
+Gherkin runner in the test suite honors the Givn
 `GIVN_FEATURES`, `GIVN_RESULT_SCOPE`, and `GIVN_RESULT_FILE` contract and fails
 on skipped or undefined steps. On Linux, E2E scenarios spawn the real CLI binary
-against a local wiremock GitHub and a private `dbus-daemon` session with a mock
-`org.freedesktop.Notifications` service, so the real `notify-rust` path is
+against a local HTTP stub for GitHub and a private `dbus-daemon` session with a mock
+`org.freedesktop.Notifications` service, so the real platform notification path is
 exercised. On macOS, E2E uses `RecordingDelivery` and the manual desktop smoke
 covers the real surface. A fake sound player records playback. Regular scenarios
-drive `CliRuntime::run_check`, which in turn calls `PassuffCore::refresh`, with a
+drive the CLI runtime's check entry point, which in turn calls the core refresh, with a
 `FakeGateway` in process. Coverage runs the regular and E2E scopes separately,
-instruments the `passuff-config` and `passuff-core` path dependencies, and
+instruments the config and core libraries, and
 produces two distinct Cobertura reports.
 
 ## Platform paths
 
 Linux uses XDG config and state directories. macOS uses Application Support.
-The `directories` crate resolves both. The bundled sound cache uses the
+The platform directory resolver handles both. The bundled sound cache uses the
 platform cache directory.
