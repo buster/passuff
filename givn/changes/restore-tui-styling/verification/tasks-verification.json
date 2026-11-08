@@ -2,20 +2,20 @@
   "schema": 2,
   "change": "restore-tui-styling",
   "status": "passed",
-  "head": "003179ab7b7c7967a1ff047fe34388505b42c3b4",
+  "head": "3e7f3699d83698107efa7da06d89807969446129",
   "features_path": "givn/changes/restore-tui-styling/specs",
-  "features_digest": "8be39130ef1b48a25ed96c00ae99314fe24565cdd1b65e761090d749ad8971ba",
+  "features_digest": "4aa275175a1d4b3dca23adc484a7a98517e0541552eb5c01aa757dd54418f819",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
   "command": "./scripts/verify.sh",
-  "tested_content_digest": "7f17a3fdd90eb8ee0dc6367f1518b982e139718ab287e38029cb984397766839",
+  "tested_content_digest": "a6bdee5ed087135e69c2459e4c4274fbc928b8f90b2301ee879610cde77e55c8",
   "content_scope": "change-proof/v1",
   "runner_exit": 0,
   "result": {
     "scope": null,
-    "total": 263,
-    "passed": 263,
+    "total": 264,
+    "passed": 264,
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1794164026
+  "finished_at_unix": 1794165589
 }
