@@ -304,12 +304,12 @@ uses.
 - Strict mode: `behave` fails undefined steps; `scripts/check_steps.py` rejects
   no-op bodies in `givn/steps/` and `givn/e2e_steps/` and runs in every normal
   scope. The new steps start as `raise NotImplementedError`.
-- The change delta has sixteen scenario entries: four under `activity-inbox`
-  (two modified `@e2e`, the ignored-row scenario, and the empty-state scenario);
-  ten under `inbox-navigation` (one modified `@e2e`, the settings, PR detail,
-  help, status-line, 80x24, save-y, save-n, save-Esc, and no-change quit
-  scenarios); one modified `@e2e` under `stacked-inbox`; one added picker
-  scenario under `watch-scope`.
+- The change delta has seventeen scenario entries: four under
+  `activity-inbox` (two modified `@e2e`, the ignored-row scenario, and the
+  empty-state scenario); eleven under `inbox-navigation` (one modified `@e2e`,
+  the settings, settings-persistence, PR detail, help, status-line, 80x24,
+  save-y, save-n, save-Esc, and no-change quit scenarios); one modified `@e2e`
+  under `stacked-inbox`; one added picker scenario under `watch-scope`.
 - Coverage: the existing `scripts/measure-coverage.sh` and
   `scripts/merge-coverages.sh`. The styled renderer is covered by the visual
   steps and the regular frame scenarios.

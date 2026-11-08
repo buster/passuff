@@ -146,3 +146,22 @@ Feature: Inbox pane styling
     When  the developer opens the inbox TUI with keys "q"
     Then  the TUI does not show "Save sort and filter settings?"
     And  the exit status is 0
+
+  @givn.modified
+  Scenario: The developer mutes notifications from the settings dialog
+    Given  a configured account "personal" with login "octo-personal"
+    When  the developer opens the inbox TUI
+    And  the developer presses "comma"
+    Then  the TUI shows "Settings"
+    And  the TUI shows "Desktop notifications"
+    And  the TUI shows "Sound"
+    When  the developer presses "j"
+    And  the developer presses "space"
+    Then  the TUI shows "Sound: off"
+    When  the developer presses "esc"
+    And  the developer presses "q"
+    Then  the TUI shows "Save sort and filter settings?"
+    When  the developer presses "y"
+    Then  the notification sound is muted
+    And  the desktop notification is enabled
+    And  the TUI does not show "Desktop notifications"

@@ -303,15 +303,6 @@ def apply_key(key: str, config, state_path, config_path, view: dict[str, Any]) -
                 view["desktop"] = not view.get("desktop", True)
             else:
                 view["sound"] = not view.get("sound", True)
-            save_ui(Path(config_path).with_name("ui.json"), {
-                "sort": view.get("sort", "updated"),
-                "sort_direction": view.get("sort_direction", 1),
-                "filter": view.get("filter"),
-                "unread_only": view.get("unread_only", False),
-                "show_ignored": view.get("show_ignored", False),
-                "desktop": view.get("desktop", True),
-                "sound": view.get("sound", True),
-            })
         elif view.get("overlay") == "picker":
             editor = ScopeEditor(config, config_path)
             known = sorted({pr.get("key", "").split("#", 1)[0] for pr in state.get("pull_requests", {}).values()} | set(config.watch.repositories))

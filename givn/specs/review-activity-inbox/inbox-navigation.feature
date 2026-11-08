@@ -210,10 +210,14 @@ Feature: Inbox navigation
     And  the TUI shows "Sound"
     When  the developer presses "j"
     And  the developer presses "space"
+    Then  the TUI shows "Sound: off"
+    When  the developer presses "esc"
+    And  the developer presses "q"
+    Then  the TUI shows "Save sort and filter settings?"
+    When  the developer presses "y"
     Then  the notification sound is muted
     And  the desktop notification is enabled
-    When  the developer presses "esc"
-    Then  the TUI does not show "Desktop notifications"
+    And  the TUI does not show "Desktop notifications"
 
   @inbox-navigation
   Scenario: The developer opens the key reference
