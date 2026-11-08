@@ -46,3 +46,6 @@ __pycache__/
 # givn:begin:history
 givn/history/
 # givn:end:history
+
+# behave progress output
+progress.output
