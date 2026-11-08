@@ -2,12 +2,12 @@
   "schema": 2,
   "change": "restore-tui-styling",
   "status": "passed",
-  "head": "4fd7ae98d41c45b46470a4825e5174fca5f29172",
+  "head": "7f0470683f9f186901f15c3094388cdae8cf74a2",
   "features_path": "givn/changes/restore-tui-styling/specs",
-  "features_digest": "4aa275175a1d4b3dca23adc484a7a98517e0541552eb5c01aa757dd54418f819",
+  "features_digest": "2db0c4eff0fe805dc18bc79e7b5d85af8253c55b3733f3ea97b2fb7bad2ad6e9",
   "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
   "command": "./scripts/verify.sh",
-  "tested_content_digest": "a84aeaaad337642e2803ed262ffe5df901139d9f4030ae7a713ff68253edade2",
+  "tested_content_digest": "2e0ab6b0b6eb5c60e0994b8eaf508c1f2d1db60ad5be7dc82a9f0191f78bd869",
   "content_scope": "change-proof/v1",
   "runner_exit": 0,
   "result": {
@@ -17,5 +17,5 @@
     "failed": 0,
     "skipped": 0
   },
-  "finished_at_unix": 1794166428
+  "finished_at_unix": 1794169576
 }
