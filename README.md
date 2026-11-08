@@ -1,5 +1,10 @@
 # passuff
 
+<!-- givn:begin:coverage-badge -->
+[![Line Coverage: 89%](https://img.shields.io/badge/line%20coverage-89%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Branch Coverage: 83%](https://img.shields.io/badge/branch%20coverage-83%25-brightgreen)](coverage/cobertura-coverage.xml)
+<!-- givn:end:coverage-badge -->
+
 ```text
 ╭────────────╮
 │ Pass uff!  │
@@ -156,7 +161,15 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 <!-- givn:begin:coverage -->
 ## Coverage
 
-Coverage is measured from the Python package with `./scripts/measure-coverage.sh`
-and merged with `./scripts/merge-coverages.sh`. The archive gate requires
-distinct non-E2E and E2E Cobertura reports.
+Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
+
+Line coverage: 89% (1931/2178)
+Branch coverage: 83% (685/828)
+
+Reproduce the result:
+
+```sh
+./scripts/measure-coverage.sh
+./scripts/merge-coverages.sh
+```
 <!-- givn:end:coverage -->
