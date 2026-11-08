@@ -1,8 +1,8 @@
 # passuff
 
 <!-- givn:begin:coverage-badge -->
-[![Line Coverage: 89%](https://img.shields.io/badge/line%20coverage-89%25-brightgreen)](coverage/cobertura-coverage.xml)
-[![Branch Coverage: 83%](https://img.shields.io/badge/branch%20coverage-83%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Line Coverage: 88%](https://img.shields.io/badge/line%20coverage-88%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Branch Coverage: 81%](https://img.shields.io/badge/branch%20coverage-81%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
 
 ```text
@@ -90,7 +90,14 @@ observe and write the same state.
 | `x` | Ignore or unignore the selected pull request (watched pane) |
 | `r` `a` | Mark the selected or visible activity read (activity pane) |
 | `h` `F1` | Show the full keymap for the focused pane |
+| `s` `S` | Sort the watched list; reverse the direction |
+| `f` `F` | Filter activity to the selected pull request or stack |
+| `u` | Show unread activity only |
+| `c` `C` | Clear filters / reset the view |
+| `,` | Open settings |
+| `p` | Open the watch-scope picker |
 | `q` `Esc` | Quit, or close the open overlay |
+| `y` `n` `Esc` | In the save prompt: save, discard, or cancel the quit |
 
 In a detail overlay, the movement keys scroll, `Enter` opens the pull request in
 a browser, and `Esc` or `q` closes. Stacked pull requests that GitHub reports as
@@ -163,8 +170,8 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
 
-Line coverage: 89% (1931/2178)
-Branch coverage: 83% (685/828)
+Line coverage: 88% (2062/2349)
+Branch coverage: 81% (719/886)
 
 Reproduce the result:
 

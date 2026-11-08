@@ -81,9 +81,9 @@ owns only the picker's rendering. The visual step definitions consume the public
 
 ### Modules
 
-- `passuff/tui/frame.py` — add `Role`, `Span`, `StyledLine`, and
+- `passuff/tui/frame.py` — add `Span`, `StyledLine`, role-name strings, and
   `render_styled(config, state, view) -> list[StyledLine]`. Own the palette
-  mapping (`ROLE_STYLES`) so the indexed values exist once. Keep
+  mapping (`PALETTE`) so the indexed values exist once. Keep
   `render(...) -> list[str]` as the plain projection used by existing text
   assertions. Add `render_ansi(...)` and `render_roles(...)`. Build the layout
   from the design system: outer frame, header, counts/focus, watched table,
@@ -118,7 +118,7 @@ when they are written, not their shape.
 
 ### Palette and role model
 
-`Role` names are the contract: `accent`, `accent_bold`, `bright`, `bright_bold`,
+Role names are the contract: `accent`, `accent_bold`, `bright`, `bright_bold`,
 `body`, `gold`, `gold_bold`, `green`, `green_bold`, `rule`, `dim`. The exact
 indexed values and attributes are recorded in
 `docs/design/design-system.md`; `frame.py` is the only code that owns them.

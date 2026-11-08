@@ -1,20 +1,23 @@
 [2m┌─ [0m[38;5;15;1mpassuff [0m[2m— Inbox [0m[2m────────────────────────────────────────────────────────────────────────────────────[0m[2m┐[0m
 [2m│ [0m[38;5;15mpersonal[0m[38;5;15m [0m[38;5;81m@octo-personal[0m[2m   |   [0m[2mwatch scope: [0m[38;5;15mall authored pull requests[0m[2m                           [0m[2m │[0m
 [2m│ [0m[38;5;214;1m1[0m[2m unread of [0m[38;5;15m1[0m[2m   |   [0m[2mFocus: [0m[38;5;81;1mPRs[0m[2m                                                                  [0m[2m │[0m
-[2m│ [0m[38;5;114m── [0m[38;5;114;1mWatched pull requests[0m[2m · filtered · sort: updated ↓ [0m[38;5;114m──[0m[2m                                        [0m[2m │[0m
-[2m│ [0m[38;5;81;1mPull request   State  CI  ☺  Title[0m[2m                                                              [0m[2m │[0m
-[2m│ [0m[2m  [0m[38;5;15macme/api#42  open  CI passing ☺ @octo-personal[0m[2m                                                [0m[2m │[0m
-[2m│ [0m[38;5;214;1m▶ [0m[38;5;214;1macme/api#43  open  CI passing ☺ @octo-personal[0m[2m                                                [0m[2m │[0m
-[2m│ [0m[38;5;15mPull request acme/api#43[0m[2m                                                                        [0m[2m │[0m
-[2m│ [0m[2mSelected pull request: acme/api#43[0m[2m                                                              [0m[2m │[0m
-[2m│ [0m[2m── [0m[2mActivity[0m[2m [0m[2m──[0m[2m                                                                                  [0m[2m │[0m
-[2m│ [0m[38;5;81;1mWhen        Event                                      Stack  Read[0m[2m                              [0m[2m │[0m
-[2m│ [0m[38;5;214;1m▶ [0m[38;5;214;1mcomment by @alice  11-02 12:00  unread[0m[2m                                                        [0m[2m │[0m
-[2m│ [0m[38;5;214;1m    Comment by @alice[0m[2m                                                                           [0m[2m │[0m
-[2m│ [0m[38;5;252m    Review this[0m[2m                                                                                 [0m[2m │[0m
-[2m│ [0m[2m    New comment from @alice[0m[2m                                                                     [0m[2m │[0m
-[2m│ [0m[2mSelected activity: New comment from @alice[0m[2m                                                      [0m[2m │[0m
-[2m│ [0m[38;5;81mControls[0m[2m                                                                                        [0m[2m │[0m
-[2m│ [0m[2mmark visible read[0m[2m                                                                               [0m[2m │[0m
-[2m│ [0m[38;5;81;1mx[0m[2m ignore[0m[2m   [0m[38;5;81;1mtab[0m[2m switch[0m[2m   [0m[38;5;81;1mh[0m[2m help[0m[2m   [0m[38;5;81;1mq[0m[2m quit[0m[2m                                                         [0m[2m │[0m
+[2m│ [0m[38;5;114m┌─ [0m[38;5;114;1mWatched pull requests · filtered · sort: updated ↓[0m[38;5;114m [0m[38;5;114m────────────────────────────────────────[0m[38;5;114m┐[0m[2m [0m[2m │[0m
+[2m│ [0m[38;5;114m│ [0m[38;5;81;1mPull request   State  CI  ☺  Title[0m[38;5;114m                                                          [0m[38;5;114m │[0m[2m[0m[2m │[0m
+[2m│ [0m[38;5;114m│ [0m[2m  [0m[38;5;15macme/api#42  open  CI passing ☺ @octo-personal[0m[38;5;114m                                            [0m[38;5;114m │[0m[2m[0m[2m │[0m
+[2m│ [0m[38;5;114m│ [0m[38;5;214;1m▶ [0m[38;5;214;1macme/api#43  open  CI passing ☺ @octo-personal[0m[38;5;114m                                            [0m[38;5;114m │[0m[2m[0m[2m │[0m
+[2m│ [0m[38;5;114m│ [0m[38;5;15mPull request acme/api#43[0m[38;5;114m                                                                    [0m[38;5;114m │[0m[2m[0m[2m │[0m
+[2m│ [0m[38;5;114m│ [0m[2mSelected pull request: acme/api#43[0m[38;5;114m                                                          [0m[38;5;114m │[0m[2m[0m[2m │[0m
+[2m│ [0m[38;5;114m└──────────────────────────────────────────────────────────────────────────────────────────────┘[0m[2m[0m[2m │[0m
+[2m│ [0m[2m┌─ [0m[2mActivity[0m[2m [0m[2m──────────────────────────────────────────────────────────────────────────────────[0m[2m┐[0m[2m [0m[2m │[0m
+[2m│ [0m[2m│ [0m[38;5;81;1mWhen        Event                                      Stack  Read[0m[2m                          [0m[2m │[0m[2m[0m[2m │[0m
+[2m│ [0m[2m│ [0m[38;5;214;1m▶ [0m[38;5;214;1mcomment by @alice  11-02 12:00  unread[0m[2m                                                    [0m[2m │[0m[2m[0m[2m │[0m
+[2m│ [0m[2m│ [0m[38;5;214;1m    Comment by @alice[0m[2m                                                                       [0m[2m │[0m[2m[0m[2m │[0m
+[2m│ [0m[2m│ [0m[38;5;252m    Review this[0m[2m                                                                             [0m[2m │[0m[2m[0m[2m │[0m
+[2m│ [0m[2m│ [0m[2m    New comment from @alice[0m[2m                                                                 [0m[2m │[0m[2m[0m[2m │[0m
+[2m│ [0m[2m│ [0m[2mSelected activity: New comment from @alice[0m[2m                                                  [0m[2m │[0m[2m[0m[2m │[0m
+[2m│ [0m[2m└──────────────────────────────────────────────────────────────────────────────────────────────┘[0m[2m[0m[2m │[0m
+[2m│ [0m[2m┌─ [0m[38;5;81mControls[0m[2m [0m[2m──────────────────────────────────────────────────────────────────────────────────[0m[2m┐[0m[2m [0m[2m │[0m
+[2m│ [0m[2m│ [0m[2mmark visible read[0m[2m                                                                           [0m[2m │[0m[2m[0m[2m │[0m
+[2m│ [0m[2m│ [0m[38;5;81;1mx[0m[2m ignore[0m[2m   [0m[38;5;81;1mtab[0m[2m switch[0m[2m   [0m[38;5;81;1mh[0m[2m help[0m[2m   [0m[38;5;81;1mq[0m[2m quit[0m[2m                                                     [0m[2m │[0m[2m[0m[2m │[0m
+[2m│ [0m[2m└──────────────────────────────────────────────────────────────────────────────────────────────┘[0m[2m[0m[2m │[0m
 [2m└──────────────────────────────────────────────────────────────────────────────────────────────────┘[0m

@@ -303,6 +303,8 @@ def apply_key(key: str, config, state_path, config_path, view: dict[str, Any]) -
                 view["desktop"] = not view.get("desktop", True)
             else:
                 view["sound"] = not view.get("sound", True)
+            config.notifications.desktop = bool(view.get("desktop", True))
+            config.notifications.sound = bool(view.get("sound", True))
         elif view.get("overlay") == "picker":
             editor = ScopeEditor(config, config_path)
             known = sorted({pr.get("key", "").split("#", 1)[0] for pr in state.get("pull_requests", {}).values()} | set(config.watch.repositories))
@@ -348,6 +350,21 @@ def _interactive(config, state_path, config_path, view) -> int:
     ObservationSession(config, state_path, interactive=True).start(stop)
 
     def loop(stdscr):
+        color_pairs: dict[str, int] = {}
+        try:
+            curses.start_color()
+            curses.use_default_colors()
+            for index, (role, (color, _bold, _dim)) in enumerate(PALETTE.items(), start=1):
+                if color is None:
+                    chosen = -1
+                elif curses.COLORS >= 256:
+                    chosen = color
+                else:
+                    chosen = {81: curses.COLOR_CYAN, 214: curses.COLOR_YELLOW, 114: curses.COLOR_GREEN, 240: -1}.get(color, curses.COLOR_WHITE)
+                curses.init_pair(index, chosen, -1)
+                color_pairs[role] = index
+        except curses.error:
+            color_pairs = {}
         curses.curs_set(0)
         stdscr.nodelay(True)
         while not view.get("quit"):
@@ -385,21 +402,6 @@ def _interactive(config, state_path, config_path, view) -> int:
             apply_key(key, config, state_path, config_path, view)
         stop.set()
 
-    color_pairs: dict[str, int] = {}
-    try:
-        curses.start_color()
-        curses.use_default_colors()
-        for index, (role, (color, _bold, _dim)) in enumerate(PALETTE.items(), start=1):
-            if color is None:
-                chosen = -1
-            elif curses.COLORS >= 256:
-                chosen = color
-            else:
-                chosen = {81: curses.COLOR_CYAN, 214: curses.COLOR_YELLOW, 114: curses.COLOR_GREEN, 240: -1}.get(color, curses.COLOR_WHITE)
-            curses.init_pair(index, chosen, -1)
-            color_pairs[role] = index
-    except curses.error:
-        color_pairs = {}
     try:
         curses.wrapper(loop)
     except KeyboardInterrupt:

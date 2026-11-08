@@ -1,22 +1,25 @@
 ┌─ passuff — Inbox ────────────────────────────────────────────────────────────────────────────────────┐
 │ personal @octo-personal   |   watch scope: all authored pull requests                            │
 │ 1 unread of 1   |   Focus: activity                                                              │
-│ ── Watched pull requests · filtered · sort: updated ↓ ──                                         │
-│ Pull request   State  CI  ☰  ☺  Title                                                            │
-│ ▶ acme/api#42  open  CI passing ☰ 1/2 ☺ @octo-personal                                           │
-│     stack 7 base main                                                                            │
-│   acme/api#43  open  CI passing ☰ 2/2 ☺ @octo-personal                                           │
-│     stack 7 base main                                                                            │
-│ Pull request acme/api#42                                                                         │
-│ Selected pull request: acme/api#42                                                               │
-│ ── Activity ──                                                                                   │
-│ When        Event                                      Stack  Read                               │
-│ ▶ comment by @alice  11-02 12:00  unread                                                         │
-│     Comment by @alice                                                                            │
-│     Can you split this migration?                                                                │
-│     New comment from @alice                                                                      │
-│ Selected activity: New comment from @alice                                                       │
-│ Controls                                                                                         │
-│ mark visible read                                                                                │
-│ x ignore   tab switch   h help   q quit                                                          │
+│ ┌─ Watched pull requests · filtered · sort: updated ↓ ────────────────────────────────────────┐  │
+│ │ Pull request   State  CI  ☰  ☺  Title                                                        │ │
+│ │ ▶ acme/api#42  open  CI passing ☰ 1/2 ☺ @octo-personal                                       │ │
+│ │     stack 7 base main                                                                        │ │
+│ │   acme/api#43  open  CI passing ☰ 2/2 ☺ @octo-personal                                       │ │
+│ │     stack 7 base main                                                                        │ │
+│ │ Pull request acme/api#42                                                                     │ │
+│ │ Selected pull request: acme/api#42                                                           │ │
+│ └──────────────────────────────────────────────────────────────────────────────────────────────┘ │
+│ ┌─ Activity ──────────────────────────────────────────────────────────────────────────────────┐  │
+│ │ When        Event                                      Stack  Read                           │ │
+│ │ ▶ comment by @alice  11-02 12:00  unread                                                     │ │
+│ │     Comment by @alice                                                                        │ │
+│ │     Can you split this migration?                                                            │ │
+│ │     New comment from @alice                                                                  │ │
+│ │ Selected activity: New comment from @alice                                                   │ │
+│ └──────────────────────────────────────────────────────────────────────────────────────────────┘ │
+│ ┌─ Controls ──────────────────────────────────────────────────────────────────────────────────┐  │
+│ │ mark visible read                                                                            │ │
+│ │ x ignore   tab switch   h help   q quit                                                      │ │
+│ └──────────────────────────────────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘

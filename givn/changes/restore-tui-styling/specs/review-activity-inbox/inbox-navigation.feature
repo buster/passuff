@@ -50,7 +50,7 @@ Feature: Inbox pane styling
     And  the TUI shows "Assignee: @alice"
     And  the TUI shows "Adds the live inbox"
     And  the TUI shows "CI: passing"
-    And  the TUI shows "Pull request acme/api#42"
+    And  the TUI shows "PR - acme/api#42"
     And  the pull request detail border is dim
     And  the pull request detail title is cyan-blue and bold
     And  the pull request detail heading is green and bold

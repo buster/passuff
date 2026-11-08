@@ -9,7 +9,6 @@ from typing import Any
 
 from ..config import AppConfig
 from ..inbox import ActivityInboxService, format_when, record_approximate
-from ..state import load_state
 from ..status import WatchStatusReader
 
 
@@ -87,10 +86,6 @@ def _activity_type(record: dict[str, Any]) -> str:
     return str(record.get("summary", ""))
 
 
-def markdown_lines(text: str) -> list[str]:
-    return [line for line, _role in markdown_styled(text)]
-
-
 def markdown_styled(text: str) -> list[tuple[str, str]]:
     lines: list[tuple[str, str]] = []
     in_code = False
@@ -128,8 +123,8 @@ def _sort_prs(prs: list[dict[str, Any]], sort: str, direction: int) -> list[dict
     return sorted(prs, key=key, reverse=direction < 0)
 
 
-def _box(lines: list[StyledLine], title: str, title_role: str, width: int) -> list[StyledLine]:
-    top = _parts(("┌─ ", "dim"), (title, title_role), (" ", "dim"), ("─" * max(1, width - len(title) - 6), "dim"), ("┐", "dim"))
+def _box(lines: list[StyledLine], title: str, title_role: str, width: int, border_role: str = "dim") -> list[StyledLine]:
+    top = _parts(("┌─ ", border_role), (title, title_role), (" ", border_role), ("─" * max(1, width - len(title) - 6), border_role), ("┐", border_role))
     body = []
     for line in lines:
         text = line.text
@@ -137,9 +132,24 @@ def _box(lines: list[StyledLine], title: str, title_role: str, width: int) -> li
             text = text[: width - 4]
             line = _line(text, line.spans[0].role if line.spans else "bright")
         pad = " " * max(0, width - 4 - len(text))
-        body.append(StyledLine([Span("│ ", "dim")] + line.spans + [Span(pad, "dim"), Span(" │", "dim")]))
-    bottom = _line("└" + "─" * max(1, width - 2) + "┘", "dim")
+        body.append(StyledLine([Span("│ ", border_role)] + line.spans + [Span(pad, border_role), Span(" │", border_role)]))
+    bottom = _line("└" + "─" * max(1, width - 2) + "┘", border_role)
     return [top] + body + [bottom]
+
+
+def _composite(main: list[StyledLine], box: list[StyledLine], width: int) -> list[StyledLine]:
+    box_width = max(len(line.text) for line in box)
+    content_width = width - 4
+    left = max(0, (content_width - box_width) // 2)
+    start = max(1, (len(main) - len(box)) // 2)
+    result = list(main)
+    for offset, box_line in enumerate(box):
+        index = start + offset
+        if index >= len(result):
+            result.append(_line("", "dim"))
+        suffix = " " * max(0, content_width - left - len(box_line.text))
+        result[index] = StyledLine([Span(" " * left, "dim")] + box_line.spans + [Span(suffix, "dim")])
+    return result
 
 
 def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]) -> list[StyledLine]:
@@ -171,7 +181,8 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
     unread = sum(1 for record in service.view(include_read=True) if not record.get("read"))
     focus = view.get("focus", "activity")
     width = max(40, int(view.get("width", 100)))
-    lines: list[StyledLine] = []
+    content_width = width - 4
+    main: list[StyledLine] = []
 
     header: list[Span] = []
     for index, (label, login) in enumerate(reader.accounts()):
@@ -183,49 +194,33 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
     header.append(Span("   |   ", "dim"))
     header.append(Span("watch scope: ", "dim"))
     header.append(Span(reader.scope_line().removeprefix("watch scope: "), "bright"))
-    lines.append(StyledLine(header))
+    main.append(StyledLine(header))
 
     filtered = bool(view.get("filter") or view.get("unread_only"))
     if filtered:
-        filtered_unread = sum(1 for record in activities if not record.get("read"))
-        count = filtered_unread
+        count = sum(1 for record in activities if not record.get("read"))
         visible = len(activities)
     else:
         count = unread
         visible = total_activity
-    counts = [
-        Span(str(count), "gold_bold"),
-        Span(" unread of ", "dim"),
-        Span(str(visible), "bright"),
-    ]
+    counts = [Span(str(count), "gold_bold"), Span(" unread of ", "dim"), Span(str(visible), "bright")]
     if filtered:
         counts.append(Span(f"   (filtered from {total_activity})", "dim"))
-    counts.extend([
-        Span("   |   ", "dim"),
-        Span("Focus: ", "dim"),
-        Span("PRs" if focus == "prs" else "activity", "accent_bold"),
-    ])
-    lines.append(StyledLine(counts))
-
+    counts.extend([Span("   |   ", "dim"), Span("Focus: ", "dim"), Span("PRs" if focus == "prs" else "activity", "accent_bold")])
+    main.append(StyledLine(counts))
     if config.watch.mode == "selected" and not config.watch.repositories:
-        lines.append(_line("watching nothing", "dim"))
+        main.append(_line("watching nothing", "dim"))
 
     watched_focus = focus == "prs"
     watched_border = "green" if watched_focus else "dim"
     watched_title = "green_bold" if watched_focus else "dim"
     direction = "↑" if view.get("sort_direction", 1) > 0 else "↓"
     mode = "all" if view.get("show_ignored") else "filtered"
-    lines.append(_parts(
-        ("── ", watched_border),
-        ("Watched pull requests", watched_title),
-        (f" · {mode} · sort: {view.get('sort', 'updated')} {direction} ", "dim"),
-        ("──", watched_border),
-    ))
+    watched_lines: list[StyledLine] = []
     has_stack = any(pr.get("stack") for pr in prs)
-    watched_headers = "Pull request   State  CI  " + ("☰  " if has_stack else "") + "☺  Title"
-    lines.append(_line(watched_headers, "accent_bold"))
+    watched_lines.append(_line("Pull request   State  CI  " + ("☰  " if has_stack else "") + "☺  Title", "accent_bold"))
     if not prs:
-        lines.append(_line("no watched pull requests", "bright"))
+        watched_lines.append(_line("no watched pull requests", "bright"))
     for index, pr in enumerate(prs):
         selected = index == view.get("pr_index", 0)
         key = _key(pr)
@@ -243,16 +238,14 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
         ignored_mark = " ⊘" if pr.get("key", "").casefold() in ignored else ""
         marker = "▶ " if selected else "  "
         row_role = "dim" if pr.get("key", "").casefold() in ignored else ("gold_bold" if selected else "bright")
-        lines.append(_parts(
-            (marker, "gold_bold" if selected else "dim"),
-            (f"{key}  {pr.get('state')}  CI {pr.get('ci')}{stack_text}{people}{ignored_mark}", row_role),
-        ))
+        watched_lines.append(_parts((marker, "gold_bold" if selected else "dim"), (f"{key}  {pr.get('state')}  CI {pr.get('ci')}{stack_text}{people}{ignored_mark}", row_role)))
         if stack:
-            lines.append(_line(f"    stack {stack.get('number')} base {stack.get('base')}", "dim"))
+            watched_lines.append(_line(f"    stack {stack.get('number')} base {stack.get('base')}", "dim"))
     if prs:
         selected = prs[min(view.get("pr_index", 0), len(prs) - 1)]
-        lines.append(_line(f"Pull request {selected.get('key')}", "bright"))
-        lines.append(_line(f"Selected pull request: {selected.get('key')}", "dim"))
+        watched_lines.append(_line(f"Pull request {selected.get('key')}", "bright"))
+        watched_lines.append(_line(f"Selected pull request: {selected.get('key')}", "dim"))
+    main.extend(_box(watched_lines, f"Watched pull requests · {mode} · sort: {view.get('sort', 'updated')} {direction}", watched_title, content_width, watched_border))
 
     activity_focus = focus != "prs"
     activity_border = "green" if activity_focus else "dim"
@@ -262,98 +255,71 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
         title_suffix = f" · {str(view['filter'])}"
     elif view.get("unread_only"):
         title_suffix = " · unread"
-    lines.append(_parts(
-        ("── ", activity_border),
-        ("Activity", activity_title),
-        (title_suffix + " ", "dim"),
-        ("──", activity_border),
-    ))
-    lines.append(_line("When        Event                                      Stack  Read", "accent_bold"))
+    activity_lines: list[StyledLine] = [_line("When        Event                                      Stack  Read", "accent_bold")]
     if not activities:
-        lines.append(_line("no activity yet", "bright"))
+        activity_lines.append(_line("no activity yet", "bright"))
     for index, record in enumerate(activities[:40]):
         selected = index == view.get("activity_index", 0)
         marker = "▶ " if selected else "  "
         role = "gold_bold" if selected else "bright"
         state_text = "read" if record.get("read") else "unread"
-        lines.append(_parts(
-            (marker, "gold_bold" if selected else "dim"),
-            (f"{_activity_type(record)}  {_when(record)}  {state_text}", role),
-        ))
+        activity_lines.append(_parts((marker, "gold_bold" if selected else "dim"), (f"{_activity_type(record)}  {_when(record)}  {state_text}", role)))
         if record.get("kind") == "comment":
-            lines.append(_line(f"    Comment by @{record.get('actor')}", "dim" if not selected else "gold_bold"))
+            activity_lines.append(_line(f"    Comment by @{record.get('actor')}", "dim" if not selected else "gold_bold"))
         excerpt = " ".join(str(record.get("body") or "").split())[:80]
         if excerpt:
-            lines.append(_line(f"    {excerpt}", "body"))
+            activity_lines.append(_line(f"    {excerpt}", "body"))
         if record.get("summary") and record.get("summary") != _activity_type(record):
-            lines.append(_line(f"    {record.get('summary')}", "dim"))
+            activity_lines.append(_line(f"    {record.get('summary')}", "dim"))
     if view.get("filter"):
         if view.get("filter_stack"):
             selected_pr = next((pr for pr in prs if pr.get("key") == view["filter"]), None)
             stack = (selected_pr or {}).get("stack") or {}
-            lines.append(_line(f"Activity · {str(view['filter']).split('#')[0]} stack {stack.get('number')}", "dim"))
+            activity_lines.append(_line(f"Activity · {str(view['filter']).split('#')[0]} stack {stack.get('number')}", "dim"))
         else:
-            lines.append(_line(f"Activity · {view['filter']}", "dim"))
+            activity_lines.append(_line(f"Activity · {view['filter']}", "dim"))
     elif view.get("unread_only"):
-        lines.append(_line("Activity · unread", "dim"))
+        activity_lines.append(_line("Activity · unread", "dim"))
     if activities:
         record = activities[min(view.get("activity_index", 0), len(activities) - 1)]
-        lines.append(_line(f"Selected activity: {record.get('summary')}", "dim"))
+        activity_lines.append(_line(f"Selected activity: {record.get('summary')}", "dim"))
+    main.extend(_box(activity_lines, "Activity" + title_suffix, activity_title, content_width, activity_border))
 
-    lines.append(_line("Controls", "accent"))
-    lines.append(_line("mark visible read", "dim"))
     ignored_selected = False
     if prs:
         current = prs[min(view.get("pr_index", 0), len(prs) - 1)]
         ignored_selected = current.get("key", "").casefold() in ignored
-    footer = [
-        Span("x", "accent_bold"),
-        Span(" unignore" if ignored_selected else " ignore", "dim"),
-        Span("   ", "dim"),
-        Span("tab", "accent_bold"),
-        Span(" switch", "dim"),
-        Span("   ", "dim"),
-        Span("h", "accent_bold"),
-        Span(" help", "dim"),
-        Span("   ", "dim"),
-        Span("q", "accent_bold"),
-        Span(" quit", "dim"),
+    controls_lines = [
+        _line("mark visible read", "dim"),
+        _parts(("x", "accent_bold"), (" unignore" if ignored_selected else " ignore", "dim"), ("   ", "dim"), ("tab", "accent_bold"), (" switch", "dim"), ("   ", "dim"), ("h", "accent_bold"), (" help", "dim"), ("   ", "dim"), ("q", "accent_bold"), (" quit", "dim")),
     ]
-    lines.append(StyledLine(footer))
     if view.get("status"):
-        lines.append(_line(str(view["status"]), "gold"))
+        controls_lines.append(_line(str(view["status"]), "gold"))
+    main.extend(_box(controls_lines, "Controls", "accent", content_width, "dim"))
 
+    overlay_box: list[StyledLine] | None = None
     overlay = view.get("overlay")
+    overlay_width = min(content_width, max(40, width * 2 // 3))
     if overlay == "help":
         pane = "PRs" if focus == "prs" else "activity"
         heading = "Pull request pane" if pane == "PRs" else "Activity pane"
-        help_lines = [
+        overlay_box = _box([
             _line(heading, "accent_bold"),
             _line("Key reference", "accent_bold"),
             _parts(("mark", "accent_bold"), (" visible read  ", "dim"), ("enter", "accent_bold"), (" open  ", "dim"), ("r", "accent_bold"), (" mark read  ", "dim"), ("a", "accent_bold"), (" mark visible read", "dim")),
             _parts(("tab", "accent_bold"), (" switch  ", "dim"), ("j/k", "accent_bold"), (" move  ", "dim"), ("s", "accent_bold"), (" sort  ", "dim"), ("f", "accent_bold"), (" filter  ", "dim"), ("u", "accent_bold"), (" unread  ", "dim"), ("x", "accent_bold"), (" ignore  ", "dim"), (",", "accent_bold"), (" settings  ", "dim"), ("p", "accent_bold"), (" watch scope  ", "dim"), ("q", "accent_bold"), (" close", "dim")),
-        ]
-        lines.extend(_box(help_lines, "Help", "accent_bold", width - 4))
+        ], "Help", "accent_bold", overlay_width)
     elif overlay == "settings":
         settings_lines: list[StyledLine] = []
-        for index, (label, actual) in enumerate((
-            ("Desktop notifications", "desktop"),
-            ("Sound", "sound"),
-        )):
+        for index, (label, actual) in enumerate((("Desktop notifications", "desktop"), ("Sound", "sound"))):
             enabled = bool(view.get(actual, config.notifications.__getattribute__(actual)))
             selected = int(view.get("settings_index", 0)) == index
             marker = "▶ " if selected else "  "
-            settings_lines.append(_parts(
-                (marker, "gold_bold" if selected else "dim"),
-                (label + ": ", "gold_bold" if selected else "bright"),
-                ("on" if enabled else "off", "green" if enabled else "dim"),
-            ))
+            settings_lines.append(_parts((marker, "gold_bold" if selected else "dim"), (label + ": ", "gold_bold" if selected else "bright"), ("on" if enabled else "off", "green" if enabled else "dim")))
         settings_lines.append(_parts(("j/k", "accent_bold"), (" select  ", "dim"), ("space", "accent_bold"), (" toggle  ", "dim"), ("esc", "accent_bold"), (" close", "dim")))
-        lines.extend(_box(settings_lines, "Settings", "accent_bold", width - 4))
+        overlay_box = _box(settings_lines, "Settings", "accent_bold", overlay_width)
     elif overlay == "picker":
-        picker_lines: list[StyledLine] = [
-            _parts(("Mode: ", "dim"), (str(view.get("picker_mode", config.watch.mode)), "accent_bold")),
-        ]
+        picker_lines: list[StyledLine] = [_parts(("Mode: ", "dim"), (str(view.get("picker_mode", config.watch.mode)), "accent_bold"))]
         known = sorted({pr.get("key", "").split("#", 1)[0] for pr in state.get("pull_requests", {}).values()} | set(config.watch.repositories))
         for index, repo in enumerate(known):
             mark = "[x]" if repo.casefold() in {item.casefold() for item in config.watch.repositories} else "[ ]"
@@ -367,14 +333,15 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
         if not known:
             picker_lines.append(_line("Add: owner/name", "dim"))
         picker_lines.append(_parts(("space", "accent_bold"), (" toggle   ", "dim"), ("esc", "accent_bold"), (" close", "dim")))
-        picker_block = _box(picker_lines, "passuff — Watch scope", "bright_bold", width - 4)
-        picker_block[0] = _parts(("┌─ ", "dim"), ("passuff ", "bright_bold"), ("— Watch scope ", "dim"), ("─" * max(1, width - 30), "dim"), ("┐", "dim"))
-        lines.extend(picker_block)
+        picker_box = _box(picker_lines, "passuff — Watch scope", "bright_bold", overlay_width)
+        top = _parts(("┌─ ", "dim"), ("passuff ", "bright_bold"), ("— Watch scope ", "dim"), ("─" * max(1, overlay_width - 20), "dim"), ("┐", "dim"))
+        picker_box[0] = top
+        overlay_box = picker_box
     elif overlay in {"activity_detail", "pr_detail"}:
         if overlay == "activity_detail":
             records = activities
             if not records:
-                lines.extend(_box([_line("no activity", "dim")], "Activity", "accent_bold", width - 4))
+                overlay_box = _box([_line("no activity", "dim")], "Activity", "accent_bold", overlay_width)
             else:
                 record = records[min(view.get("activity_index", 0), len(records) - 1)]
                 pr = state.get("pull_requests", {}).get(record.get("pull_request")) or {}
@@ -389,6 +356,8 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
                     _line(f"Activity · {pr.get('key')}", "dim"),
                     _line(f"Comment by @{record.get('actor')}" if record.get("kind") == "comment" else str(record.get("summary", "")), "bright"),
                 ]
+                if record.get("kind") == "comment":
+                    detail_lines.append(_line(f"comment by @{record.get('actor')}", "dim"))
                 if record_approximate(record):
                     detail_lines.append(_parts(("When: ", "accent"), (f"~{format_when(record.get('observed_at'))} (fetch time)", "dim")))
                 else:
@@ -405,14 +374,14 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
                 stack = pr.get("stack") or {}
                 if stack:
                     detail_lines.append(_parts(("stack ", "accent"), (f"{stack.get('number')} {stack.get('position')}/{stack.get('size')} base {stack.get('base')}", "dim")))
-                detail_lines.append(_line("─" * max(1, width - 6), "rule"))
+                detail_lines.append(_line("unread" if not record.get("read") else "read", "dim"))
+                detail_lines.append(_line("─" * max(1, overlay_width - 6), "rule"))
                 detail_lines.extend(_line(text, role) for text, role in window)
                 detail_lines.append(_parts(("Enter", "accent_bold"), (" open in browser   ", "dim"), ("Esc/q", "accent_bold"), (" close", "dim")))
-                lines.extend(_box(detail_lines, f"Activity {repo_name}#{number}", "accent_bold", width - 4))
+                overlay_box = _box(detail_lines, f"Activity {repo_name}#{number}", "accent_bold", overlay_width)
         else:
-            prs_now = prs
-            if prs_now:
-                pr = prs_now[min(view.get("pr_index", 0), len(prs_now) - 1)]
+            if prs:
+                pr = prs[min(view.get("pr_index", 0), len(prs) - 1)]
                 body = markdown_styled(pr.get("description") or "")
                 start = int(view.get("detail_scroll", 0))
                 window = body[start:start + 10]
@@ -424,28 +393,32 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
                 ]
                 if pr.get("assignees"):
                     detail_lines.append(_parts(("Assignee: ", "accent"), (", ".join("@" + login for login in pr["assignees"]), "dim")))
+                stack = pr.get("stack") or {}
+                if stack:
+                    detail_lines.append(_parts(("stack ", "accent"), (f"{stack.get('number')} {stack.get('position')}/{stack.get('size')} base {stack.get('base')}", "dim")))
                 detail_lines.append(_line("Description:", "accent_bold"))
                 detail_lines.extend(_line(text, role) for text, role in window)
                 detail_lines.append(_parts(("Enter", "accent_bold"), (" open in browser   ", "dim"), ("Esc/q", "accent_bold"), (" close", "dim")))
-                lines.extend(_box(detail_lines, f"PR - {pr.get('key')}", "accent_bold", width - 4))
+                overlay_box = _box(detail_lines, f"PR - {pr.get('key')}", "accent_bold", overlay_width)
             else:
-                lines.extend(_box([_line("no pull request", "dim")], "PR", "accent_bold", width - 4))
-
+                overlay_box = _box([_line("no pull request", "dim")], "PR", "accent_bold", overlay_width)
     if view.get("save_prompt"):
         prompt_lines = [
             _line("Save sort and filter settings?", "bright"),
             _parts(("y", "accent_bold"), (" yes  ", "dim"), ("n", "accent_bold"), (" no  ", "dim"), ("Esc", "accent_bold"), (" cancel", "dim")),
         ]
-        lines.extend(_box(prompt_lines, "Leave", "accent", width - 4))
+        overlay_box = _box(prompt_lines, "Leave", "accent", overlay_width)
+    if overlay_box is not None:
+        main = _composite(main, overlay_box, width)
 
     top = _parts(("┌─ ", "dim"), ("passuff ", "bright_bold"), ("— Inbox ", "dim"), ("─" * max(1, width - 16), "dim"), ("┐", "dim"))
     body_lines: list[StyledLine] = []
-    for line in lines:
+    for line in main:
         text = line.text
-        if len(text) > width - 4:
-            text = text[: width - 4]
+        if len(text) > content_width:
+            text = text[:content_width]
             line = _line(text, line.spans[0].role if line.spans else "bright")
-        pad = " " * max(0, width - 4 - len(text))
+        pad = " " * max(0, content_width - len(text))
         body_lines.append(StyledLine([Span("│ ", "dim")] + line.spans + [Span(pad, "dim"), Span(" │", "dim")]))
     bottom = _line("└" + "─" * max(1, width - 2) + "┘", "dim")
     return [top] + body_lines + [bottom]
@@ -479,7 +452,3 @@ def render_roles(config: AppConfig, state: dict[str, Any], view: dict[str, Any])
         for line in render_styled(config, state, view)
     ]
     return json.dumps(payload)
-
-
-def render_from_paths(config: AppConfig, state_path, view: dict[str, Any]) -> list[str]:
-    return render(config, load_state(state_path), view)

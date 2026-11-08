@@ -76,12 +76,12 @@ monochrome or unstyled frame.
 `givn spec route` reported no signal. The decisions and rationale are recorded
 directly.
 
-| Proposed capability | Decision | Rationale |
-|---|---|---|
-| `activity-inbox` | `EXTEND activity-inbox` | The main inbox screen, activity detail, and pull-request open affordance are this capability's surface; T25 is its rule. |
-| `inbox-navigation` | `EXTEND inbox-navigation` | Pane focus, filters, help and settings overlays, the save prompt, and the controls bar are navigation behavior. |
-| `stacked-inbox` | `EXTEND stacked-inbox` | The `☰` stack column and stack positions are this capability's presentation. |
-| `watch-scope` | `EXTEND watch-scope` | The scope picker overlay is this capability's presentation. |
+| Proposed capability | Route's recommendation | Decision | Rationale (if you deviated from route) |
+|---|---|---|---|
+| `activity-inbox` | no signal | `EXTEND activity-inbox` | The main inbox screen, activity detail, and pull-request open affordance are this capability's surface; terminal-interface rule 25 is its rule. |
+| `inbox-navigation` | no signal | `EXTEND inbox-navigation` | Pane focus, filters, help and settings overlays, the save prompt, and the controls bar are navigation behavior. |
+| `stacked-inbox` | no signal | `EXTEND stacked-inbox` | The `☰` stack column and stack positions are this capability's presentation. |
+| `watch-scope` | no signal | `EXTEND watch-scope` | The scope picker overlay is this capability's presentation. |
 
 ## Out of Scope
 

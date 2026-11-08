@@ -77,3 +77,40 @@ def saved_ui(context) -> dict:
 def assert_role_digits(context, role: str) -> None:
     spans = _spans(context)
     assert any(span.get("role") == role and str(span.get("text", "")).strip().isdigit() for span in spans), (role, spans)
+
+
+def _line_text(line) -> str:
+    return "".join(str(span.get("text", "")) for span in line)
+
+
+def assert_line_role(context, needle: str, role: str) -> None:
+    lines = frame_roles(context)
+    for line in lines:
+        if needle in _line_text(line):
+            assert any(span.get("role") == role for span in line), (needle, role, line)
+            return
+    raise AssertionError((needle, role, lines))
+
+
+def assert_line_role_any(context, needles, role: str) -> None:
+    lines = frame_roles(context)
+    for line in lines:
+        text = _line_text(line)
+        if any(needle in text for needle in needles) and any(span.get("role") == role for span in line):
+            return
+    raise AssertionError((needles, role, lines))
+
+
+def assert_role_contains(context, role: str, texts) -> None:
+    spans = _spans(context)
+    assert any(span.get("role") == role and any(text in str(span.get("text", "")) for text in texts) for span in spans), (role, texts, spans)
+
+
+def assert_metadata_line_role(context, role: str) -> None:
+    lines = frame_roles(context)
+    for line in lines:
+        text = _line_text(line)
+        if "Status:" in text or "When:" in text:
+            assert any(span.get("role") == role for span in line), (role, line)
+            return
+    raise AssertionError((role, lines))

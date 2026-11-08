@@ -46,7 +46,7 @@ def before_scenario(context, scenario) -> None:
 def after_scenario(context, scenario) -> None:
     world = getattr(context, "world", None)
     if world:
-        if "e2e" in scenario.tags and (world.last is not None or world.watch_lines):
+        if (world.last is not None or world.watch_lines) and (world.frame_roles is not None or "e2e" in scenario.tags):
             import re
 
             change_id = os.environ.get("GIVN_CHANGE_ID")

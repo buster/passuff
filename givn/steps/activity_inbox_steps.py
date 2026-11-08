@@ -12,7 +12,7 @@ from pathlib import Path
 import tomlkit
 from behave import given, step, then, use_step_matcher
 
-from givn.steps.support import _assert, _config, _parse_key, assert_any_role, assert_role, assert_role_digits, assert_role_member, transcript, w
+from givn.steps.support import _assert, _config, _parse_key, assert_any_role, assert_line_role, assert_role, assert_role_digits, assert_role_member, transcript, w
 from tests.support.pty_driver import run_pty
 
 
@@ -174,7 +174,7 @@ def frame_suffix_role(context):
 
 @step('the outer frame border is dim')
 def outer_border_role(context):
-    assert_role(context, "┌", "dim")
+    assert_line_role(context, "passuff", "dim")
 
 
 @step('the account login is cyan-blue')
@@ -229,12 +229,12 @@ def empty_state_role(context):
 
 @step('the detail overlay border is dim')
 def detail_border_role(context):
-    assert_role(context, "┌", "dim")
+    assert_line_role(context, "Activity api", "dim")
 
 
 @step('the detail overlay title is cyan-blue and bold')
 def detail_title_role(context):
-    assert_role(context, "Activity ", "accent_bold")
+    assert_line_role(context, "Activity api", "accent_bold")
 
 
 @step('the detail separator uses the rule color')

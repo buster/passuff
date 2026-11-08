@@ -103,19 +103,91 @@
       "role": "dim"
     },
     {
-      "text": "\u2500\u2500 ",
+      "text": "\u250c\u2500 ",
       "role": "dim"
     },
     {
-      "text": "Watched pull requests",
+      "text": "Watched pull requests \u00b7 filtered \u00b7 sort: updated \u2193",
       "role": "dim"
     },
     {
-      "text": " \u00b7 filtered \u00b7 sort: updated \u2193 ",
+      "text": " ",
       "role": "dim"
     },
     {
-      "text": "\u2500\u2500",
+      "text": "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+      "role": "dim"
+    },
+    {
+      "text": "\u2510",
+      "role": "dim"
+    },
+    {
+      "text": " ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "\u250c\u2500 ",
+      "role": "dim"
+    },
+    {
+      "text": "Activity api#42",
+      "role": "accent_bold"
+    },
+    {
+      "text": " ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+      "role": "dim"
+    },
+    {
+      "text": "\u2510",
+      "role": "dim"
+    },
+    {
+      "text": "                ",
+      "role": "dim"
+    },
+    {
+      "text": "",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Activity \u00b7 acme/api#42",
       "role": "dim"
     },
     {
@@ -125,19 +197,13 @@
     {
       "text": " \u2502",
       "role": "dim"
-    }
-  ],
-  [
+    },
     {
-      "text": "\u2502 ",
+      "text": "               ",
       "role": "dim"
     },
     {
-      "text": "Pull request   State  CI  \u263a  Title",
-      "role": "accent_bold"
-    },
-    {
-      "text": "                                                              ",
+      "text": "",
       "role": "dim"
     },
     {
@@ -151,33 +217,31 @@
       "role": "dim"
     },
     {
-      "text": "\u25b6 ",
-      "role": "gold_bold"
-    },
-    {
-      "text": "acme/api#42  open  CI passing \u263a @octo-personal",
-      "role": "gold_bold"
-    },
-    {
-      "text": "                                                ",
+      "text": "               ",
       "role": "dim"
     },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
     {
       "text": "\u2502 ",
       "role": "dim"
     },
     {
-      "text": "Pull request acme/api#42",
+      "text": "Comment by @alice",
       "role": "bright"
     },
     {
-      "text": "                                                                        ",
+      "text": "                                             ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
       "role": "dim"
     },
     {
@@ -191,11 +255,31 @@
       "role": "dim"
     },
     {
-      "text": "Selected pull request: acme/api#42",
+      "text": "               ",
       "role": "dim"
     },
     {
-      "text": "                                                              ",
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "comment by @alice",
+      "role": "dim"
+    },
+    {
+      "text": "                                             ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
       "role": "dim"
     },
     {
@@ -209,23 +293,35 @@
       "role": "dim"
     },
     {
-      "text": "\u2500\u2500 ",
-      "role": "green"
-    },
-    {
-      "text": "Activity",
-      "role": "green_bold"
-    },
-    {
-      "text": " ",
+      "text": "               ",
       "role": "dim"
     },
     {
-      "text": "\u2500\u2500",
-      "role": "green"
+      "text": "\u2502 ",
+      "role": "dim"
     },
     {
-      "text": "                                                                                  ",
+      "text": "When: ",
+      "role": "accent"
+    },
+    {
+      "text": "11-02 12:00",
+      "role": "dim"
+    },
+    {
+      "text": "                                             ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
       "role": "dim"
     },
     {
@@ -239,11 +335,35 @@
       "role": "dim"
     },
     {
-      "text": "When        Event                                      Stack  Read",
-      "role": "accent_bold"
+      "text": "               ",
+      "role": "dim"
     },
     {
-      "text": "                              ",
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Fetched: ",
+      "role": "accent"
+    },
+    {
+      "text": "11-02 12:00",
+      "role": "dim"
+    },
+    {
+      "text": "                                          ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
       "role": "dim"
     },
     {
@@ -257,12 +377,142 @@
       "role": "dim"
     },
     {
-      "text": "\u25b6 ",
-      "role": "gold_bold"
+      "text": "               ",
+      "role": "dim"
     },
     {
-      "text": "comment by @alice  11-02 12:00  unread",
-      "role": "gold_bold"
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Pull request ",
+      "role": "accent"
+    },
+    {
+      "text": "acme/api#42",
+      "role": "dim"
+    },
+    {
+      "text": "                                      ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Status: ",
+      "role": "accent"
+    },
+    {
+      "text": "open   CI: passing",
+      "role": "dim"
+    },
+    {
+      "text": "                                    ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Creator: ",
+      "role": "accent"
+    },
+    {
+      "text": "@octo-personal",
+      "role": "dim"
+    },
+    {
+      "text": "                                       ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "unread",
+      "role": "dim"
     },
     {
       "text": "                                                        ",
@@ -271,19 +521,13 @@
     {
       "text": " \u2502",
       "role": "dim"
-    }
-  ],
-  [
+    },
     {
-      "text": "\u2502 ",
+      "text": "               ",
       "role": "dim"
     },
     {
-      "text": "    Comment by @alice",
-      "role": "gold_bold"
-    },
-    {
-      "text": "                                                                           ",
+      "text": "",
       "role": "dim"
     },
     {
@@ -297,11 +541,69 @@
       "role": "dim"
     },
     {
-      "text": "    Can you split this migration?",
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+      "role": "rule"
+    },
+    {
+      "text": "  ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Can you split this migration?",
       "role": "body"
     },
     {
-      "text": "                                                               ",
+      "text": "                                 ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
       "role": "dim"
     },
     {
@@ -315,11 +617,43 @@
       "role": "dim"
     },
     {
-      "text": "    New comment from @alice",
+      "text": "               ",
       "role": "dim"
     },
     {
-      "text": "                                                                     ",
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Enter",
+      "role": "accent_bold"
+    },
+    {
+      "text": " open in browser   ",
+      "role": "dim"
+    },
+    {
+      "text": "Esc/q",
+      "role": "accent_bold"
+    },
+    {
+      "text": " close",
+      "role": "dim"
+    },
+    {
+      "text": "                           ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
       "role": "dim"
     },
     {
@@ -333,11 +667,19 @@
       "role": "dim"
     },
     {
-      "text": "Selected activity: New comment from @alice",
+      "text": "               ",
       "role": "dim"
     },
     {
-      "text": "                                                      ",
+      "text": "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+      "role": "dim"
+    },
+    {
+      "text": "               ",
+      "role": "dim"
+    },
+    {
+      "text": "",
       "role": "dim"
     },
     {
@@ -350,20 +692,6 @@
       "text": "\u2502 ",
       "role": "dim"
     },
-    {
-      "text": "Controls",
-      "role": "accent"
-    },
-    {
-      "text": "                                                                                        ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
     {
       "text": "\u2502 ",
       "role": "dim"
@@ -373,7 +701,15 @@
       "role": "dim"
     },
     {
-      "text": "                                                                               ",
+      "text": "                                                                           ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    },
+    {
+      "text": "",
       "role": "dim"
     },
     {
@@ -382,6 +718,10 @@
     }
   ],
   [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
     {
       "text": "\u2502 ",
       "role": "dim"
@@ -431,365 +771,7 @@
       "role": "dim"
     },
     {
-      "text": "                                                         ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u250c\u2500 ",
-      "role": "dim"
-    },
-    {
-      "text": "Activity api#42",
-      "role": "accent_bold"
-    },
-    {
-      "text": " ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
-      "role": "dim"
-    },
-    {
-      "text": "\u2510",
-      "role": "dim"
-    },
-    {
-      "text": " ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "Activity \u00b7 acme/api#42",
-      "role": "dim"
-    },
-    {
-      "text": "                                                                      ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "Comment by @alice",
-      "role": "bright"
-    },
-    {
-      "text": "                                                                           ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "When: ",
-      "role": "accent"
-    },
-    {
-      "text": "11-02 12:00",
-      "role": "dim"
-    },
-    {
-      "text": "                                                                           ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "Fetched: ",
-      "role": "accent"
-    },
-    {
-      "text": "11-02 12:00",
-      "role": "dim"
-    },
-    {
-      "text": "                                                                        ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "Pull request ",
-      "role": "accent"
-    },
-    {
-      "text": "acme/api#42",
-      "role": "dim"
-    },
-    {
-      "text": "                                                                    ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "Status: ",
-      "role": "accent"
-    },
-    {
-      "text": "open   CI: passing",
-      "role": "dim"
-    },
-    {
-      "text": "                                                                  ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "Creator: ",
-      "role": "accent"
-    },
-    {
-      "text": "@octo-personal",
-      "role": "dim"
-    },
-    {
-      "text": "                                                                     ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
-      "role": "rule"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "Can you split this migration?",
-      "role": "body"
-    },
-    {
-      "text": "                                                               ",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    },
-    {
-      "text": "",
-      "role": "dim"
-    },
-    {
-      "text": " \u2502",
-      "role": "dim"
-    }
-  ],
-  [
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "\u2502 ",
-      "role": "dim"
-    },
-    {
-      "text": "Enter",
-      "role": "accent_bold"
-    },
-    {
-      "text": " open in browser   ",
-      "role": "dim"
-    },
-    {
-      "text": "Esc/q",
-      "role": "accent_bold"
-    },
-    {
-      "text": " close",
-      "role": "dim"
-    },
-    {
-      "text": "                                                         ",
+      "text": "                                                     ",
       "role": "dim"
     },
     {

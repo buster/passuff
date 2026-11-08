@@ -7,7 +7,7 @@ original Rust source or its animated recording.
 
 ## Palette
 
-The palette is watn's indexed palette. The `Role` names are the contract; the
+The palette is watn's indexed palette. The role names are the contract; the
 indexed value is the rendering.
 
 | Role | Indexed color | Attributes | Use |

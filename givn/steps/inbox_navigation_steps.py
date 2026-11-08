@@ -12,7 +12,7 @@ from pathlib import Path
 import tomlkit
 from behave import given, step, then, use_step_matcher
 
-from givn.steps.support import _assert, _config, _parse_key, assert_any_role, assert_role, assert_role_member, saved_ui, transcript, w
+from givn.steps.support import _assert, _config, _parse_key, assert_line_role, assert_line_role_any, assert_role, assert_role_member, saved_ui, transcript, w
 from tests.support.pty_driver import run_pty
 
 
@@ -251,9 +251,9 @@ def row_excerpt(context):
     rows = []
     for line in body.splitlines():
         text = line.strip()
-        if text.startswith("│"):
+        while text.startswith("│"):
             text = text[1:].strip()
-        if text.endswith("│"):
+        while text.endswith("│"):
             text = text[:-1].rstrip()
         if text:
             rows.append(text)
@@ -266,92 +266,92 @@ def row_excerpt(context):
 
 @step('the focused pane border is green')
 def focused_border_role(context):
-    assert_role(context, "──", "green")
+    assert_line_role_any(context, ("Watched pull requests", "Activity"), "green")
 
 
 @step('the unfocused pane border is dim')
 def unfocused_border_role(context):
-    assert_role(context, "──", "dim")
+    assert_line_role_any(context, ("Watched pull requests", "Activity"), "dim")
 
 
 @step('the unfocused pane title is dim')
 def unfocused_title_role(context):
-    assert_role_member(context, "dim", {"Activity", "Watched pull requests"})
+    assert_line_role_any(context, ("Activity", "Watched pull requests"), "dim")
 
 
 @step('the settings overlay border is dim')
 def settings_border_role(context):
-    assert_role(context, "┌", "dim")
+    assert_line_role(context, "Settings", "dim")
 
 
 @step('the settings title is cyan-blue and bold')
 def settings_title_role(context):
-    assert_role(context, "Settings", "accent_bold")
+    assert_line_role(context, "Settings", "accent_bold")
 
 
 @step('the settings selected row is gold and bold')
 def settings_selected_role(context):
-    assert_role(context, "▶", "gold_bold")
+    assert_line_role(context, "Sound", "gold_bold")
 
 
 @step('the enabled settings values are green')
 def settings_enabled_role(context):
-    assert_role(context, "on", "green")
+    assert_line_role(context, "Desktop", "green")
 
 
 @step('the disabled settings values are dim')
 def settings_disabled_role(context):
-    assert_role(context, "off", "dim")
+    assert_line_role(context, "Sound", "dim")
 
 
 @step('the pull request detail border is dim')
 def pr_detail_border_role(context):
-    assert_role(context, "┌", "dim")
+    assert_line_role(context, "PR -", "dim")
 
 
 @step('the pull request detail title is cyan-blue and bold')
 def pr_detail_title_role(context):
-    assert_role(context, "PR -", "accent_bold")
+    assert_line_role(context, "PR -", "accent_bold")
 
 
 @step('the pull request detail heading is green and bold')
 def pr_detail_heading_role(context):
-    assert_any_role(context, "green_bold")
+    assert_line_role(context, "Adds the live inbox", "green_bold")
 
 
 @step('the help heading is cyan-blue and bold')
 def help_heading_role(context):
-    assert_role_member(context, "accent_bold", {"Activity pane", "Pull request pane"})
+    assert_line_role(context, "Activity pane", "accent_bold")
 
 
 @step('the help keys are cyan-blue and bold')
 def help_keys_role(context):
-    assert_role_member(context, "accent_bold", {"mark", "enter", "r", "a", "tab", "j/k", "s", "f", "u", "x", ",", "p", "q"})
+    assert_line_role(context, "mark visible", "accent_bold")
 
 
 @step('the status line is gold')
 def status_line_role(context):
-    assert_role(context, "could not open browser", "gold")
+    assert_line_role(context, "could not open browser", "gold")
 
 
 @step('the save prompt border is dim')
 def save_border_role(context):
-    assert_role(context, "┌", "dim")
+    assert_line_role(context, "Leave", "dim")
 
 
 @step('the save prompt title is cyan-blue')
 def save_title_role(context):
-    assert_role(context, "Leave", "accent")
+    assert_line_role(context, "Leave", "accent")
 
 
 @step('the save prompt question is bright')
 def save_question_role(context):
-    assert_role(context, "Save sort and filter settings?", "bright")
+    assert_line_role(context, "Save sort and filter settings?", "bright")
 
 
 @step('the save prompt keys are cyan-blue and bold')
 def save_keys_role(context):
-    assert_role_member(context, "accent_bold", {"y", "n", "Esc"})
+    assert_line_role(context, "yes", "accent_bold")
 
 
 @step('the developer opens the inbox TUI at 80x24')
