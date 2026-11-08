@@ -1,8 +1,8 @@
 # passuff
 
 <!-- givn:begin:coverage-badge -->
-[![Line Coverage: 88%](https://img.shields.io/badge/line%20coverage-88%25-brightgreen)](coverage/cobertura-coverage.xml)
-[![Branch Coverage: 81%](https://img.shields.io/badge/branch%20coverage-81%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Line Coverage: 87%](https://img.shields.io/badge/line%20coverage-87%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Branch Coverage: 80%](https://img.shields.io/badge/branch%20coverage-80%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
 
 ```text
@@ -170,8 +170,8 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
 
-Line coverage: 88% (2081/2366)
-Branch coverage: 81% (729/896)
+Line coverage: 87% (2068/2367)
+Branch coverage: 80% (721/896)
 
 Reproduce the result:
 
