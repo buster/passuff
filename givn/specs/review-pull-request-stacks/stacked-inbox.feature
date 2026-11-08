@@ -16,6 +16,9 @@ Feature: Stacked inbox
     Then  the TUI shows "1/2"
     And  the TUI shows "2/2"
     And  the TUI shows "comment by @alice"
+    And  the stack column header is cyan-blue and bold
+    And  the stack positions are bright
+    And  the selected row is gold and bold
     And  the exit status is 0
 
   @stacked-inbox
