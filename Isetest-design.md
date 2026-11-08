@@ -22,11 +22,11 @@ GREEN without executing a scenario.
 
 ## Method and evidence
 
-The working tree contains no implementation: 0 Python files, 7 permanent
-feature files, 6 use cases, 185 permanent scenarios (18 `@e2e`), arc42 chapters,
-7 ADRs, a glossary, a domain model, and `docs/reference.md`. `givn status`
-initially reported no changes and `givn spec tree` reported the capability
-inventory. `givn lint` reported advisories only.
+The starting working tree contained no implementation: 0 Python files, 7
+permanent feature files, 6 use cases, 185 permanent scenarios (18 `@e2e`), arc42
+chapters, 7 ADRs, a glossary, a domain model, and `docs/reference.md`. `givn
+status` initially reported no changes and `givn spec tree` reported the
+capability inventory. `givn lint` reported advisories only.
 
 The rebuild was planned as the change `python-rebuild`. An independent design
 review (`givn/changes/python-rebuild/design-review.md`) interrogated the
@@ -35,9 +35,23 @@ glossary. Its Q1-Q12 findings are the primary evidence. The change added a
 bounded delta of 18 scenarios, corrected the durable documents, and produced a
 205-task plan.
 
-The rebuild itself has not been executed. A GREEN rebuild is still the only
-complete proof of the Ise test. This report covers the failures that were
-demonstrable before implementation.
+The rebuild was executed after this assessment: the change was implemented,
+reviewed, and archived on 2026-11-08. This report retains the pre-implementation
+findings and adds the post-rebuild visual finding, A14.
+
+### Identifiers used in this report
+
+- `R<n>` — rule `n` in the `## Rules` section of a use case. `R` rules state
+  general command and data behavior; `R1`-`R10` are the inbox rules in
+  `review-activity-inbox`.
+- `T<n>` — terminal-interface rule `n` in the same `## Rules` section. In
+  `review-activity-inbox`, `T1`-`T28` govern the terminal UI. Rule `T25` is the
+  palette rule; rule `T7` is the list-row excerpt and detail-body bound.
+- `A<n>` — finding number in Part A of this report. Finding `A14` is the
+  visual-contract finding.
+- `B<n>` — fix-list item number in Part B. Item `B16` is the visual-evidence
+  gate.
+- `Q<n>` — question number in the independent design review (`Q1`-`Q12`).
 
 ## Verdict
 
@@ -51,6 +65,10 @@ script, and coverage scripts were all part of the deleted code.
 givn's workflow caught the defects through the independent design review. That
 is a real success. The failures below are about what givn made the author and
 reviewer do manually, and what it would have let through without that review.
+
+After the rebuild, the same gap appeared in the visual layer: the text behavior
+passed, but the palette and pane primitives did not, and the text-only E2E
+evidence could not show it (finding A14, the visual-contract finding).
 
 ---
 
@@ -93,8 +111,8 @@ the permanent corpus plus the delta.
 The use case and the executable feature required the full selected comment or
 review body:
 
-- T14 of `givn/specs/review-activity-inbox/usecase.md` required "the selected
-  comment or review body in full, rendered as Markdown";
+- Terminal-interface rule T14 of `givn/specs/review-activity-inbox/usecase.md`
+  required "the selected comment or review body in full, rendered as Markdown";
 - the scenario `The activity detail shows and scrolls a long comment` asserts
   `comment line 40` after `End`.
 
@@ -105,18 +123,19 @@ Three other authorities denied it:
 - `docs/arc42/06-runtime-view.md` said "No comment or review body is shown";
 - the design's persisted state had only a "bounded summary".
 
-T7 also capped the screen at the 80-character excerpt, which is incompatible
-with a long body in the detail.
+Terminal-interface rule T7 (the list-row excerpt and detail-body bound) also
+capped the screen at the 80-character excerpt, which is incompatible with a long
+body in the detail.
 
 Consequence: a rebuilder following the glossary or the runtime view would omit
 the body and pass the E2E detail scenario, which asserted metadata only. A
-rebuilder following T14 would persist a body the state model did not carry.
+rebuilder following rule T14 would persist a body the state model did not carry.
 The specification was not sufficient; it was self-contradictory.
 
 Resolved in the change design: the activity record persists the body with a
 4 KiB bound; the list row keeps the 80-character excerpt; the glossary, arc42
-chapters 5/6/8, T7, and the design data model are corrected; the delta adds a
-`@givn.modified @e2e` assertion for the body.
+chapters 5/6/8, rule T7, and the design data model are corrected; the delta adds
+a `@givn.modified @e2e` assertion for the body.
 
 ## A3. Specified behavior was not executable (critical)
 
@@ -281,6 +300,41 @@ executable corpus.
 Suggested passuff follow-up: either declare `docs/reference.md` derived in its
 first paragraph and point to the owning use cases, or add scenarios for every
 normative bullet. Do not leave two unqualified authorities.
+
+## A14. The visual contract was not executable (high)
+
+The spec does contain visual guidance. Rule T25 — terminal-interface rule 25
+in the `Rules` section of `givn/specs/review-activity-inbox/usecase.md` — names
+watn's palette: dim borders; cyan-blue labels, key hints, and table headers;
+bold key hints; gold selected rows and attention text; green focus borders and
+Markdown headings; muted metadata; bright-gray description and activity body.
+`docs/design/design-system.md` names the pane, table row, overlay, footer, and
+status-line primitives. None of it was executable.
+
+The rebuilt TUI is monochrome and flat. `passuff/tui/app.py` paints every frame
+line with `stdscr.addnstr` and never calls `init_pair`, `color_pair`, `A_BOLD`,
+or `A_DIM`; `passuff/tui/frame.py` returns plain strings, so no color role,
+border, pane, table header, or overlay frame exists in the rendered output. The
+captured Alacritty screenshot at `docs/design/passuff-tui-alacritty.png` shows
+the header, accounts, scope, PR rows with the stack and people markers, activity
+rows, and footer as an unstyled vertical list separated by a 60-character rule.
+
+The E2E evidence could not have caught this. The `@e2e` transcripts under
+`givn/archive/python-rebuild/evidence/visual/` are plain text; the `@e2e`
+assertions are text-substring assertions; the independent review signed
+`VISUAL-REVIEW: PASS` by reading those transcripts. Text transcripts preserve
+content and ordering but not color, attributes, borders, or pane geometry.
+
+Consequence: the rebuild is functionally GREEN and visually divergent. The
+"spec is the test" claim is false for the visual layer: the specification had
+visual guidance, but the executable corpus and its evidence did not.
+
+Suggested passuff/givn follow-up: make the visual contract executable. At
+minimum, add a color- and attribute-aware frame dump (for example an ANSI
+snapshot asserted role by role) and a rendered visual artifact (screenshot or
+terminal-state capture) per user-facing screen; require the visual review to
+compare against rule T25 and the design-system primitives, not only text
+substrings.
 
 ---
 
@@ -473,6 +527,22 @@ guarantee shape. Those were manual design-review findings.
 
 Fix: a `givn lint --specs` mode that includes the spec-integrity checks in B5.
 
+### B16. The E2E visual gate accepts text transcripts as visual evidence
+
+The canonical E2E policy requires a real-interface primary assertion. For a
+terminal product, the real interface is the rendered terminal state. The
+reviewed evidence is `evidence/visual/<slug>/transcript.txt`, which contains
+only the text written to the terminal. It cannot show color pairs, attributes,
+borders, pane geometry, overlays, or cursor state. The review can therefore
+sign `VISUAL-REVIEW: PASS` while the product renders a monochrome flat list
+that contradicts the spec's palette and primitives (A14).
+
+Fix: add a visual-evidence mode that captures the rendered terminal state with
+attributes (ANSI, HTML, or a terminal-state snapshot), and require at least one
+such artifact per user-facing screen. Keep the text transcript as secondary
+evidence. A visual review must be able to fail on a palette or layout
+divergence without a human eye.
+
 ---
 
 # Part C — What givn did right
@@ -501,8 +571,10 @@ reconstruction workflow, and it is the gap this report asks givn to close.
 
 # Part D — Remaining risks after the change
 
-1. The rebuild is still unproven. The 203-entry plan and the GREEN gate are a
-   plan, not evidence.
+1. The rebuild is functionally GREEN (248/248 at `959cec4`, archived) but not
+   fully proven: the visual contract is unverified (finding A14, the
+   visual-contract finding) and the evidence is text-only. The 203-entry plan is
+   no longer the claim; the archived receipt is.
 2. `docs/reference.md` remains a second normative document (A13).
 3. The fake GitHub GraphQL twin defines the external boundary for tests. A
    rebuild can pass the twin and still mismatch the live API; the spec tolerates
@@ -512,24 +584,35 @@ reconstruction workflow, and it is the gap this report asks givn to close.
    good as the steps' assertions.
 5. The macOS bundle is deferred (A10). macOS notification attribution is
    unverified until the packaging change.
-6. The permanent corpus was not re-run after the durable-document corrections;
-   only the delta lint and the design review ran. The first implementation batch
-   is the first real GREEN/red evidence.
+6. The change receipt covers the change scope (248/248 at `959cec4`); the\n   measured coverage boundary still excludes delta-only paths, so those paths are\n   verified by the change scenarios, not by the Cobertura reports.
+7. The visual layer is unverified (finding A14). The archived change signed
+   `VISUAL-REVIEW: PASS` from text transcripts; the rebuilt TUI is monochrome
+   and flat against terminal-interface rule T25 and `docs/design/design-system.md`.
 
 ---
 
 # Appendix — Evidence index
 
+- `givn/archive/python-rebuild/` — the archived change (2026-11-08). The
+  `givn/changes/python-rebuild/...` paths below are pre-archive locations.
 - `givn/changes/python-rebuild/design-review.md` — Q1-Q12, resolutions, and
   `DESIGN-REVIEW: PASS`.
+- `docs/design/passuff-tui-alacritty.png` — captured screenshot of the rebuilt
+  TUI under Alacritty; shows the monochrome flat frame (A14).
+- `givn/archive/python-rebuild/evidence/visual/` — the 18 text transcripts used
+  as the archived change's visual evidence.
+- `givn/specs/review-activity-inbox/usecase.md` terminal-interface rule T25 and
+  `docs/design/design-system.md` — the visual contract that was not executable.
 - `givn/changes/python-rebuild/proposal.md` — acceptance delta, routing,
   out-of-scope, review context.
 - `givn/changes/python-rebuild/design.md` — Python target, runner union, step
   trees, data model, coverage, E2E matrix.
-- `givn/changes/python-rebuild/specs/` — 18 delta scenarios.
+- `givn/changes/python-rebuild/specs/` — 19 delta scenarios.
 - `givn/changes/python-rebuild/arc42.md` — 12-row assessment.
-- `givn/changes/python-rebuild/tasks.md` — 205 tasks, 0 checked.
-- `givn/specs/review-activity-inbox/usecase.md` — T7, T14, R1-R10.
+- `givn/archive/python-rebuild/tasks.md` — 207 tasks, all checked; the change
+  receipt is 248/248.
+- `givn/specs/review-activity-inbox/usecase.md` — terminal-interface rules T7
+  and T14 and inbox rules R1-R10.
 - `givn/specs/watch-pull-requests/usecase.md` — R1-R46.
 - `docs/reference.md` — validation list and exit codes.
 - `docs/arc42/` — chapters 1, 4, 5, 6, 7, 8, 9, 10, 11.
