@@ -2281,7 +2281,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Delta evidence: `givn/changes/python-rebuild/specs/review-activity-inbox/inbox-navigation.feature`; tagged `@givn.added @wip`. Remove `@wip` only when the batch is GREEN.
@@ -2296,13 +2296,28 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Delta evidence: `givn/changes/python-rebuild/specs/review-activity-inbox/inbox-navigation.feature`; tagged `@givn.added @wip`. Remove `@wip` only when the batch is GREEN.
   - Runner: `./scripts/verify.sh --name "The activity list row is bounded to the recorded excerpt"`
   - Step definition: `givn/steps/inbox_navigation_steps.py`
 - [x] COMMIT: 14e0b99b19b4851e203c78ac375f3ce69a863da9 -- Batch: boundary-inbox
+
+- [x] 151a. The stored activity body is bounded to 4 KiB
+
+- Batch: `boundary-body`
+- Tags: @givn.added
+- Use case: `givn/specs/review-activity-inbox/usecase.md`
+- Design constraints:
+  - Contracts: `ActivityInbox` -> `ActivityInboxService`; `SnapshotStore` -> `JsonStateStore`.
+  - Components: `passuff/classify.py`, `passuff/tui/frame.py`.
+  - Rules: T7 boundary; the stored comment or review body is at most 4096 UTF-8 bytes and the detail overlay renders the bounded body.
+  - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
+  - Delta evidence: `givn/changes/python-rebuild/specs/review-activity-inbox/inbox-navigation.feature`; tagged `@givn.added`.
+  - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The stored activity body is bounded to 4 KiB"`
+  - Step definition: `givn/steps/inbox_navigation_steps.py`
+- [x] COMMIT: 7a83b2db117a8bc5eb2f4fd5e670964c89a55e3d -- Batch: boundary-body
 
 
 ## Batch: inbox-navigation
@@ -2314,7 +2329,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "A failed observation keeps the last inbox view"`
@@ -2328,7 +2343,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "A long pull request key keeps its number visible"`
@@ -2342,7 +2357,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "A refresh preserves the selected pull request"`
@@ -2356,7 +2371,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "A stack is marked with a symbol and its position"`
@@ -2370,7 +2385,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "A standalone pull request shows no stack symbol"`
@@ -2384,7 +2399,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "Changing the focus in the picker filters the inbox immediately"`
@@ -2398,7 +2413,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "Marking all read applies to the filtered activity"`
@@ -2412,7 +2427,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The activity detail marks an activity without a reported time as approximate"`
@@ -2426,7 +2441,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The activity detail shows and scrolls a long comment"`
@@ -2440,7 +2455,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The activity detail shows when the activity happened and when it was fetched"`
@@ -2454,7 +2469,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The activity table marks a CI failure as approximate"`
@@ -2468,7 +2483,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The activity table shows when the activity happened"`
@@ -2482,7 +2497,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer closes dialogs with q"`
@@ -2496,7 +2511,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer filters the activity to a pull request"`
@@ -2510,7 +2525,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer filters the activity to a stack"`
@@ -2524,7 +2539,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer filters the activity to unread records"`
@@ -2538,7 +2553,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer ignores and restores a pull request"`
@@ -2552,7 +2567,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer jumps to the ends of the watched list"`
@@ -2566,7 +2581,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer mutes notifications from the settings dialog"`
@@ -2580,7 +2595,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer opens the key reference"`
@@ -2594,7 +2609,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer scrolls the pull request detail"`
@@ -2608,7 +2623,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The developer sorts the watched list"`
@@ -2622,7 +2637,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The focus cycles between watched pull requests and activity"`
@@ -2636,7 +2651,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The inbox keeps observation cheap while nothing changes"`
@@ -2650,7 +2665,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The inbox observes only the open pull request that changed"`
@@ -2664,7 +2679,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The inbox paces observation against the account allowance"`
@@ -2678,7 +2693,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The inbox reconciles open pull requests when the interval elapses"`
@@ -2692,7 +2707,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The pull request description keeps its paragraphs"`
@@ -2706,7 +2721,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The pull request description renders a Markdown subset"`
@@ -2720,7 +2735,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The pull request detail shows its metadata"`
@@ -2734,7 +2749,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The watched pull request selection scrolls"`
@@ -2748,7 +2763,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The watched table hides a pull request outside the focus"`
@@ -2762,7 +2777,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The watched table shows the creator and the assignee"`
@@ -2875,7 +2890,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "Developer navigates the inbox panes" --e2e`
@@ -2890,7 +2905,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
 - Use case: `givn/specs/review-activity-inbox/usecase.md`
 - Design constraints:
   - Contracts: `ActivityInbox` -> `ActivityInboxService`; `StackedInbox` -> `TuiApp frame grouping`; `ObservationSchedule` -> `ObservationSession`.
-  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`, `passuff/tui/frame.py`.
+  - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`, `passuff/tui/session.py`.
   - Rules: `givn/specs/review-activity-inbox/usecase.md` T1-T28; key map from `docs/reference.md`; sort/filter/unread-only/ignored view; live probe + reconciliation; allowance pacing; `--snapshot`, `--keys`, `--observe-for` in milliseconds; main thread owns input and redraw.
   - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
   - Runner: `./scripts/verify.sh --name "The inbox shows activity observed while it is open" --e2e`
