@@ -14,6 +14,19 @@ Feature: Inbox navigation boundary evidence
     And  the TUI does not show "comment line 40"
 
   @givn.added
+  Scenario: The stored activity body is bounded to 4 KiB
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the pull request "acme/api#42" receives a 6000-character comment from "alice"
+    And  passuff runs one check
+    Then  the stored activity body is at most 4096 bytes
+    When  the developer opens the inbox TUI with keys "enter"
+    Then  the TUI shows "body line 1"
+    When  the developer presses "end"
+    Then  the TUI does not show "TAIL MARKER"
+
+  @givn.added
   Scenario: A missing browser opener is reported and keeps the detail
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

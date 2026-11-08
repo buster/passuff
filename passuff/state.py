@@ -132,6 +132,7 @@ def activity_id(number: int) -> str:
 def append_activity(state: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
     number = int(state.get("next_activity_id", 1))
     record = dict(record)
+    record["body"] = str(record.get("body") or "")[:4096]
     record["id"] = activity_id(number)
     record.setdefault("read", False)
     record.setdefault("observed_at", _now())

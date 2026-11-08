@@ -67,14 +67,14 @@ flowchart TB
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
 | `CredentialSource` / `SystemCredentialSource` | Port and environment/command/file/gh credential resolution; tokens never persisted. |
 | `passuff` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. The regular Gherkin harness drives this adapter as a subprocess. |
-| `ActivityInboxService` / `WatchStatusReader` | Build the activity and watch-status read models over the state store; mark activity read; group stacks through `StackGrouper`. |
+| `ActivityInboxService` / `WatchStatusReader` | Build the activity and watch-status read models over the state store; mark activity read; the TUI groups stack members by repository and stack number. |
 | `InboxCli` | Render `status`, `inbox`, and `read` from the read models; no GitHub calls. |
 | `TuiApp` / `passuff-tui` | Render the inbox with the pure frame renderer and curses, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, show an activity detail overlay, return an open intent for the pull request URL, handle keys, and mark records read; the main thread owns input and redraw, and `--snapshot` prints one frame. |
 | `SystemBrowserOpener` | Launch the platform browser with a pull request URL; report a missing or failing opener as a status line. |
 | `ObservationSession` | Decide when to probe, when to run a targeted pass, and when the reconciliation interval has elapsed; deliver the cycle's notifications, keep the last view on failure, and hand updates to the terminal loop. |
 | `TranscriptRenderer` | Render notifications, the per-pass digest, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real platform notification delivery of one digest per check pass; production path on Linux E2E and macOS. |
-| `RecordingDelivery` | Test double under `tests/support/recording_delivery.py` for macOS adapter tests. Not a production component and not E2E evidence. |
+| `RecordingDelivery` | Test double under `tests/support/recording_delivery.py`; records the same title and body for the harness and adapter tests. Not a production component and not E2E evidence. |
 
 ## Level 2 — Key building blocks
 
@@ -161,7 +161,6 @@ persisted state and mark activity read.
 |---|---|
 | `ActivityInboxService` | View activity and its detail; mark one or all records read. |
 | `WatchStatusReader` | View configured accounts, watch scope, watched pull requests, and unread counts. |
-| `StackGrouper` | Group watched pull requests by stack and order members by position. |
 | State version 2 | Bounded activity history (`ActivityRecord`) with a fetch time, an optional occurrence time, the event summary, the selected comment or review body bounded at 4 KiB, each watched pull request's involvement relations, and a monotonic record id counter. |
 | Watch scope | Global all/selected scope applied before observation and to the inbox/status read model; excluded records are hidden and retained in state. |
 
@@ -177,4 +176,4 @@ block, a desktop message, and at most one sound.
 | TranscriptRenderer | Stable summary, per-pass digest with count, event lines, account failures, baselines, and empty-cycle text. |
 | DesktopDelivery | Platform notification delivery of one digest per check pass. |
 | SystemSoundPlayer | Choose the platform player, play the bundled WAV, fall back to the XDG hint. |
-| RecordingDelivery | Record the same title and body for macOS adapter tests and diagnostics. Not E2E evidence. |
+| RecordingDelivery | Record the same title and body for the harness and adapter tests. Not E2E evidence. |

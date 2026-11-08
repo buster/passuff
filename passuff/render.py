@@ -95,27 +95,3 @@ def render_inbox(rows: list[dict[str, Any]], unread: int, total: int, include_re
         lines.append(f"  {key}  {when}  {state}")
     return lines
 
-
-def render_activity_detail(record: dict[str, Any], pr: dict[str, Any] | None) -> list[str]:
-    lines = [
-        f"Activity {record.get('id')}",
-        record.get("summary", ""),
-        f"When: {format_when(record.get('occurred_at') or record.get('observed_at'))}",
-    ]
-    if record.get("observed_at") and record.get("occurred_at"):
-        lines.append(f"Fetched: {format_when(record.get('observed_at'))}")
-    if pr:
-        lines.append(f"Pull request {pr.get('key')}")
-        lines.append(f"Status: {pr.get('state')}   CI: {pr.get('ci')}")
-        lines.append(f"Creator: @{pr.get('creator')}")
-        if pr.get("assignees"):
-            lines.append("Assignee: " + ", ".join("@" + login for login in pr["assignees"]))
-        stack = pr.get("stack") or {}
-        if stack:
-            lines.append(f"stack {stack.get('number')} {stack.get('position')}/{stack.get('size')} base {stack.get('base')}")
-    lines.append("read" if record.get("read") else "unread")
-    if record.get("body"):
-        lines.append("")
-        lines.extend(str(record["body"]).splitlines())
-    lines.append("Enter open in browser")
-    return lines

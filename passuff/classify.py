@@ -44,13 +44,23 @@ def snapshot(pr: PullRequest) -> dict[str, Any]:
     }
 
 
+MAX_BODY_BYTES = 4096
+
+
+def _bounded_body(body: str) -> str:
+    raw = str(body).encode("utf-8")
+    if len(raw) <= MAX_BODY_BYTES:
+        return str(body)
+    return raw[:MAX_BODY_BYTES].decode("utf-8", "ignore")
+
+
 def event(kind: str, summary: str, actor: str, occurred_at: str | None, body: str = "", notify: bool = True, read: bool = False) -> dict[str, Any]:
     return {
         "kind": kind,
         "summary": summary,
         "actor": actor,
         "occurred_at": occurred_at or None,
-        "body": body,
+        "body": _bounded_body(body),
         "notify": notify,
         "read": read,
     }

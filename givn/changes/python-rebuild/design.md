@@ -48,7 +48,9 @@ Rejected alternatives and operator decisions are recorded in `## Decisions` and
 
 The logical architecture is unchanged; the implementation language is replaced.
 The building blocks keep the names used by arc42 chapter 5, now realized as
-Python modules. `RecordingDelivery` is a test double and lives under `tests/`.
+Python modules. `RecordingDelivery` is a test double in `tests/support/` that
+records the same summary and body for the harness and adapter tests; it is not
+macOS E2E evidence.
 
 ### Module layout
 
@@ -60,7 +62,6 @@ passuff/
   __init__.py
   __main__.py            # python -m passuff
   cli.py                 # argument parsing, command dispatch, exit codes
-  composition.py         # composition root: names implementations
   config.py              # ConfigStore, TomlConfigStore, AccountConfig,
                          #   WatchConfig, NotificationsConfig, validation
   credentials.py         # CredentialSource, CredentialMode, GhSession,
@@ -72,7 +73,6 @@ passuff/
                          #   WatcherState, v1 -> v2 migration
   status.py              # WatchStatusReader (WatchStatus)
   inbox.py               # ActivityInboxService (ActivityInbox)
-  stacking.py            # StackGrouper (StackedInbox)
   scope.py               # ScopeEditor
   setup.py               # SetupSession
   render.py              # transcript and digest rendering
@@ -97,7 +97,7 @@ tests/
     __init__.py
     harness.py           # per-scenario twins, subprocess driver
     world.py             # per-scenario temp XDG dirs, config/state fixtures
-    recording_delivery.py# RecordingDelivery test double (macOS only)
+    recording_delivery.py# RecordingDelivery double for the harness and adapter tests
     fake_github.py       # GraphQL twin on 127.0.0.1, query counters, faults
     fake_notifications.py# org.freedesktop.Notifications service for the twin bus
     bin/                 # fake gh, paplay, xdg-open, osascript, afplay
@@ -117,7 +117,7 @@ docs/design/design-system.md  # durable terminal style index (links T25)
 ```mermaid
 flowchart TB
     subgraph adapters["Adapters"]
-        CLI["CLI<br/>passuff.cli + composition.py"]
+        CLI["CLI<br/>passuff.cli"]
         TUI["Terminal inbox<br/>passuff.tui"]
     end
     subgraph core["UI-agnostic core"]
@@ -125,7 +125,6 @@ flowchart TB
         CLASS["ActivityClassifier"]
         STATUS["WatchStatusReader"]
         INBOX["ActivityInboxService"]
-        STACK["StackGrouper"]
         SCOPE["ScopeEditor"]
         SETUP["SetupSession"]
     end
@@ -154,7 +153,6 @@ flowchart TB
     TUI --> CORE
     TUI --> STATUS
     TUI --> INBOX
-    TUI --> STACK
     TUI --> SCOPE
     TUI --> BROWSER
     CORE --> CLASS
@@ -165,7 +163,6 @@ flowchart TB
     CORE --> SOUND
     STATUS --> STORE
     INBOX --> STORE
-    STACK --> STORE
     SCOPE --> CONFIG
     SETUP --> CONFIG
     GH -. implemented by .-> GHAPI
@@ -189,12 +186,12 @@ the consumer-facing surfaces below.
 | `ClassifyActivity` | watch-pull-requests | `PassuffCore` | `passuff.classify.ActivityClassifier` | Event-family policy diverges per account |
 | `WatchStatus` | inspect-watch-status | `CLI` status | `passuff.status.WatchStatusReader` | A second status consumer with a different shape |
 | `ActivityInbox` | review-activity-inbox | `CLI` inbox/read; `TuiApp` | `passuff.inbox.ActivityInboxService` | Activity views diverge per surface |
-| `StackedInbox` | review-pull-request-stacks | `TuiApp` | `passuff.stacking.StackGrouper` | A second stack presentation |
+| `StackedInbox` | review-pull-request-stacks | `TuiApp` | `passuff.tui.frame` stack grouping | A second stack presentation |
 | `WatchScopeEditing` | change-watch-scope | `CLI` scope flags; scope picker | `passuff.scope.ScopeEditor` | A second configuration store or format |
 | `InitialSetup` | set-up-passuff | `CLI` setup; TUI first run | `passuff.setup.SetupSession` | A non-interactive provisioning path |
 | `ConfigStore` | all six | `CLI`, `ScopeEditor`, `SetupSession` | `passuff.config.TomlConfigStore` | A second configuration format |
 | `GitHubGateway` | watch-pull-requests | `PassuffCore` | `passuff.github.GitHubApiAdapter` | A second data source such as webhooks |
-| `SnapshotStore` | watch-pull-requests, review-activity-inbox | `PassuffCore`, `ActivityInboxService`, `WatchStatusReader`, `StackGrouper` | `passuff.state.JsonStateStore` | An alternative durable store |
+| `SnapshotStore` | watch-pull-requests, review-activity-inbox | `PassuffCore`, `ActivityInboxService`, `WatchStatusReader` | `passuff.state.JsonStateStore` | An alternative durable store |
 | `CredentialSource` | watch-pull-requests | `PassuffCore` | `passuff.credentials.SystemCredentialSource` | A new authentication mode |
 | `NotificationPort` | watch-pull-requests | `CLI` watcher/check and `ObservationSession`; `notify-test` | `passuff.notify.DesktopDelivery` | A second delivery channel |
 | `SoundPort` | watch-pull-requests | `CLI` watcher/check and `ObservationSession` | `passuff.sound.SystemSoundPlayer` | An audio-library backend |
@@ -350,8 +347,10 @@ permanent non-E2E suite; 167 scenarios are local and deterministic.
   runner's skipped count is the second guard.
 - The tasks setup task proves strictness with `tests/strictness/`: an undefined
   step fails behave; a `pass`-only body, a docstring-only body, and a skipped
-  scenario each fail either behave or `check_steps.py`; the fixtures are
-  removed after the proof.
+  scenario each fail either behave or `check_steps.py`. The fixtures are retained
+  as the reproducible proof and are not part of the scenario corpus; every
+  normal `verify.sh` scope runs `check_steps.py` over `givn/steps/` and
+  `givn/e2e_steps/`, so a no-op body cannot bypass the audit.
 
 ### Commands
 
@@ -375,13 +374,17 @@ the permanent target below.
 
 | Capability | Regular step file | E2E step file | Permanent merge target |
 |---|---|---|---|
-| `pr-activity-notification` | `givn/steps/pr_activity_notification_steps.py` | none | same file |
-| `watch-status` | `givn/steps/watch_status_steps.py` | none | same file |
+| `pr-activity-notification` | `givn/steps/pr_activity_notification_steps.py` | `givn/e2e_steps/pr_activity_notification_e2e.py` | same file |
+| `watch-status` | `givn/steps/watch_status_steps.py` | `givn/e2e_steps/watch_status_e2e.py` | same file |
 | `activity-inbox` | `givn/steps/activity_inbox_steps.py` | `givn/e2e_steps/activity_inbox_e2e.py` | both files |
 | `inbox-navigation` | `givn/steps/inbox_navigation_steps.py` | `givn/e2e_steps/inbox_navigation_e2e.py` | both files |
-| `stacked-inbox` | `givn/steps/stacked_inbox_steps.py` | none | same file |
+| `stacked-inbox` | `givn/steps/stacked_inbox_steps.py` | `givn/e2e_steps/stacked_inbox_e2e.py` | same file |
 | `watch-scope` | `givn/steps/watch_scope_steps.py` | `givn/e2e_steps/watch_scope_e2e.py` | both files |
 | `initial-setup` | `givn/steps/initial_setup_steps.py` | `givn/e2e_steps/initial_setup_e2e.py` | both files |
+
+Each E2E file imports its capability's regular bindings and defines only the
+phrases that capability's `@e2e` scenarios need beyond the shared set; a
+capability with no E2E-only phrase is a staged import.
 
 `givn/steps/common.py` holds the shared phrase bindings imported by both trees,
 so no phrase is bound twice in one run. `givn/steps/` and `givn/e2e_steps/` are
@@ -399,7 +402,7 @@ instead of the regular tree.
 | inspect-watch-status / `watch-status` | Status sections, human labels, unread and total counts, state errors | `WatchStatusReader` over `JsonStateStore` | `Developer sees the watch state` |
 | review-activity-inbox / `activity-inbox` | Activity read model, ids, read state, detail with the full body, terminal layout, keys, palette, list-row excerpt, no secrets (R1-R10, T1-T28) | `ActivityInboxService`, `JsonStateStore`, `TuiApp` frame renderer | `Developer lists unread activity`; `Developer marks activity read`; `Developer opens the inbox TUI`; `Developer opens an activity's details` (delta adds the body); `Developer opens the pull request from an activity` |
 | review-activity-inbox / `inbox-navigation` | Focus, movement, sort, filter, unread-only, ignored visibility, dialogs, live observation | `TuiApp`, `ObservationSession` | `Developer navigates the inbox panes`; `The inbox shows activity observed while it is open`; delta `The activity list row is bounded to the recorded excerpt`; delta `A missing browser opener is reported and keeps the detail` |
-| review-pull-request-stacks / `stacked-inbox` | Stack number, size, position, base, standalone rows, rejected-stack retry | `StackGrouper`, `TuiApp` | `Developer reviews a stacked inbox`; delta `A rejected stack query retries once and shows standalone rows` |
+| review-pull-request-stacks / `stacked-inbox` | Stack number, size, position, base, standalone rows, rejected-stack retry | `TuiApp` frame renderer | `Developer reviews a stacked inbox`; delta `A rejected stack query retries once and shows standalone rows` |
 | change-watch-scope / `watch-scope` | Scope mode, known repositories, catch-up, atomic write, focus, all-mode deselect refusal, duplicate rejection | `ScopeEditor`, `TomlConfigStore`, picker in `TuiApp` | `Developer toggles a repository in the watch scope`; `Developer switches the watch scope mode`; `Developer narrows the focus in the watch scope`; delta `Deselecting a repository in all mode is refused`; delta `Duplicate watch scope entries are rejected` |
 | set-up-passuff / `initial-setup` | Prompt order, validation, no stored token, TUI first run | `SetupSession`, `TomlConfigStore` | `Developer sets up passuff on first run` |
 
@@ -429,7 +432,8 @@ rejected alternatives:
   test twin serves `org.freedesktop.Notifications`. Rejected: a
   recording-only delivery adapter for every assertion; it would not exercise
   the specified platform surface. Cost: the fake service and a private bus.
-  `RecordingDelivery` is a macOS-only test double under `tests/support/`.
+  `RecordingDelivery` is a recording test double under `tests/support/`; it is
+  not E2E evidence.
   Realized in `passuff/notify.py` and `tests/support/fake_notifications.py`.
 - `Decides V5 (GitHub twin)`: an in-process GraphQL server on loopback.
   Rejected: a containerized mock; the only external service is GitHub, the
@@ -453,7 +457,8 @@ Screens covered: the transcript, the inbox, pull request detail, activity
 detail, help, settings, scope picker, save prompt, and setup prompts. No screen
 changes visibly; the rebuild reproduces them. The activity detail now includes
 the selected comment or review body, as T14 and the long-comment scenario
-already require; the list row keeps the 80-character excerpt (T7).
+already require; the list renders the stored body's first 80 characters as the
+row excerpt (T7).
 
 - Accessibility: keyboard-only operation for every action, text plus symbols
   (never color alone), and no color requirement in the assertions.
@@ -468,8 +473,9 @@ already require; the list row keeps the 80-character excerpt (T7).
 - **E2E runner command**: `./scripts/verify.sh --e2e` with
   `GIVN_RESULT_SCOPE=e2e`; it selects the permanent and delta `@e2e` scenarios.
 - **E2E step definitions**: `givn/e2e_steps/`, one file per capability, loaded
-  by `behave --stage e2e` through `givn/e2e_environment.py`. Shared phrases are
-  imported from `givn/steps/common.py`; no phrase is bound twice in one run.
+  by `behave --stage e2e` through `givn/e2e_environment.py`. Each file imports
+  the capability's regular bindings; shared phrases come from
+  `givn/steps/common.py`; no phrase is bound twice in one run.
 - **Local infrastructure**: fake GitHub GraphQL on `127.0.0.1:<ephemeral>`;
   private D-Bus session with the fake Notifications service; fake `gh`,
   `paplay`, `xdg-open` on a prepended `PATH`; temp `XDG_CONFIG_HOME` and
@@ -493,7 +499,7 @@ already require; the list row keeps the 80-character excerpt (T7).
 | watch-status: show the watch state | Developer sees the watch state | CLI | subprocess `passuff status`; assert transcript and exit code |
 | activity-inbox: list unread | Developer lists unread activity | CLI | subprocess `passuff inbox`; assert transcript |
 | activity-inbox: mark read | Developer marks activity read | CLI | subprocess `passuff read <id>`; assert transcript and state file |
-| activity-inbox: open the TUI | Developer opens the inbox TUI | Terminal UI | `passuff-tui --observe --snapshot`; assert the frame; a pty smoke starts the interactive loop and quits with `q` |
+| activity-inbox: open the TUI | Developer opens the inbox TUI | Terminal UI | `passuff-tui --observe --snapshot`; assert the frame. The pty smoke is the regular scenario `The developer starts the inbox TUI binary`. |
 | activity-inbox: open a detail | Developer opens an activity's details (delta adds the body) | Terminal UI | `passuff-tui --observe --snapshot --keys "enter"`; assert metadata and the comment body |
 | activity-inbox: open the pull request | Developer opens the pull request from an activity | Terminal UI + browser | `--snapshot --keys "enter,enter"` with fake `xdg-open`; assert URL log |
 | inbox-navigation: navigate panes | Developer navigates the inbox panes | Terminal UI | `passuff-tui --snapshot --keys "tab,j"`; assert focus and selection |
@@ -542,8 +548,8 @@ implementation is incomplete.
   (`tests/support/bin/gh`), Linux notifications (private D-Bus plus
   `tests/support/fake_notifications.py`), sound players
   (`tests/support/bin/paplay`), browser opener (`tests/support/bin/xdg-open`),
-  and macOS `osascript`/`afplay` plus `RecordingDelivery` for platform-adapter
-  tests only.
+  macOS `osascript`/`afplay` twins for the documented macOS smoke, and
+  `RecordingDelivery` for the harness and adapter tests.
 - **Anticipated interface obstacles and fixes**:
   - Curses needs a TTY: frame assertions use the specified `--snapshot`; one
     smoke test uses `tests/support/pty_driver.py` to start the real loop and

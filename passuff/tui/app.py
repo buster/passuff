@@ -12,15 +12,13 @@ from typing import Any
 
 from ..browser import BrowserError, SystemBrowserOpener
 from ..config import ConfigError, RELATIONS, load_config, update_ignored
-from ..core import PassuffCore
-from ..inbox import ActivityInboxService, WatchStatusReader, parse_time
-from ..notify import DeliveryError, DesktopDelivery
-from ..render import digest
+from ..inbox import ActivityInboxService, parse_time
 from ..scope import ScopeEditor
 from ..setup import SetupError, run_setup
-from ..sound import SoundError, SystemSoundPlayer
 from ..state import StateError, load_state, load_ui, save_state, save_ui
+from ..status import WatchStatusReader
 from .frame import render
+from .session import ObservationSession
 
 KEYS = {
     "comma": ",",
@@ -318,58 +316,11 @@ def apply_key(key: str, config, state_path, config_path, view: dict[str, Any]) -
         return
 
 
-def _deliver(config, report) -> None:
-    payload = digest(report)
-    if payload is None:
-        return
-    summary, body = payload
-    if config.notifications.desktop:
-        try:
-            DesktopDelivery(enabled=True, urgency=config.notifications.urgency).send(summary, body)
-        except DeliveryError as exc:
-            print(str(exc), file=sys.stderr)
-    if config.notifications.sound:
-        try:
-            SystemSoundPlayer(enabled=True).play(config.notifications.sound_file)
-        except SoundError as exc:
-            print(str(exc), file=sys.stderr)
-
-
-def _observe(config, state_path, view, duration_ms: int | None = None) -> None:
-    state = load_state(state_path)
-    core = PassuffCore(config, state, state_path, interactive=False)
-    deadline = time.monotonic() + (duration_ms or 0) / 1000.0
-    while True:
-        report = core.check_cycle()
-        _deliver(config, report)
-        if duration_ms is None:
-            return
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            return
-        time.sleep(min(config.poll_interval_secs, remaining))
-
-
 def _interactive(config, state_path, config_path, view) -> int:
     import curses
 
     stop = threading.Event()
-    lock = threading.Lock()
-
-    def worker():
-        state = load_state(state_path)
-        core = PassuffCore(config, state, state_path, interactive=True)
-        while not stop.is_set():
-            try:
-                report = core.check_cycle()
-                _deliver(config, report)
-                delay = max(config.poll_interval_secs, report.next_delay)
-            except Exception:
-                delay = config.poll_interval_secs
-            stop.wait(delay)
-
-    thread = threading.Thread(target=worker, daemon=True)
-    thread.start()
+    ObservationSession(config, state_path, interactive=True).start(stop)
 
     def loop(stdscr):
         curses.curs_set(0)
@@ -468,7 +419,7 @@ def main(argv: list[str] | None = None) -> int:
         view["overlay"] = "picker"
         view["picker_mode"] = config.watch.mode
     if args.observe or args.observe_for is not None:
-        _observe(config, state_path, view, args.observe_for)
+        ObservationSession(config, state_path, interactive=False).run_for(args.observe_for)
     if args.keys:
         valid = {"tab", "backtab", "j", "down", "k", "up", "r", "a", "q", "enter", "esc", "left", "right", "pageup", "pagedown", "home", "end", "x", "comma", "space", "s", "S", "f", "F", "u", "c", "C", "h", "H", "F1", "p", "m"}
         tokens = [item.strip() for item in args.keys.split(",")]

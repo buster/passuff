@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import threading
 from pathlib import Path
+
+from .recording_delivery import RecordingDelivery
 
 
 class FakeNotifications:
@@ -26,6 +27,7 @@ class FakeNotifications:
         from dbus_next.service import ServiceInterface, method
 
         log_path = self.log_path
+        delivery = RecordingDelivery(log_path)
 
         class Notifications(ServiceInterface):
             def __init__(self) -> None:
@@ -33,8 +35,7 @@ class FakeNotifications:
 
             @method()
             def Notify(self, app_name: "s", replaces_id: "u", app_icon: "s", summary: "s", body: "s", actions: "as", hints: "a{sv}", expire_timeout: "i") -> "u":
-                with open(log_path, "a", encoding="utf-8") as handle:
-                    handle.write(json.dumps({"summary": summary, "body": body}) + "\n")
+                delivery.record(summary, body)
                 return 1
 
             @method()

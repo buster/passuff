@@ -1,0 +1,3 @@
+#!/bin/sh
+printf "%s\n" "$*" >> "${PASSUFF_NOTIFY_LOG:-/dev/null}"
+exit 0

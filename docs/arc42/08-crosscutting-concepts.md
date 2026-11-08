@@ -232,9 +232,9 @@ still verifies the permanent behavior. Every scenario drives the real CLI or TUI
 as a subprocess. On Linux, E2E scenarios spawn the real CLI against a local
 GraphQL twin on loopback and a private `dbus-daemon` session with a mock
 `org.freedesktop.Notifications` service, so the real platform notification path
-is exercised. On macOS, a platform-adapter test uses the `RecordingDelivery`
-test double under `tests/support/`; the manual desktop smoke covers the real
-surface. The permanent corpus runs on Linux. A fake sound player and browser
+is exercised. On macOS, the `RecordingDelivery` test double under
+`tests/support/` records the same title and body for adapter tests; the manual
+desktop smoke covers the real surface. The permanent corpus runs on Linux. A fake sound player and browser
 opener record invocations. `--snapshot` asserts the same pure frame renderer the curses loop
 uses; one pty smoke test starts the interactive loop. Coverage runs the regular
 and E2E scopes separately, instruments the `passuff` package in every

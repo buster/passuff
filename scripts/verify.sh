@@ -44,6 +44,8 @@ if [ "$STRICT" = 1 ]; then
   exit "$fail"
 fi
 
+"$PY" "$ROOT/scripts/check_steps.py" --path "$ROOT/givn/steps" --path "$ROOT/givn/e2e_steps" || exit 1
+
 shopt -s nullglob
 PERM=("$ROOT"/givn/specs/*/*.feature)
 DELTA=("$ROOT"/givn/changes/python-rebuild/specs/*/*.feature)

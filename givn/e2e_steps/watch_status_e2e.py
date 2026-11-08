@@ -1,1 +1,3 @@
-"""E2E bindings for watch_status; shared phrases come from givn/steps/common.py."""
+"""E2E bindings for watch-status; regular bindings are imported."""
+
+from givn.steps import watch_status_steps  # noqa: F401

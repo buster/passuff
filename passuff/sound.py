@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 PLAYERS = ("paplay", "pw-play", "aplay", "canberra-gtk-play")
+MACOS_PLAYERS = ("afplay",)
 
 
 class SoundError(Exception):
@@ -26,7 +28,8 @@ class SystemSoundPlayer:
             return
         path = default_sound() if sound_file == "default" else Path(sound_file).expanduser()
         player = None
-        for name in PLAYERS:
+        candidates = MACOS_PLAYERS if sys.platform == "darwin" else PLAYERS
+        for name in candidates:
             if shutil.which(name):
                 player = name
                 break

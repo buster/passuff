@@ -73,7 +73,7 @@
 | Notifications | Platform notification surface | Covers Linux D-Bus and macOS notifications. |
 | Sound | Bundled WAV + system player | Avoids ALSA/CoreAudio build dependencies. |
 | CLI | Command-line argument parser | Stable help, version, and error handling. |
-| Tests | `behave` + local GraphQL twin + Linux D-Bus fake + fake `gh`, sound, browser; recording delivery for macOS | Real CLI and TUI in every scenario; real platform notification path on Linux; deterministic local twins. |
+| Tests | `behave` + local GraphQL twin + Linux D-Bus fake + fake `gh`, sound, browser; a recording delivery double for the harness | Real CLI and TUI in every scenario; real platform notification path on Linux; deterministic local twins. |
 | Terminal UI | stdlib `curses` + pure text frame renderer | Deterministic `--snapshot` frames; matches the watn terminal design language; a second binary in `passuff`. |
 | Coverage | Coverage tool with separate scopes | Produces the required non-E2E and E2E Cobertura reports. |
 

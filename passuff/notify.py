@@ -6,7 +6,6 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 
 class DeliveryError(Exception):
@@ -14,20 +13,15 @@ class DeliveryError(Exception):
 
 
 class DesktopDelivery:
-    def __init__(self, *, enabled: bool = True, urgency: str = "normal", recording_path: Path | None = None) -> None:
+    def __init__(self, *, enabled: bool = True, urgency: str = "normal") -> None:
         self.enabled = enabled
         self.urgency = urgency
-        self.recording_path = recording_path
 
     def send(self, summary: str, body: str) -> None:
         if not self.enabled:
             return
         if os.environ.get("PASSUFF_DESKTOP_UNAVAILABLE") == "1":
             raise DeliveryError("desktop notification failed: unavailable")
-        if self.recording_path is not None:
-            with open(self.recording_path, "a", encoding="utf-8") as handle:
-                handle.write(json.dumps({"summary": summary, "body": body}) + "\n")
-            return
         if sys.platform == "darwin":
             self._send_macos(summary, body)
         else:

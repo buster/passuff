@@ -12,12 +12,13 @@ from typing import Any
 from .browser import BrowserError, SystemBrowserOpener
 from .config import AppConfig, ConfigError, load_config
 from .core import PassuffCore
-from .inbox import ActivityInboxService, WatchStatusReader
+from .inbox import ActivityInboxService
 from .notify import DeliveryError, DesktopDelivery
 from .render import digest, render_check, render_inbox, render_status
 from .setup import SetupError, run_setup
 from .sound import SoundError, SystemSoundPlayer
 from .state import StateError, load_state, save_state
+from .status import WatchStatusReader
 
 VERSION = "0.2.0"
 

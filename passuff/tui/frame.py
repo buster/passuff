@@ -6,8 +6,9 @@ import re
 from typing import Any
 
 from ..config import AppConfig
-from ..inbox import ActivityInboxService, WatchStatusReader, format_when, record_approximate
+from ..inbox import ActivityInboxService, format_when, record_approximate
 from ..state import load_state
+from ..status import WatchStatusReader
 
 
 def markdown_lines(text: str) -> list[str]:
@@ -156,6 +157,9 @@ def render(config: AppConfig, state: dict[str, Any], view: dict[str, Any]) -> li
         lines.append(f"  {_activity_type(record)}  {_when(record)}  {state_text}")
         if record.get("kind") == "comment":
             lines.append(f"    Comment by @{record.get('actor')}")
+        excerpt = " ".join(str(record.get("body") or "").split())[:80]
+        if excerpt:
+            lines.append(f"    {excerpt}")
         if record.get("summary") and record.get("summary") != _activity_type(record):
             lines.append(f"    {record.get('summary')}")
     if view.get("filter"):
