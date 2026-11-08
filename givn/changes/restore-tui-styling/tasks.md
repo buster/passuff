@@ -14,7 +14,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
   - Save prompt: `q` opens `Save sort and filter settings?` when the sort, direction, filters, ignored view, or notification settings changed; `y` persists, `n` discards, `Esc` cancels; no prompt without a change.
   - Strictness: `check_steps.py` runs in every normal scope; new steps start with `raise NotImplementedError`.
 - Evidence: change 264/264, regular 247/247, E2E 22/22; `./scripts/verify.sh --strictness` exits 0; `check_steps.py` reports no no-op bodies.
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: styled-frame
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: styled-frame
 
 ## Batch: activity-inbox
 
@@ -26,7 +26,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`, `passuff/tui/app.py`.
 - Step files: `givn/steps/activity_inbox_steps.py`, `givn/steps/common.py`; E2E `givn/e2e_steps/activity_inbox_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "Developer opens the inbox TUI"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: activity-inbox
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: activity-inbox
 
 - [x] 2. Developer opens an activity's details
 
@@ -36,7 +36,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`.
 - Step files: `givn/steps/activity_inbox_steps.py`, `givn/steps/common.py`; E2E `givn/e2e_steps/activity_inbox_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "Developer opens an activity's details"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: activity-inbox
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: activity-inbox
 
 - [x] 3. An ignored row is dim and marked
 
@@ -46,7 +46,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`.
 - Step files: `givn/steps/activity_inbox_steps.py`; E2E `givn/e2e_steps/activity_inbox_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "An ignored row is dim and marked"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: activity-inbox
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: activity-inbox
 
 - [x] 4. The empty inbox uses the primary text
 
@@ -56,7 +56,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`.
 - Step files: `givn/steps/activity_inbox_steps.py`; E2E `givn/e2e_steps/activity_inbox_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The empty inbox uses the primary text"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: activity-inbox
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: activity-inbox
 
 ## Batch: inbox-navigation
 
@@ -68,7 +68,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`, `passuff/tui/app.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`, `givn/steps/common.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "Developer navigates the inbox panes"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 6. The settings overlay follows the palette
 
@@ -78,7 +78,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`, `passuff/tui/app.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The settings overlay follows the palette"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 7. The pull request detail shows its metadata
 
@@ -88,7 +88,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`, `givn/steps/common.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The pull request detail shows its metadata"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 8. The developer opens the key reference
 
@@ -98,7 +98,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The developer opens the key reference"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 9. A missing browser opener is reported and keeps the detail
 
@@ -108,7 +108,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`, `passuff/tui/app.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "A missing browser opener is reported and keeps the detail"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 10. The 80x24 frame keeps the composition
 
@@ -118,7 +118,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`, `passuff/tui/app.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The 80x24 frame keeps the composition"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 11. The developer confirms saving settings on quit
 
@@ -128,7 +128,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The developer confirms saving settings on quit"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 12. The developer discards settings on quit
 
@@ -138,7 +138,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The developer discards settings on quit"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 13. The developer cancels the quit from the save prompt
 
@@ -148,7 +148,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The developer cancels the quit from the save prompt"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 - [x] 14. The developer quits without a save prompt when settings are unchanged
 
@@ -158,7 +158,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/app.py`, `passuff/tui/frame.py`.
 - Step files: `givn/steps/inbox_navigation_steps.py`; E2E `givn/e2e_steps/inbox_navigation_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The developer quits without a save prompt when settings are unchanged"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: inbox-navigation
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: inbox-navigation
 
 ## Batch: stacked-inbox
 
@@ -170,7 +170,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`.
 - Step files: `givn/steps/stacked_inbox_steps.py`, `givn/steps/common.py`; E2E `givn/e2e_steps/stacked_inbox_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "Developer reviews a stacked inbox"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: stacked-inbox
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: stacked-inbox
 
 ## Batch: watch-scope
 
@@ -182,7 +182,7 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Components: `passuff/tui/frame.py`.
 - Step files: `givn/steps/watch_scope_steps.py`; E2E `givn/e2e_steps/watch_scope_e2e.py`.
 - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The scope picker renders the watn palette"`
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: watch-scope
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: watch-scope
 
 ## Batch: docs-and-verification
 
@@ -191,13 +191,13 @@ Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E 
 - Batch: `docs-and-verification`
 - Design constraints: `docs/design/design-system.md` records the exact palette and composition; `docs/glossary.md` adds `Watn palette`, `Palette role`, `Styled frame`, `Role record`, and `Rendered snapshot`; arc42 chapters 1/4/5/6/8/10/11/12 and `docs/domain-model.md` reflect the visual contract and the save prompt.
 - Evidence: `docs/design/design-system.md`, `docs/glossary.md`, `docs/arc42/*`, `givn/changes/restore-tui-styling/arc42.md`.
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: docs-and-verification
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: docs-and-verification
 
 - [x] 18. Record the change, regular, and E2E evidence
 
 - Batch: `docs-and-verification`
 - Evidence: change 264/264, regular 247/247, E2E 22/22; `./scripts/verify.sh --strictness` exits 0; `check_steps.py` clean; the verification receipt is generated by `givn check tasks`.
-- [x] COMMIT: d13d99ef65bd289dbe55627358589a38a1bd0159 -- Batch: docs-and-verification
+- [x] COMMIT: 91422ab088b4233c718ca9f49776c7bea32f6c9a -- Batch: docs-and-verification
 
 ## Batch: settings-persistence
 
