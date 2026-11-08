@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "change": "restore-tui-styling",
+  "status": "passed",
+  "head": "003179ab7b7c7967a1ff047fe34388505b42c3b4",
+  "features_path": "givn/changes/restore-tui-styling/specs",
+  "features_digest": "8be39130ef1b48a25ed96c00ae99314fe24565cdd1b65e761090d749ad8971ba",
+  "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+  "command": "./scripts/verify.sh",
+  "tested_content_digest": "7f17a3fdd90eb8ee0dc6367f1518b982e139718ab287e38029cb984397766839",
+  "content_scope": "change-proof/v1",
+  "runner_exit": 0,
+  "result": {
+    "scope": null,
+    "total": 263,
+    "passed": 263,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finished_at_unix": 1794164026
+}
