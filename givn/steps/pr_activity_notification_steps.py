@@ -168,6 +168,14 @@ def account_empty_token(context, label):
 
 use_step_matcher("re")
 
+
+def _replace_config(world, key, value):
+    world.write_config(force=True)
+    doc = tomlkit.parse(world.config_text())
+    doc[key] = value
+    world.config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+
+
 @step(r'a configuration with (?!watch repositories)(?P<case>.+)')
 def configuration_case(context, case):
     world = w(context)
@@ -189,6 +197,76 @@ def configuration_case(context, case):
         world.poll = 0
         world.dirty = True
         world.write_config(force=True)
+    elif case == "no accounts":
+        world.write_config(force=True)
+        doc = tomlkit.parse(world.config_text())
+        del doc["accounts"]
+        world.config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    elif case == "an empty account label":
+        world.write_config(force=True)
+        doc = tomlkit.parse(world.config_text())
+        table = doc["accounts"]["personal"]
+        del doc["accounts"]["personal"]
+        doc["accounts"][""] = table
+        world.config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    elif case == "a reconciliation interval below one second":
+        world.reconcile = 0
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "a watch repository that is not owner/repo":
+        world.watch_mode = "selected"
+        world.repositories = ["not-a-repo"]
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "a duplicate watch repository":
+        world.watch_mode = "selected"
+        world.repositories = ["acme/api", "ACME/API"]
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "an ignored pull request that is not owner/repo#number":
+        world.ignored = ["not-a-key"]
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "a duplicate ignored pull request":
+        world.ignored = ["acme/api#1", "acme/api#1"]
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "whitespace in github_user":
+        world.accounts["personal"]["github_user"] = "octo personal"
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "a sound_file that is not a readable file":
+        world.notifications_config["sound_file"] = str(world.tmp / "missing.wav")
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "an invalid watch mode":
+        world.watch_mode = "bogus"
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "an invalid notification urgency":
+        world.notifications_config["urgency"] = "urgent"
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "a graphql_url that is not HTTP(S)":
+        world.accounts["personal"]["graphql_url"] = "ftp://example.com/graphql"
+        world.dirty = True
+        world.write_config(force=True)
+    elif case == "a watch table that is not a table":
+        _replace_config(world, "watch", "nope")
+    elif case == "a focus table that is not a table":
+        _replace_config(world, "focus", 1)
+    elif case == "an events table that is not a table":
+        _replace_config(world, "events", True)
+    elif case == "a notifications table that is not a table":
+        _replace_config(world, "notifications", "nope")
+    elif case == "an account that is not a table":
+        world.write_config(force=True)
+        doc = tomlkit.parse(world.config_text())
+        doc["accounts"]["personal"] = "nope"
+        world.config_path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    elif case == "an unreadable configuration file":
+        world.write_config(force=True)
+        world.config_path.chmod(0)
     else:
         raise AssertionError("unknown configuration case: " + case)
 

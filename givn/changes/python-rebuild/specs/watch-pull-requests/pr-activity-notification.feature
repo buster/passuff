@@ -14,6 +14,24 @@ Feature: Pull request activity boundary evidence
       | invalid TOML | invalid TOML |
       | a plain HTTP GitHub address outside loopback | plain HTTP |
       | a poll interval below one second | poll_interval_secs |
+      | no accounts | no accounts are configured |
+      | an empty account label | account label must not be empty |
+      | a reconciliation interval below one second | reconciliation_interval_secs |
+      | a watch repository that is not owner/repo | repository must be owner/repo |
+      | a duplicate watch repository | duplicate repository |
+      | an ignored pull request that is not owner/repo#number | ignored pull request must be owner/repo#number |
+      | a duplicate ignored pull request | duplicate ignored pull request |
+      | whitespace in github_user | github_user must not contain whitespace |
+      | a sound_file that is not a readable file | sound_file is not a readable file |
+      | a watch table that is not a table | watch must be a table |
+      | a focus table that is not a table | focus must be a table |
+      | an events table that is not a table | events must be a table |
+      | a notifications table that is not a table | notifications must be a table |
+      | an invalid watch mode | watch.mode must be all or selected |
+      | an invalid notification urgency | notifications.urgency must be low, normal, or critical |
+      | an account that is not a table | account personal must be a table |
+      | a graphql_url that is not HTTP(S) | graphql_url must use https |
+      | an unreadable configuration file | configuration file cannot be read |
 
   @givn.added
   Scenario: A missing configuration is a configuration error
