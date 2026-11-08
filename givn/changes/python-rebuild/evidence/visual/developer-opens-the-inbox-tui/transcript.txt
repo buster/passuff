@@ -1,0 +1,16 @@
+passuff — Inbox
+personal @octo-personal
+watch scope: all authored pull requests
+1 unread of 1
+sort: updated ↓
+────────────────────────────────────────────────────────────
+▶ acme/api#42  open  CI passing ☺ @octo-personal
+Pull request acme/api#42
+Selected pull request: acme/api#42
+  comment by @alice  11-02 12:00  unread
+    Comment by @alice
+    New comment from @alice
+Selected activity: New comment from @alice
+mark visible read
+x ignore   tab switch   h help   q quit
+Focus: activity

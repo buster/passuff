@@ -78,15 +78,15 @@ Rebuild the product from the permanent specification alone:
 `givn spec route` reported no signal: the top candidates tie, and no ranked
 list is printed. The decision below is recorded directly.
 
-| Proposed capability | Decision | Rationale |
-|---|---|---|
-| `pr-activity-notification` | `EXTEND pr-activity-notification` | The behavior is permanent; the delta makes already-specified configuration, GitHub, state, CLI, and delivery error paths executable. |
-| `watch-status` | `REUSE` permanent capability, no delta | The status read model is already specified; the rebuild reproduces it. |
-| `activity-inbox` | `EXTEND activity-inbox` | The delta adds the E2E body assertion that T14 and the long-comment scenario already require. |
-| `inbox-navigation` | `EXTEND inbox-navigation` | The delta adds the 80-character list-row excerpt and the browser-opener failure path. |
-| `stacked-inbox` | `EXTEND stacked-inbox` | The delta makes the already-specified stack-field rejection and one-retry fallback executable. |
-| `watch-scope` | `EXTEND watch-scope` | The delta makes the already-specified all-mode deselect rejection and duplicate-scope rejection executable. |
-| `initial-setup` | `REUSE` permanent capability, no delta | The first-run prompt flow is already specified; the rebuild reproduces it. |
+| Proposed capability | Route's recommendation | Decision | Rationale (if you deviated from route) |
+|---|---|---|---|
+| pr-activity-notification | no signal | EXTEND pr-activity-notification | The behavior is permanent; the delta makes already-specified configuration, GitHub, state, CLI, and delivery error paths executable. |
+| watch-status | no signal | REUSE permanent capability, no delta | The status read model is already specified; the rebuild reproduces it. |
+| activity-inbox | no signal | EXTEND activity-inbox | The delta adds the E2E body assertion that T14 and the long-comment scenario already require. |
+| inbox-navigation | no signal | EXTEND inbox-navigation | The delta adds the 80-character list-row excerpt and the browser-opener failure path. |
+| stacked-inbox | no signal | EXTEND stacked-inbox | The delta makes the already-specified stack-field rejection and one-retry fallback executable. |
+| watch-scope | no signal | EXTEND watch-scope | The delta makes the already-specified all-mode deselect rejection and duplicate-scope rejection executable. |
+| initial-setup | no signal | REUSE permanent capability, no delta | The first-run prompt flow is already specified; the rebuild reproduces it. |
 
 The change no longer skips the `specs` artifact. The delta is a bounded spec
 completion: it adds scenarios for already-specified behavior, not new behavior.

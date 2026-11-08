@@ -1,0 +1,19 @@
+passuff — Inbox
+personal not resolved
+watch scope: acme/api
+0 unread of 0
+sort: updated ↓
+────────────────────────────────────────────────────────────
+no watched pull requests
+no activity yet
+mark visible read
+x ignore   tab switch   h help   q quit
+Focus: activity
+Watch scope
+Mode: selected
+[x] acme/api
+Focus
+[x] authored
+[x] assigned
+[x] review requested
+[x] team review

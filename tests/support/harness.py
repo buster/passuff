@@ -44,6 +44,16 @@ def before_scenario(context, scenario) -> None:
 def after_scenario(context, scenario) -> None:
     world = getattr(context, "world", None)
     if world:
+        if "e2e" in scenario.tags and world.last is not None:
+            import re
+            from pathlib import Path
+
+            from .world import REPO
+
+            slug = re.sub(r"[^a-z0-9]+", "-", scenario.name.lower()).strip("-")
+            path = REPO / "givn" / "changes" / "python-rebuild" / "evidence" / "visual" / slug / "transcript.txt"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(world.last.text, encoding="utf-8")
         world.cleanup()
     time.sleep(0.1)
 

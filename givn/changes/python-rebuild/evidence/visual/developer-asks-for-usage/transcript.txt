@@ -1,0 +1,24 @@
+usage: passuff [-h] [--config CONFIG] [--state STATE] [--verbose]
+               [--no-desktop] [--no-sound] [--version]
+               {check,status,inbox,read,setup,notify-test} ...
+
+Multi-account GitHub pull request inbox and notifier
+
+positional arguments:
+  {check,status,inbox,read,setup,notify-test}
+    check               run one observation pass
+    status              show accounts, scope, watched pull requests, and
+                        unread count
+    inbox               list unread activity
+    read                mark activity read
+    setup               create the configuration interactively
+    notify-test         send a test notification and play the configured sound
+
+options:
+  -h, --help            show this help message and exit
+  --config CONFIG
+  --state STATE
+  --verbose
+  --no-desktop
+  --no-sound
+  --version             show program's version number and exit
