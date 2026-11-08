@@ -97,6 +97,9 @@ class World:
         self._after_done = False
         self.tui_args: list[str] | None = None
         self.tui_keys: list[str] = []
+        self.frame_roles: list | None = None
+        self.last_ansi: str | None = None
+        self.tui_size: tuple[int, int] | None = None
         self.watch_proc: subprocess.Popen | None = None
         self.watch_lines: list[str] = []
         self.watch_lock = threading.Lock()
@@ -428,6 +431,8 @@ class World:
         if getattr(self, "gh_missing", False):
             bindir = self._ghless_bin
             omit_system = True
+        if self.tui_size is not None:
+            env["COLUMNS"], env["LINES"] = str(self.tui_size[0]), str(self.tui_size[1])
         path = str(bindir) + os.pathsep + str(PYTHON.parent)
         if not omit_system:
             path += os.pathsep + os.environ.get("PATH", "")
@@ -482,6 +487,7 @@ class World:
             self.write_config()
         if args is None:
             args = ["--snapshot"]
+        self._pre_ui = self.ui_path.read_text(encoding="utf-8") if self.ui_path.exists() else None
         cmd = self._command(True) + args
         try:
             result = subprocess.run(
@@ -504,13 +510,80 @@ class World:
         return self.run_tui(self.tui_args)
 
     def press(self, key: str) -> Result:
+        if not self.tui_keys and self.tui_args is not None and "--keys" in self.tui_args:
+            index = self.tui_args.index("--keys")
+            if index + 1 < len(self.tui_args) and self.tui_args[index + 1]:
+                self.tui_keys = [item for item in self.tui_args[index + 1].split(",") if item]
         self.tui_keys.append(key)
         args = list(self.tui_args if self.tui_args is not None else ["--snapshot"])
         if "--keys" in args:
             index = args.index("--keys")
-            args = args[:index] + args[index + 1:]
+            args = args[:index] + args[index + 2:]
         args = args + ["--keys", ",".join(self.tui_keys)]
         return self.run_tui(args)
+
+    def _capture_args(self) -> list[str]:
+        args = list(self.tui_args if self.tui_args is not None else ["--snapshot"])
+        cleaned: list[str] = []
+        index = 0
+        while index < len(args):
+            arg = args[index]
+            if arg == "--observe":
+                index += 1
+                continue
+            if arg == "--observe-for":
+                index += 2
+                continue
+            if arg == "--keys":
+                if self.tui_keys:
+                    index += 2
+                else:
+                    cleaned.extend([arg, args[index + 1]] if index + 1 < len(args) else [arg])
+                    index += 2
+                continue
+            cleaned.append(arg)
+            index += 1
+        if "--snapshot" not in cleaned:
+            cleaned.append("--snapshot")
+        if self.tui_keys:
+            cleaned += ["--keys", ",".join(self.tui_keys)]
+        return cleaned
+
+    def _run_capture(self, args: list[str]) -> subprocess.CompletedProcess:
+        if not getattr(self, "suppress_config_write", False):
+            self.write_config()
+        cmd = self._command(True) + args
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=60, env=self._base_env(), cwd=str(REPO))
+
+    def _restore_pre_ui(self) -> None:
+        if getattr(self, "_pre_ui", None) is None:
+            self.ui_path.unlink(missing_ok=True)
+        else:
+            self.ui_path.write_text(self._pre_ui, encoding="utf-8")
+
+    def capture_roles(self) -> None:
+        post = self.ui_path.read_text(encoding="utf-8") if self.ui_path.exists() else None
+        self._restore_pre_ui()
+        result = self._run_capture(self._capture_args() + ["--roles"])
+        if post is None:
+            self.ui_path.unlink(missing_ok=True)
+        else:
+            self.ui_path.write_text(post, encoding="utf-8")
+        try:
+            self.frame_roles = json.loads(result.stdout)
+        except (ValueError, TypeError):
+            self.frame_roles = []
+
+    def capture_ansi(self) -> None:
+        post = self.ui_path.read_text(encoding="utf-8") if self.ui_path.exists() else None
+        self._restore_pre_ui()
+        result = self._run_capture(self._capture_args() + ["--ansi"])
+        if post is None:
+            self.ui_path.unlink(missing_ok=True)
+        else:
+            self.ui_path.write_text(post, encoding="utf-8")
+        self.last_ansi = result.stdout
+
 
     def observe(self, keys: list[str] | None = None) -> None:
         if keys:

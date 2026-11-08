@@ -1,0 +1,13 @@
+┌─ passuff — Inbox ────────────────────────────────────────────────────────────────────────────────────┐
+│ personal not resolved   |   watch scope: all authored pull requests                              │
+│ 0 unread of 0   |   Focus: activity                                                              │
+│ ── Watched pull requests · filtered · sort: updated ↓ ──                                         │
+│ Pull request   State  CI  ☺  Title                                                               │
+│ no watched pull requests                                                                         │
+│ ── Activity ──                                                                                   │
+│ When        Event                                      Stack  Read                               │
+│ no activity yet                                                                                  │
+│ Controls                                                                                         │
+│ mark visible read                                                                                │
+│ x ignore   tab switch   h help   q quit                                                          │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘

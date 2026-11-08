@@ -40,6 +40,8 @@
 | R-034 | The desktop digest body lists at most five pull requests, so the remaining pull requests appear only in the terminal transcript. | Low | Low | The title names the total activity and pull request count; the transcript lists every pull request and event. |
 | R-035 | Reported and fetch times share one list, so an approximate event can sort above a reported event that happened later. | Medium | Low | The `~` marker keeps an estimate visible as an estimate; the detail popup shows both times, and ordering uses the same effective time the row shows. |
 | R-036 | `team-review-requested-user:@me` may be unavailable on an older GitHub version, so team-requested pull requests stop being discovered. | Low | Medium | The search failure is logged at `warn`; the account is not failed, the other queries still run, and authored, assigned, and direct review requests keep working. |
+| R-037 | The palette or composition drifts from the durable design system, or a terminal without 256-color support renders fallback colors. | Medium | Low | The palette values and composition are recorded in `docs/design/design-system.md`; the styled snapshot and role record are terminal-independent; curses falls back to named colors when the indexed palette is unavailable. |
+| R-038 | The save-on-quit prompt interrupts a quit or loses a settings change. | Low | Low | The prompt appears only when the sort, direction, filters, ignored view, or notification settings changed; `y` persists, `n` discards, `Esc` cancels; the scenario asserts the persisted sort. |
 
 ## Technical debt
 

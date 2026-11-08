@@ -341,9 +341,13 @@ Enter.
 1. The binary loads configuration and the `ActivityInboxService` and
    `WatchStatusReader` views; a configuration error exits 2, a state error
    exits 3.
-2. `--snapshot` renders one frame with the pure frame renderer and exits 0.
-3. Interactive mode enters the alternate screen, draws the accounts, scope,
-   watched pull requests, and activity list.
+2. `--snapshot` renders one styled frame and exits 0; `--snapshot --ansi`
+   preserves the palette and `--snapshot --roles` emits the role record.
+3. Interactive mode enters the alternate screen and draws the outer frame,
+   header, watched table, activity table, and controls bar.
 4. `j`/`k` adjust the selection; `r` marks the selected record, `a` everything;
    the view reloads and the selection clamps.
-5. `q`/Escape restores the terminal and exits 0.
+5. `q` opens the save prompt when the sort, direction, filters, ignored view, or
+   notification settings changed; `y` persists and exits, `n` discards and
+   exits, and `Esc` cancels the quit. Without a change, `q` exits without a
+   prompt. Escape closes a focused dialog before it can quit.

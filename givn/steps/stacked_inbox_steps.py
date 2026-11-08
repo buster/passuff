@@ -12,7 +12,7 @@ from pathlib import Path
 import tomlkit
 from behave import given, step, then, use_step_matcher
 
-from givn.steps.support import _assert, _config, _parse_key, transcript, w
+from givn.steps.support import _assert, _config, _parse_key, assert_role, transcript, w
 from tests.support.pty_driver import run_pty
 
 
@@ -30,3 +30,13 @@ def tui_order(context, first, second):
 @step('the GitHub stack fields are rejected for "{repo}"')
 def stack_rejected(context, repo):
     w(context).fake.stack_rejected = True
+
+
+@step('the stack column header is cyan-blue and bold')
+def stack_header_role(context):
+    assert_role(context, "☰", "accent_bold")
+
+
+@step('the stack positions are bright')
+def stack_positions_role(context):
+    assert_role(context, "2/2", "bright")

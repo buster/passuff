@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import os
 import signal
 import subprocess
 import time
+from pathlib import Path
 
-from .world import World
+from .world import REPO, World
 
 _DBUS_PID = None
 
@@ -46,15 +48,23 @@ def after_scenario(context, scenario) -> None:
     if world:
         if "e2e" in scenario.tags and (world.last is not None or world.watch_lines):
             import re
-            from pathlib import Path
 
-            from .world import REPO
-
-            slug = re.sub(r"[^a-z0-9]+", "-", scenario.name.lower()).strip("-")
-            path = REPO / "givn" / "changes" / "python-rebuild" / "evidence" / "visual" / slug / "transcript.txt"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            text = world.last.text if world.last is not None else "".join(world.watch_lines)
-            path.write_text(text, encoding="utf-8")
+            change_id = os.environ.get("GIVN_CHANGE_ID")
+            if not change_id:
+                roots = [item for item in (REPO / "givn" / "changes").glob("*") if (item / "specs").is_dir()]
+                change_id = roots[0].name if len(roots) == 1 else None
+            if change_id:
+                slug = re.sub(r"[^a-z0-9]+", "-", scenario.name.lower()).strip("-")
+                path = REPO / "givn" / "changes" / change_id / "evidence" / "visual" / slug
+                path.mkdir(parents=True, exist_ok=True)
+                if world.tui_args is not None and world.last is not None:
+                    world.capture_ansi()
+                text = world.last.text if world.last is not None else "".join(world.watch_lines)
+                (path / "transcript.txt").write_text(text, encoding="utf-8")
+                if world.last_ansi is not None:
+                    (path / "transcript.ansi").write_text(world.last_ansi, encoding="utf-8")
+                if world.frame_roles is not None:
+                    (path / "roles.json").write_text(json.dumps(world.frame_roles, indent=2), encoding="utf-8")
         world.cleanup()
     time.sleep(0.1)
 

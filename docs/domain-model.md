@@ -148,3 +148,7 @@ read-model role and a configuration-edit role; the latter is not part of
 Activity Review. The model is complete for the six approved capabilities,
 including initial setup; `python-rebuild` preserves this structure and changes
 only the implementation language.
+
+## Visual layer
+
+The styled frame, palette roles, and role record are presentation terms. The visual layer adds no domain structure, aggregate, or relationship.

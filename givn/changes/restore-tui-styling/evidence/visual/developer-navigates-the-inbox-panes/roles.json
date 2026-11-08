@@ -1,0 +1,470 @@
+[
+  [
+    {
+      "text": "\u250c\u2500 ",
+      "role": "dim"
+    },
+    {
+      "text": "passuff ",
+      "role": "bright_bold"
+    },
+    {
+      "text": "\u2014 Inbox ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500",
+      "role": "dim"
+    },
+    {
+      "text": "\u2510",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "personal",
+      "role": "bright"
+    },
+    {
+      "text": " ",
+      "role": "bright"
+    },
+    {
+      "text": "@octo-personal",
+      "role": "accent"
+    },
+    {
+      "text": "   |   ",
+      "role": "dim"
+    },
+    {
+      "text": "watch scope: ",
+      "role": "dim"
+    },
+    {
+      "text": "all authored pull requests",
+      "role": "bright"
+    },
+    {
+      "text": "                           ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "1",
+      "role": "gold_bold"
+    },
+    {
+      "text": " unread of ",
+      "role": "dim"
+    },
+    {
+      "text": "1",
+      "role": "bright"
+    },
+    {
+      "text": "   |   ",
+      "role": "dim"
+    },
+    {
+      "text": "Focus: ",
+      "role": "dim"
+    },
+    {
+      "text": "PRs",
+      "role": "accent_bold"
+    },
+    {
+      "text": "                                                                  ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2500\u2500 ",
+      "role": "green"
+    },
+    {
+      "text": "Watched pull requests",
+      "role": "green_bold"
+    },
+    {
+      "text": " \u00b7 filtered \u00b7 sort: updated \u2193 ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2500\u2500",
+      "role": "green"
+    },
+    {
+      "text": "                                        ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Pull request   State  CI  \u263a  Title",
+      "role": "accent_bold"
+    },
+    {
+      "text": "                                                              ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "  ",
+      "role": "dim"
+    },
+    {
+      "text": "acme/api#42  open  CI passing \u263a @octo-personal",
+      "role": "bright"
+    },
+    {
+      "text": "                                                ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "\u25b6 ",
+      "role": "gold_bold"
+    },
+    {
+      "text": "acme/api#43  open  CI passing \u263a @octo-personal",
+      "role": "gold_bold"
+    },
+    {
+      "text": "                                                ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Pull request acme/api#43",
+      "role": "bright"
+    },
+    {
+      "text": "                                                                        ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Selected pull request: acme/api#43",
+      "role": "dim"
+    },
+    {
+      "text": "                                                              ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2500\u2500 ",
+      "role": "dim"
+    },
+    {
+      "text": "Activity",
+      "role": "dim"
+    },
+    {
+      "text": " ",
+      "role": "dim"
+    },
+    {
+      "text": "\u2500\u2500",
+      "role": "dim"
+    },
+    {
+      "text": "                                                                                  ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "When        Event                                      Stack  Read",
+      "role": "accent_bold"
+    },
+    {
+      "text": "                              ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "\u25b6 ",
+      "role": "gold_bold"
+    },
+    {
+      "text": "comment by @alice  11-02 12:00  unread",
+      "role": "gold_bold"
+    },
+    {
+      "text": "                                                        ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "    Comment by @alice",
+      "role": "gold_bold"
+    },
+    {
+      "text": "                                                                           ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "    Review this",
+      "role": "body"
+    },
+    {
+      "text": "                                                                                 ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "    New comment from @alice",
+      "role": "dim"
+    },
+    {
+      "text": "                                                                     ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Selected activity: New comment from @alice",
+      "role": "dim"
+    },
+    {
+      "text": "                                                      ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "Controls",
+      "role": "accent"
+    },
+    {
+      "text": "                                                                                        ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "mark visible read",
+      "role": "dim"
+    },
+    {
+      "text": "                                                                               ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2502 ",
+      "role": "dim"
+    },
+    {
+      "text": "x",
+      "role": "accent_bold"
+    },
+    {
+      "text": " ignore",
+      "role": "dim"
+    },
+    {
+      "text": "   ",
+      "role": "dim"
+    },
+    {
+      "text": "tab",
+      "role": "accent_bold"
+    },
+    {
+      "text": " switch",
+      "role": "dim"
+    },
+    {
+      "text": "   ",
+      "role": "dim"
+    },
+    {
+      "text": "h",
+      "role": "accent_bold"
+    },
+    {
+      "text": " help",
+      "role": "dim"
+    },
+    {
+      "text": "   ",
+      "role": "dim"
+    },
+    {
+      "text": "q",
+      "role": "accent_bold"
+    },
+    {
+      "text": " quit",
+      "role": "dim"
+    },
+    {
+      "text": "                                                         ",
+      "role": "dim"
+    },
+    {
+      "text": " \u2502",
+      "role": "dim"
+    }
+  ],
+  [
+    {
+      "text": "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+      "role": "dim"
+    }
+  ]
+]

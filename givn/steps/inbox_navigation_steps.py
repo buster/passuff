@@ -12,7 +12,7 @@ from pathlib import Path
 import tomlkit
 from behave import given, step, then, use_step_matcher
 
-from givn.steps.support import _assert, _config, _parse_key, transcript, w
+from givn.steps.support import _assert, _config, _parse_key, assert_any_role, assert_role, assert_role_member, saved_ui, transcript, w
 from tests.support.pty_driver import run_pty
 
 
@@ -248,9 +248,119 @@ def desktop_enabled_ui(context):
 @step('the activity list row excerpt is at most 80 characters')
 def row_excerpt(context):
     body = transcript(context)
-    rows = [line.strip() for line in body.splitlines() if line.strip() and line.startswith("    ")]
+    rows = []
+    for line in body.splitlines():
+        text = line.strip()
+        if text.startswith("│"):
+            text = text[1:].strip()
+        if text.endswith("│"):
+            text = text[:-1].rstrip()
+        if text:
+            rows.append(text)
     excerpts = [line for line in rows if line.startswith("comment line")]
     assert excerpts, body
     for line in excerpts:
         assert len(line) <= 80, line
     assert "comment line 40" not in body, body
+
+
+@step('the focused pane border is green')
+def focused_border_role(context):
+    assert_role(context, "──", "green")
+
+
+@step('the unfocused pane border is dim')
+def unfocused_border_role(context):
+    assert_role(context, "──", "dim")
+
+
+@step('the unfocused pane title is dim')
+def unfocused_title_role(context):
+    assert_role_member(context, "dim", {"Activity", "Watched pull requests"})
+
+
+@step('the settings overlay border is dim')
+def settings_border_role(context):
+    assert_role(context, "┌", "dim")
+
+
+@step('the settings title is cyan-blue and bold')
+def settings_title_role(context):
+    assert_role(context, "Settings", "accent_bold")
+
+
+@step('the settings selected row is gold and bold')
+def settings_selected_role(context):
+    assert_role(context, "▶", "gold_bold")
+
+
+@step('the enabled settings values are green')
+def settings_enabled_role(context):
+    assert_role(context, "on", "green")
+
+
+@step('the disabled settings values are dim')
+def settings_disabled_role(context):
+    assert_role(context, "off", "dim")
+
+
+@step('the pull request detail border is dim')
+def pr_detail_border_role(context):
+    assert_role(context, "┌", "dim")
+
+
+@step('the pull request detail title is cyan-blue and bold')
+def pr_detail_title_role(context):
+    assert_role(context, "PR -", "accent_bold")
+
+
+@step('the pull request detail heading is green and bold')
+def pr_detail_heading_role(context):
+    assert_any_role(context, "green_bold")
+
+
+@step('the help heading is cyan-blue and bold')
+def help_heading_role(context):
+    assert_role_member(context, "accent_bold", {"Activity pane", "Pull request pane"})
+
+
+@step('the help keys are cyan-blue and bold')
+def help_keys_role(context):
+    assert_role_member(context, "accent_bold", {"mark", "enter", "r", "a", "tab", "j/k", "s", "f", "u", "x", ",", "p", "q"})
+
+
+@step('the status line is gold')
+def status_line_role(context):
+    assert_role(context, "could not open browser", "gold")
+
+
+@step('the save prompt border is dim')
+def save_border_role(context):
+    assert_role(context, "┌", "dim")
+
+
+@step('the save prompt title is cyan-blue')
+def save_title_role(context):
+    assert_role(context, "Leave", "accent")
+
+
+@step('the save prompt question is bright')
+def save_question_role(context):
+    assert_role(context, "Save sort and filter settings?", "bright")
+
+
+@step('the save prompt keys are cyan-blue and bold')
+def save_keys_role(context):
+    assert_role_member(context, "accent_bold", {"y", "n", "Esc"})
+
+
+@step('the developer opens the inbox TUI at 80x24')
+def open_tui_80x24(context):
+    world = w(context)
+    world.tui_size = (80, 24)
+    world.open_tui(["--snapshot"])
+
+
+@step('the saved sort is "{value}"')
+def saved_sort(context, value):
+    assert saved_ui(context).get("sort", "updated") == value, saved_ui(context)

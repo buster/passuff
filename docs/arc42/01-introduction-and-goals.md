@@ -39,6 +39,10 @@ The authoritative behaviour is in six use cases:
 [`set-up-passuff`](../../givn/specs/set-up-passuff/usecase.md),
 with their feature files under `givn/specs/`.
 
+The visual contract in `docs/design/design-system.md` refines the
+terminal-interface goal: it specifies how the existing screens are rendered and
+adds no new goal.
+
 ## Quality goals
 
 | Priority | Quality attribute | Motivation |

@@ -62,14 +62,15 @@ flowchart TB
 | `PullRequestStack` | Value object carrying the stack number, size, position, and ultimate base on a watched pull request; absent means standalone. |
 | `WatchMode` / `WatchConfig` | Explicit all/selected scope; an empty selected set observes none. |
 | `ScopeEditor` | Edit the watch scope atomically and preserve unrelated configuration; the watcher derives catch-up from the previous scope and retained records. |
-| `ScopePicker` | Terminal screen for the scope mode, known repositories, manual entry, and errors. |
+| `ScopePicker` | The scope picker screen (mode, known repositories, manual entry, and errors), rendered by `TerminalPresentation` over `ScopeEditor`. |
 | `SetupSession` | Line-based first-run prompts, validation, and atomic configuration creation; never stores a token. |
 | `SnapshotStore` / `JsonStateStore` | Port and versioned JSON persistence with atomic replacement and corruption recovery. |
 | `CredentialSource` / `SystemCredentialSource` | Port and environment/command/file/gh credential resolution; tokens never persisted. |
 | `passuff` | First adapter: parse arguments, load config, loop, render the transcript, deliver desktop notifications and sound, handle signals and exit codes. The regular Gherkin harness drives this adapter as a subprocess. |
 | `ActivityInboxService` / `WatchStatusReader` | Build the activity and watch-status read models over the state store; mark activity read; the TUI groups stack members by repository and stack number. |
 | `InboxCli` | Render `status`, `inbox`, and `read` from the read models; no GitHub calls. |
-| `TuiApp` / `passuff-tui` | Render the inbox with the pure frame renderer and curses, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, show an activity detail overlay, return an open intent for the pull request URL, handle keys, and mark records read; the main thread owns input and redraw, and `--snapshot` prints one frame. |
+| `TuiApp` / `passuff-tui` | Render the inbox with the styled frame renderer and curses, apply the role-tagged palette and attributes, group stack members by repository and stack number and order them by position, cycle focus between watched PRs and activity, scroll the watched table, apply observation updates pushed by `ObservationSession`, open the scope picker, show an activity detail overlay, return an open intent for the pull request URL, handle keys, mark records read, and show the save prompt on quit when settings changed; the main thread owns input and redraw, and `--snapshot` prints one frame. |
+| `TerminalPresentation` | Own the role-tagged frame model and palette mapping: compose the outer frame, header, counts/focus line, watched and activity tables, controls bar, save prompt, and modal overlays; project the frame as plain text, ANSI, or a role record. |
 | `SystemBrowserOpener` | Launch the platform browser with a pull request URL; report a missing or failing opener as a status line. |
 | `ObservationSession` | Decide when to probe, when to run a targeted pass, and when the reconciliation interval has elapsed; deliver the cycle's notifications, keep the last view on failure, and hand updates to the terminal loop. |
 | `TranscriptRenderer` | Render notifications, the per-pass digest, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |

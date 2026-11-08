@@ -22,10 +22,6 @@ from givn.steps import activity_inbox_steps  # noqa: F401
 
 use_step_matcher("parse")
 
-@step('the developer opens the inbox TUI observing the account')
-def open_tui_observe(context):
-    w(context).open_tui(["--snapshot", "--observe"])
-
 @step('the browser opened "{url}"')
 def browser_opened_then(context, url):
     assert any(url in line for line in w(context).browser_lines()), w(context).browser_lines()

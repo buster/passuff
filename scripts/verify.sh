@@ -47,8 +47,16 @@ fi
 "$PY" "$ROOT/scripts/check_steps.py" --path "$ROOT/givn/steps" --path "$ROOT/givn/e2e_steps" || exit 1
 
 shopt -s nullglob
+ACTIVE=("$ROOT"/givn/changes/*/)
+if [ -n "${GIVN_CHANGE_ID:-}" ]; then
+  export GIVN_CHANGE_ID
+elif [ ${#ACTIVE[@]} -eq 1 ]; then
+  export GIVN_CHANGE_ID="$(basename "${ACTIVE[0]%/}")"
+else
+  export GIVN_CHANGE_ID=""
+fi
 PERM=("$ROOT"/givn/specs/*/*.feature)
-DELTA=("$ROOT"/givn/changes/python-rebuild/specs/*/*.feature)
+DELTA=("$ROOT"/givn/changes/*/specs/*/*.feature)
 EXTRA=()
 if [ -n "${GIVN_FEATURES:-}" ]; then
   for f in $(printf '%s' "$GIVN_FEATURES" | tr ':\n' '  '); do

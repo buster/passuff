@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tomllib
 
 
@@ -29,3 +30,50 @@ def _parse_key(key: str):
 
 def _config(context):
     return tomllib.loads(w(context).config_path.read_text())
+
+
+def frame_roles(context):
+    world = w(context)
+    if getattr(world, "frame_roles", None) is None:
+        world.capture_roles()
+    return world.frame_roles or []
+
+
+def _spans(context):
+    return [span for line in frame_roles(context) for span in line]
+
+
+def assert_role(context, text: str, role: str) -> None:
+    spans = _spans(context)
+    assert any(span.get("role") == role and text in str(span.get("text", "")) for span in spans), (text, role, spans)
+
+
+def assert_any_role(context, role: str) -> None:
+    spans = _spans(context)
+    assert any(span.get("role") == role for span in spans), (role, spans)
+
+
+def assert_role_member(context, role: str, texts: set[str]) -> None:
+    spans = _spans(context)
+    assert any(span.get("role") == role and str(span.get("text", "")).strip() in texts for span in spans), (role, texts, spans)
+
+
+def assert_metadata_lines(context) -> None:
+    lines = frame_roles(context)
+    for line in lines:
+        text = "".join(str(span.get("text", "")) for span in line)
+        if "Status:" in text or "When:" in text:
+            assert any(span.get("role") == "accent" for span in line), line
+            assert any(span.get("role") == "dim" for span in line), line
+            return
+    raise AssertionError(("no metadata line", lines))
+
+
+def saved_ui(context) -> dict:
+    path = w(context).state_path.with_name("ui.json")
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def assert_role_digits(context, role: str) -> None:
+    spans = _spans(context)
+    assert any(span.get("role") == role and str(span.get("text", "")).strip().isdigit() for span in spans), (role, spans)

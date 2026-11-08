@@ -12,7 +12,7 @@ from pathlib import Path
 import tomlkit
 from behave import given, step, then, use_step_matcher
 
-from givn.steps.support import _assert, _config, _parse_key, transcript, w
+from givn.steps.support import _assert, _config, _parse_key, assert_any_role, assert_role, assert_role_digits, assert_role_member, transcript, w
 from tests.support.pty_driver import run_pty
 
 
@@ -160,3 +160,88 @@ def assert_selected_activity(context, summary):
 def tui_closed(context):
     world = w(context)
     assert world.last is not None and world.last.code == 0, (world.last.code if world.last else None)
+
+
+@step('the frame title is bright and bold')
+def frame_title_role(context):
+    assert_role(context, "passuff", "bright_bold")
+
+
+@step('the frame title suffix is dim')
+def frame_suffix_role(context):
+    assert_role(context, "— Inbox", "dim")
+
+
+@step('the outer frame border is dim')
+def outer_border_role(context):
+    assert_role(context, "┌", "dim")
+
+
+@step('the account login is cyan-blue')
+def account_login_role(context):
+    assert_role(context, "@", "accent")
+
+
+@step('the unread count is gold and bold')
+def unread_count_role(context):
+    assert_role_digits(context, "gold_bold")
+
+
+@step('the focus label is dim')
+def focus_label_role(context):
+    assert_role(context, "Focus:", "dim")
+
+
+@step('the focused pane name is cyan-blue and bold')
+def focused_name_role(context):
+    assert_role_member(context, "accent_bold", {"activity", "PRs"})
+
+
+@step('the activity body is bright gray')
+def activity_body_role(context):
+    assert_any_role(context, "body")
+
+
+@step('the controls bar title is cyan-blue')
+def controls_title_role(context):
+    assert_role(context, "Controls", "accent")
+
+
+@step('the key hints are cyan-blue and bold')
+def key_hints_role(context):
+    assert_role_member(context, "accent_bold", {"x", "tab", "h", "q"})
+
+
+@step('the ignored row is dim')
+def ignored_row_role(context):
+    assert_role(context, "⊘", "dim")
+
+
+@step('the watched table shows the people column')
+def people_column_role(context):
+    assert_role(context, "☺", "accent_bold")
+
+
+@step('the empty state text is bright')
+def empty_state_role(context):
+    assert_role(context, "no watched pull requests", "bright")
+
+
+@step('the detail overlay border is dim')
+def detail_border_role(context):
+    assert_role(context, "┌", "dim")
+
+
+@step('the detail overlay title is cyan-blue and bold')
+def detail_title_role(context):
+    assert_role(context, "Activity ", "accent_bold")
+
+
+@step('the detail separator uses the rule color')
+def detail_separator_role(context):
+    assert_role(context, "─", "rule")
+
+
+@step('the developer opens the inbox TUI observing the account')
+def open_tui_observe(context):
+    w(context).open_tui(["--snapshot", "--observe"])

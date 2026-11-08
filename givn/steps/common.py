@@ -12,7 +12,7 @@ from pathlib import Path
 import tomlkit
 from behave import given, step, then, use_step_matcher
 
-from givn.steps.support import _assert, _config, _parse_key, transcript, w
+from givn.steps.support import _assert, _config, _parse_key, assert_metadata_lines, assert_role, assert_role_member, transcript, w
 from tests.support.pty_driver import run_pty
 
 
@@ -230,3 +230,35 @@ def stack_report(context, number, key, position, size, base):
 def inbox_record_unread(context, summary, key):
     record = w(context).state_activity(summary)
     assert record and not record.get("read"), record
+
+
+@step('the selected row is gold and bold')
+def selected_row_gold(context):
+    assert_role(context, "▶", "gold_bold")
+
+
+@step('the watched table headers are cyan-blue and bold')
+def watched_headers_role(context):
+    assert_role(context, "Pull request", "accent_bold")
+    assert_role(context, "Title", "accent_bold")
+
+
+@step('the activity table headers are cyan-blue and bold')
+def activity_headers_role(context):
+    assert_role(context, "When", "accent_bold")
+    assert_role(context, "Event", "accent_bold")
+
+
+@step('the focused pane title is green and bold')
+def focused_title_role(context):
+    assert_role_member(context, "green_bold", {"Activity", "Watched pull requests"})
+
+
+@step('the metadata labels are cyan-blue')
+def metadata_labels_role(context):
+    assert_metadata_lines(context)
+
+
+@step('the metadata values are dim')
+def metadata_values_role(context):
+    assert_metadata_lines(context)

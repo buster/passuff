@@ -128,11 +128,18 @@ The TUI is a second adapter over `ActivityInboxService` and
 the same view as the read commands, marks records through the same service, and
 runs check cycles through `ObservationSession` while it is open. The main thread
 owns terminal input and redraw; observation runs on a worker thread and posts
-updates for the next frame. `--snapshot` renders the same pure text frame that
-the curses loop paints and prints it for scripts and E2E; `--observe` performs
-one probe and cycle first, and `--observe-for` observes for the given interval
+updates for the next frame. The frame is the composition in
+`docs/design/design-system.md`: a titled outer frame, an account and watch-scope
+header, a watched table, an activity table, a controls bar, and modal overlays.
+The palette roles are the durable contract, and no color carries meaning
+alone. `--snapshot` renders the same styled frame that the curses loop paints;
+`--snapshot --ansi` preserves the palette and attributes and `--snapshot
+--roles` emits the role record for scripts and E2E; `--observe` performs one
+probe and cycle first, and `--observe-for` observes for the given interval
 before the frame is rendered. Interactive mode uses raw terminal mode and the
-alternate screen. No token, helper command text, or enum name is rendered. The
+alternate screen. On quit, a changed sort, direction, filter, ignored view, or
+notification setting opens the `Save sort and filter settings?` prompt; `y`
+persists and exits, `n` discards and exits, and `Esc` cancels the quit. No token, helper command text, or enum name is rendered. The
 list row shows at most the 80-character excerpt; the detail overlay shows the
 selected comment or review body as Markdown, bounded at 4 KiB.
 

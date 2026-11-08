@@ -74,7 +74,7 @@
 | Sound | Bundled WAV + system player | Avoids ALSA/CoreAudio build dependencies. |
 | CLI | Command-line argument parser | Stable help, version, and error handling. |
 | Tests | `behave` + local GraphQL twin + Linux D-Bus fake + fake `gh`, sound, browser; a recording delivery double for the harness | Real CLI and TUI in every scenario; real platform notification path on Linux; deterministic local twins. |
-| Terminal UI | stdlib `curses` + pure text frame renderer | Deterministic `--snapshot` frames; matches the watn terminal design language; a second binary in `passuff`. |
+| Terminal UI | stdlib `curses` + styled frame renderer with a role-tagged palette | Deterministic `--snapshot` frames; the watn palette and composition are durable; plain, ANSI, and role projections; a second binary in `passuff`. |
 | Coverage | Coverage tool with separate scopes | Produces the required non-E2E and E2E Cobertura reports. |
 
 ## Approach to quality goals

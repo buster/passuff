@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
 import threading
 import time
@@ -17,7 +18,7 @@ from ..scope import ScopeEditor
 from ..setup import SetupError, run_setup
 from ..state import StateError, load_state, load_ui, save_state, save_ui
 from ..status import WatchStatusReader
-from .frame import render
+from .frame import PALETTE, render, render_ansi, render_roles, render_styled
 from .session import ObservationSession
 
 KEYS = {
@@ -109,6 +110,27 @@ def _browser_open(url: str, view: dict[str, Any]) -> None:
 
 def apply_key(key: str, config, state_path, config_path, view: dict[str, Any]) -> None:
     key = KEYS.get(key, key)
+    if view.get("save_prompt"):
+        if key == "y":
+            save_ui(Path(config_path).with_name("ui.json"), {
+                "sort": view.get("sort", "updated"),
+                "sort_direction": view.get("sort_direction", 1),
+                "filter": view.get("filter"),
+                "unread_only": view.get("unread_only", False),
+                "show_ignored": view.get("show_ignored", False),
+                "desktop": view.get("desktop", True),
+                "sound": view.get("sound", True),
+            })
+            view["save_prompt"] = False
+            view["settings_dirty"] = False
+            view["quit"] = True
+        elif key == "n":
+            view["save_prompt"] = False
+            view["settings_dirty"] = False
+            view["quit"] = True
+        elif key == "esc":
+            view["save_prompt"] = False
+        return
     state = load_state(state_path)
     prs = _prs(config, state, view)
     records = _filtered_activity(config, state, view)
@@ -192,7 +214,10 @@ def apply_key(key: str, config, state_path, config_path, view: dict[str, Any]) -
             view["status"] = None
             return
         if key == "q":
-            view["quit"] = True
+            if view.get("settings_dirty"):
+                view["save_prompt"] = True
+            else:
+                view["quit"] = True
         return
     if key == "r":
         if records:
@@ -224,27 +249,33 @@ def apply_key(key: str, config, state_path, config_path, view: dict[str, Any]) -
     if key in {"s", "S"}:
         modes = ["updated", "name", "state", "age"]
         if key == "S":
+            view["settings_dirty"] = True
             view["sort_direction"] = -int(view.get("sort_direction", -1))
         else:
             current = view.get("sort", "updated")
+            view["settings_dirty"] = True
             view["sort"] = modes[(modes.index(current) + 1) % len(modes)] if current in modes else "updated"
             view["sort_direction"] = 1
         return
     if key in {"f", "F"}:
         keyed = _selected_key(config, state, view)
         if keyed:
+            view["settings_dirty"] = True
             view["filter"] = keyed
             view["filter_stack"] = key == "F"
         return
     if key == "u":
+        view["settings_dirty"] = True
         view["unread_only"] = not view.get("unread_only", False)
         return
     if key == "c":
+        view["settings_dirty"] = True
         view["filter"] = None
         view["filter_stack"] = False
         view["unread_only"] = False
         return
     if key == "C":
+        view["settings_dirty"] = True
         view.update({"filter": None, "filter_stack": False, "unread_only": False, "sort": "updated", "sort_direction": 1, "show_ignored": False})
         return
     if key == ",":
@@ -258,13 +289,16 @@ def apply_key(key: str, config, state_path, config_path, view: dict[str, Any]) -
         view["overlay"] = "help"
         return
     if key == "left":
+        view["settings_dirty"] = True
         view["show_ignored"] = False
         return
     if key == "right":
+        view["settings_dirty"] = True
         view["show_ignored"] = True
         return
     if key in {" ", "space"}:
         if view.get("overlay") == "settings":
+            view["settings_dirty"] = True
             if view.get("settings_index", 0) == 0:
                 view["desktop"] = not view.get("desktop", True)
             else:
@@ -327,14 +361,27 @@ def _interactive(config, state_path, config_path, view) -> int:
         stdscr.nodelay(True)
         while not view.get("quit"):
             state = load_state(state_path)
-            lines = render(config, state, view)
+            if view.get("width") is None or view.get("height") is None:
+                height, width = stdscr.getmaxyx()
+                view["width"], view["height"] = width, height
+            lines = render_styled(config, state, view)
             height, width = stdscr.getmaxyx()
             stdscr.erase()
             for row, line in enumerate(lines[: max(0, height - 1)]):
-                try:
-                    stdscr.addnstr(row, 0, line, max(1, width - 1))
-                except curses.error:
-                    pass
+                x = 0
+                for span in line.spans:
+                    attr = curses.color_pair(color_pairs.get(span.role, 0)) if color_pairs else 0
+                    if span.role in {"accent_bold", "bright_bold", "gold_bold", "green_bold"}:
+                        attr |= curses.A_BOLD
+                    if span.role == "dim":
+                        attr |= curses.A_DIM
+                    try:
+                        stdscr.addnstr(row, x, span.text, max(1, width - 1 - x), attr)
+                    except curses.error:
+                        pass
+                    x += len(span.text)
+                    if x >= width - 1:
+                        break
             stdscr.refresh()
             ch = stdscr.getch()
             if ch == -1:
@@ -347,6 +394,21 @@ def _interactive(config, state_path, config_path, view) -> int:
             apply_key(key, config, state_path, config_path, view)
         stop.set()
 
+    color_pairs: dict[str, int] = {}
+    try:
+        curses.start_color()
+        curses.use_default_colors()
+        for index, (role, (color, _bold, _dim)) in enumerate(PALETTE.items(), start=1):
+            if color is None:
+                chosen = -1
+            elif curses.COLORS >= 256:
+                chosen = color
+            else:
+                chosen = {81: curses.COLOR_CYAN, 214: curses.COLOR_YELLOW, 114: curses.COLOR_GREEN, 240: -1}.get(color, curses.COLOR_WHITE)
+            curses.init_pair(index, chosen, -1)
+            color_pairs[role] = index
+    except curses.error:
+        color_pairs = {}
     try:
         curses.wrapper(loop)
     except KeyboardInterrupt:
@@ -359,6 +421,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", default=None)
     parser.add_argument("--state", default=None)
     parser.add_argument("--snapshot", action="store_true")
+    parser.add_argument("--ansi", action="store_true")
+    parser.add_argument("--roles", action="store_true")
     parser.add_argument("--observe", action="store_true")
     parser.add_argument("--observe-for", type=int, default=None, dest="observe_for")
     parser.add_argument("--scope-select", action="append", default=[], dest="scope_select")
@@ -415,13 +479,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.no_sound:
         ui["sound"] = False
     view = _view(config, ui)
+    size = shutil.get_terminal_size((100, 30))
+    view["width"] = size.columns
+    view["height"] = size.lines
     if args.picker:
         view["overlay"] = "picker"
         view["picker_mode"] = config.watch.mode
     if args.observe or args.observe_for is not None:
         ObservationSession(config, state_path, interactive=False).run_for(args.observe_for)
     if args.keys:
-        valid = {"tab", "backtab", "j", "down", "k", "up", "r", "a", "q", "enter", "esc", "left", "right", "pageup", "pagedown", "home", "end", "x", "comma", "space", "s", "S", "f", "F", "u", "c", "C", "h", "H", "F1", "p", "m"}
+        valid = {"tab", "backtab", "j", "down", "k", "up", "r", "a", "q", "enter", "esc", "left", "right", "pageup", "pagedown", "home", "end", "x", "comma", "space", "s", "S", "f", "F", "u", "c", "C", "h", "H", "F1", "p", "m", "y", "n"}
         tokens = [item.strip() for item in args.keys.split(",")]
         for token in tokens:
             if token not in valid:
@@ -429,6 +496,14 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
         for key in tokens:
             apply_key(key, config, state_path, config_path, view)
+    if args.roles:
+        state = load_state(state_path)
+        print(render_roles(config, state, view))
+        return 0
+    if args.ansi:
+        state = load_state(state_path)
+        print(render_ansi(config, state, view))
+        return 0
     if args.snapshot:
         state = load_state(state_path)
         print("\n".join(render(config, state, view)))
@@ -436,15 +511,6 @@ def main(argv: list[str] | None = None) -> int:
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
         print("requires a terminal")
         return 3
-    save_ui(state_path.with_name("ui.json"), {
-        "sort": view.get("sort", "updated"),
-        "sort_direction": view.get("sort_direction", 1),
-        "filter": view.get("filter"),
-        "unread_only": view.get("unread_only", False),
-        "show_ignored": view.get("show_ignored", False),
-        "desktop": view.get("desktop", True),
-        "sound": view.get("sound", True),
-    })
     return _interactive(config, state_path, config_path, view)
 
 
