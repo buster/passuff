@@ -1,0 +1,21 @@
+{
+  "schema": 2,
+  "change": "python-rebuild",
+  "status": "passed",
+  "head": "624fe70a9f496fb7ead8d3169f2d63321c29b0ac",
+  "features_path": "givn/changes/python-rebuild/specs",
+  "features_digest": "391ef1599de958646ae4fecf64d1e20b1e1bf9e4d3ac9750ff5edb501cb5d906",
+  "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+  "command": "./scripts/verify.sh",
+  "tested_content_digest": "ee28463f3ca844722e3b711e7cdc5896588ab1a39fe28e3262e6f998d374cfbe",
+  "content_scope": "change-proof/v1",
+  "runner_exit": 0,
+  "result": {
+    "scope": null,
+    "total": 230,
+    "passed": 230,
+    "failed": 0,
+    "skipped": 0
+  },
+  "finished_at_unix": 1794129283
+}
