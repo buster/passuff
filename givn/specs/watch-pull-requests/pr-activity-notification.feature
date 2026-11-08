@@ -772,3 +772,163 @@ Feature: Pull request activity notification
     When  the developer narrows the focus to "authored,team-review-requested"
     And  the developer lists all activity
     Then  the inbox shows "New comment from @alice" for "acme/web#7" as unread
+
+  @pr-activity-notification
+  Scenario Outline: An invalid configuration is reported with exit 2
+    Given  a configuration with <case>
+    When  passuff runs one check
+    Then  the transcript reports "configuration error"
+    And  the transcript reports "<message>"
+    And  the exit status is 2
+    Examples:
+      | case | message |
+      | an unknown key | unknown configuration key |
+      | invalid TOML | invalid TOML |
+      | a plain HTTP GitHub address outside loopback | plain HTTP |
+      | a poll interval below one second | poll_interval_secs |
+      | no accounts | no accounts are configured |
+      | an empty account label | account label must not be empty |
+      | a reconciliation interval below one second | reconciliation_interval_secs |
+      | a watch repository that is not owner/repo | repository must be owner/repo |
+      | a duplicate watch repository | duplicate repository |
+      | an ignored pull request that is not owner/repo#number | ignored pull request must be owner/repo#number |
+      | a duplicate ignored pull request | duplicate ignored pull request |
+      | whitespace in github_user | github_user must not contain whitespace |
+      | a sound_file that is not a readable file | sound_file is not a readable file |
+      | a watch table that is not a table | watch must be a table |
+      | a focus table that is not a table | focus must be a table |
+      | an events table that is not a table | events must be a table |
+      | a notifications table that is not a table | notifications must be a table |
+      | an invalid watch mode | watch.mode must be all or selected |
+      | an invalid notification urgency | notifications.urgency must be low, normal, or critical |
+      | an account that is not a table | account personal must be a table |
+      | a graphql_url that is not HTTP(S) | graphql_url must use https |
+      | an unreadable configuration file | configuration file cannot be read |
+
+  @pr-activity-notification
+  Scenario: A missing configuration is a configuration error
+    Given  no configuration file exists
+    When  passuff runs one check
+    Then  the transcript reports "configuration error"
+    And  the exit status is 2
+
+  @pr-activity-notification
+  Scenario Outline: A GitHub response failure is an account failure
+    Given  a configured account "personal" with login "octo-personal"
+    And  a configured account "work" with login "octo-work"
+    And  an authored pull request "acme/web#7" by "octo-work"
+    And  the GitHub response for account "personal" is <case>
+    And  the watcher has already observed "acme/web#7"
+    When  "alice" comments "Can you review this?" on "acme/web#7"
+    And  passuff runs one check
+    Then  the transcript reports "account personal failed"
+    And  the transcript reports a notification for "acme/web#7"
+    And  the exit status is 1
+    Examples:
+      | case |
+      | a malformed JSON body |
+      | a partial pull request payload |
+      | a timeout |
+      | a non-2xx response |
+      | a GraphQL error payload |
+
+  @pr-activity-notification
+  Scenario: A replayed pull request node does not duplicate activity
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    And  the GitHub response repeats the pull request node for "acme/api#42"
+    When  "alice" comments "Only once" on "acme/api#42"
+    And  passuff runs one check
+    Then  the transcript reports a notification for "acme/api#42"
+    And  the activity list contains one record for "acme/api#42"
+
+  @pr-activity-notification
+  Scenario: An unknown state version is quarantined and replaced
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  a state file with an unknown version
+    When  passuff runs one check
+    Then  the transcript reports "Fresh baseline recorded"
+    And  the state file version is 2
+    And  the exit status is 0
+
+  @pr-activity-notification
+  Scenario: A quarantine failure is a state error
+    Given  a configured account "personal" with login "octo-personal"
+    And  a state file with an unknown version
+    And  the state directory cannot be written
+    When  passuff runs one check
+    Then  the transcript reports "state error"
+    And  the exit status is 3
+
+  @pr-activity-notification
+  Scenario: Duplicate activity ids are repaired on load
+    Given  a configured account "personal" with login "octo-personal"
+    And  a state file with duplicate activity ids
+    When  the developer lists all activity
+    Then  the transcript lists two activities
+    And  the state file contains unique activity ids
+
+  @pr-activity-notification
+  Scenario: A reopen within the retention window is observed
+    Given  a configured account "personal" with login "octo-personal"
+    And  a watched pull request "acme/api#42" merged 29 days ago
+    When  the pull request "acme/api#42" is reopened
+    And  passuff runs one check
+    Then  the transcript reports no notification for "acme/api#42"
+    When  the pull request "acme/api#42" becomes "closed"
+    And  passuff runs one check
+    Then  the transcript reports a notification for "acme/api#42"
+
+  @pr-activity-notification
+  Scenario: A reopen after the retention window is not observed
+    Given  a configured account "personal" with login "octo-personal"
+    And  a watched pull request "acme/api#42" merged 31 days ago
+    When  the pull request "acme/api#42" is reopened
+    And  passuff runs one check
+    When  the pull request "acme/api#42" becomes "closed"
+    And  passuff runs one check
+    Then  the transcript reports no notification for "acme/api#42"
+
+  @pr-activity-notification
+  Scenario Outline: A CLI usage error exits 2
+    When  the developer runs passuff with "<arguments>"
+    Then  the transcript reports "<message>"
+    And  the exit status is 2
+    Examples:
+      | arguments | message |
+      | unknown-command | invalid choice |
+      | --unknown-option | unrecognized arguments |
+      | --config | expected one argument |
+      | --focus-set invalid | invalid focus relation |
+      | --keys invalid | invalid key |
+
+  @pr-activity-notification
+  Scenario Outline: A delivery surface failure keeps the transcript
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    And  <surface> fails
+    When  "alice" comments "Can you review this?" on "acme/api#42"
+    And  passuff runs one check
+    Then  the transcript reports "<message>"
+    And  the transcript reports "New comment from @alice"
+    And  the exit status is 0
+    Examples:
+      | surface | message |
+      | the desktop notification service | desktop notification failed |
+      | the configured sound player | sound playback failed |
+
+  @pr-activity-notification
+  Scenario Outline: A missing or failing gh is an account failure
+    Given  a configured account "work" with login "octo-work"
+    And  an authored pull request "acme/web#7" by "octo-work"
+    And  <case>
+    When  passuff runs one check
+    Then  the transcript reports "account work failed"
+    And  the exit status is 1
+    Examples:
+      | case |
+      | the gh binary is missing |
+      | the gh command fails |

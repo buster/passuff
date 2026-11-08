@@ -332,6 +332,7 @@ Feature: Activity inbox
     And  the developer opens the inbox TUI with keys "enter"
     Then  the TUI shows "Activity api#42"
     And  the TUI shows "comment by @alice"
+    And  the TUI shows "Can you split this migration?"
     And  the TUI shows "acme/api#42"
     And  the TUI shows "Pull request acme/api#42"
     And  the TUI shows "unread"
