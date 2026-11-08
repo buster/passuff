@@ -6,21 +6,22 @@ behaviour lives in the governing use-case contract and specifications.
 
 Behavioural rules are owned by `watch-pull-requests` (`pr-activity-notification`),
 `inspect-watch-status` (`watch-status`), `review-activity-inbox`
-(`activity-inbox`), `review-pull-request-stacks` (`stacked-inbox`), and
-`change-watch-scope` (`watch-scope`). This glossary defines terms; it does not
+(`activity-inbox`, `inbox-navigation`), `review-pull-request-stacks`
+(`stacked-inbox`), `change-watch-scope` (`watch-scope`), and `set-up-passuff`
+(`initial-setup`). This glossary defines terms; it does not
 restate the rules.
 
 | Term | Definition | Code symbol | Anti-terms |
 |---|---|---|---|
 | Account | A GitHub identity configured for observation, labelled locally and resolved to a GitHub login. | `Account` | user, profile, credential — a credential authenticates an account; it is not the account. |
-| Credential mode | The declared way an account obtains its token: a gh OAuth session or a personal access token. | `CredentialSpec` | auth type, login method — the mode names the source, not the identity. |
-| Expected login | The GitHub login an account declares; a resolved credential must belong to it. | `AccountConfig.expected_login` | username, owner — the expected login is a validation target. |
-| gh session | The OAuth token the GitHub CLI stores for a login on this machine. | `CredentialSpec::GhOAuth` | gh token, OAuth secret — the session belongs to the operator's gh installation. |
-| Personal access token | A GitHub token read from an environment variable, a helper command, or a token file, independent of the gh session. | `CredentialSpec::{Env,Command,File}` | password, secret — a token authenticates; it is not an account. |
+| Credential mode | The declared way an account obtains its token: a gh OAuth session or a personal access token. | `passuff.credentials.CredentialMode` | auth type, login method — the mode names the source, not the identity. |
+| Expected login | The GitHub login an account declares; a resolved credential must belong to it. | `passuff.config.AccountConfig.expected_login` | username, owner — the expected login is a validation target. |
+| gh session | The OAuth token the GitHub CLI stores for a login on this machine. | `passuff.credentials.GhSession` | gh token, OAuth secret — the session belongs to the operator's gh installation. |
+| Personal access token | A GitHub token read from an environment variable, a helper command, or a token file, independent of the gh session. | `passuff.credentials.PersonalAccessToken` | password, secret — a token authenticates; it is not an account. |
 | Terminal retirement | The rule that a watched pull request stops being observed once it is merged or closed, after its terminal transition is recorded; only the transition, a short-lived pull request, and a reopen are observed. | observation target selection | closed-PR filter — retirement is about observation, not visibility. |
-| Token file | A file containing a personal access token, accepted only when group and other users cannot read or write it. | `CredentialSpec::File` | credentials file, secret file — the file holds one token for one account. |
+| Token file | A file containing a personal access token, accepted only when group and other users cannot read or write it. | `passuff.credentials.TokenFile` | credentials file, secret file — the file holds one token for one account. |
 | Account failure | A failure to observe one configured account, reported in the refresh report while other accounts continue. | `AccountFailure` | error — an error can be a configuration or state error; an account failure is scoped to one account. |
-| Activity detail | The terminal inbox overlay for one activity record: the event summary, the occurrence time and fetch time, read state, and the matching pull request's key, title, state, CI result, and stack position. It never contains a comment or review body. | `ActivityDetail` | activity page, comment view — the detail shows the record, not the GitHub thread. |
+| Activity detail | The terminal inbox overlay for one activity record: the event summary, the occurrence time and fetch time, read state, the matching pull request's key, title, state, CI result, and stack position, and the selected comment or review body rendered as Markdown and bounded at 4 KiB. | `ActivityDetail` | activity page, comment view — the detail shows the record and its selected body. |
 | Activity record | A persisted, addressable record of one activity event with a fetch time, an optional occurrence time, and a read flag. | `ActivityRecord` | notification — a notification groups events; a record preserves one event. |
 | Involvement relation | Why passuff watches a pull request: authored by the account, assigned to it, review requested from it, or review requested from a team it belongs to. | `Involvement` | reason, label — a relation says why a pull request is watched, not how it is displayed. |
 | Focus | The configured set of involvement relations whose pull requests are shown, counted, and notified. It never changes what is fetched. | `FocusConfig` | filter — the inbox's activity filters narrow a view; the focus selects which watched pull requests belong to that view at all. |
@@ -55,10 +56,10 @@ restate the rules.
 | Review | A submitted assessment of a pull request with one of the states approved, changes requested, or commented. | the review event type | approval — approval is one review state. |
 | Short-lived pull request | An authored pull request created after the account's last successful observation and merged or closed before the next observation. | `ActivityClassifier` | fast merge — a short-lived pull request is defined by the observation boundary, not speed. |
 | Activity history | The bounded set of retained activity records with their read state. | `WatcherState.activity` | log, feed — the history is reviewed, not delivered. |
-| Inbox | The read model of configured accounts, the watch scope, watched pull requests, and activity records. | `Inbox` | list, feed, tracked — the inbox includes the watch summary and reviewed history. |
+| Inbox | The read model of configured accounts, the watch scope, watched pull requests, and activity records. | `passuff.status.WatchStatusReader`, `passuff.inbox.ActivityInboxService` | list, feed, tracked — the inbox includes the watch summary and reviewed history. |
 | Read state | Whether an activity record has been acknowledged by the developer. | `ActivityRecord.read` | seen — a record can be seen but unread, or read after review. |
 | Catch-up | The recording of activity that happened while a repository was outside the watch scope, delivered to the inbox without a notification. | none (check-cycle policy) | notification backlog, replay — catch-up is silent and records new gap activity. |
-| Terminal UI | The full-screen inbox adapter over `InboxService` and the watch-scope picker over `ScopeEditor`; a second consumer of the read model, a configuration editor, and a watcher while it is open. | `TuiApp`, `ScopeEditor`, `ObservationSession` | dashboard, GUI — the terminal UI is a text interface. |
+| Terminal UI | The full-screen inbox adapter over `ActivityInboxService` and `WatchStatusReader`, and the watch-scope picker over `ScopeEditor`; a second consumer of the read model, a configuration editor, and a watcher while it is open. | `TuiApp`, `ScopeEditor`, `ObservationSession` | dashboard, GUI — the terminal UI is a text interface. |
 | Known repository | A repository that passuff has observed in an authored pull request or that appears in the watch scope. | none (read model) | full catalog — the known set is only what passuff has seen or the scope contains. |
 | Watch scope | The set of repositories passuff observes: all repositories, or selected repositories, where an empty selected set observes none. | `WatchConfig` | filter, subscription — the scope is configuration, not a separate account. |
 | Initial setup | The first-run flow that creates a validated configuration without storing a token value. | `SetupSession` | onboarding, wizard — setup is one linear prompt flow; it is not a hosted or multi-screen wizard. |

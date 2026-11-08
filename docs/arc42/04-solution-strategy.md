@@ -44,7 +44,7 @@
   an open intent, and a small opener adapter launches the platform browser;
   the key interpreter never spawns a process. See [chapter 06](06-runtime-view.md).
 - Persist a bounded activity history in the watch state and expose a read model
-  (`InboxService`) to the CLI and the TUI. Status, inbox, and read never
+  (`ActivityInboxService`, `WatchStatusReader`) to the CLI and the TUI. Status, inbox, and read never
   contact GitHub. See [ADR-0005](adr/ADR-0005-state-version-2-migration.md).
 - Delegate GitHub OAuth to the gh CLI and keep personal access tokens for
   headless use. passuff reads an existing session with
@@ -57,8 +57,8 @@
 - Use ports for GitHub and state in the core, and for notification and sound in
   the CLI. The test suite replaces the external surfaces with local digital
   twins.
-- Use a custom Gherkin runner so the `.feature` files are the executable
-  tests and the Givn runner contract is satisfied.
+- Use `behave` as the Gherkin runner so the `.feature` files are the
+  executable tests and the Givn runner contract is satisfied.
 
 ## Technology choices
 
@@ -67,14 +67,14 @@
 | Language and runtime | Python 3 | Single distributable CLI, predictable resource use, typed values at the GitHub boundary. |
 | Package boundary | Config library, core library, `passuff` CLI | Shared config schema; UI and delivery dependencies stay out of the core; the TUI reuses config and core. |
 | GitHub access | GraphQL over HTTPS | One query returns authored pull requests, comments, reviews, and CI state. |
-| Configuration | TOML with typed decoding | Readable, typed, with unknown-key rejection. |
+| Configuration | TOML with typed decoding | Readable; unknown keys are rejected; unrelated configuration and comments are preserved on write. |
 | Authentication | gh CLI session, environment, helper command, or token file | Reuses existing OAuth sessions, keeps tokens out of config, and leaves a headless path. |
 | State | Versioned JSON with atomic replacement | Small local dataset; inspectable; no database dependency. |
 | Notifications | Platform notification surface | Covers Linux D-Bus and macOS notifications. |
 | Sound | Bundled WAV + system player | Avoids ALSA/CoreAudio build dependencies. |
 | CLI | Command-line argument parser | Stable help, version, and error handling. |
-| Tests | Gherkin runner + HTTP stub + `FakeGateway` + Linux D-Bus fake + recording delivery | Real CLI in E2E; real platform notification path on Linux; core tested without a process. |
-| Terminal UI | Terminal UI library + raw terminal input | Matches the watn terminal design language; a second binary in `passuff`. |
+| Tests | `behave` + local GraphQL twin + Linux D-Bus fake + fake `gh`, sound, browser; recording delivery for macOS | Real CLI and TUI in every scenario; real platform notification path on Linux; deterministic local twins. |
+| Terminal UI | stdlib `curses` + pure text frame renderer | Deterministic `--snapshot` frames; matches the watn terminal design language; a second binary in `passuff`. |
 | Coverage | Coverage tool with separate scopes | Produces the required non-E2E and E2E Cobertura reports. |
 
 ## Approach to quality goals

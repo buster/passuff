@@ -29,9 +29,9 @@
 # runner alone is not a complete coverage setup.
 # The runner is re-created with the Python package. Until the keys below are
 # configured, givn reports the runner as unconfigured and no gate can pass.
-# verify:
-#   command: "./scripts/verify.sh"
-#   e2e_command: "./scripts/verify.sh --e2e"
+verify:
+  command: "./scripts/verify.sh"
+  e2e_command: "./scripts/verify.sh --e2e"
 
 # --- Coverage gate (requires addons.coverage: true) ---------------------------
 # Commands that produce Cobertura XML coverage data. The measurement script
@@ -45,12 +45,12 @@
 # The archive gate validates that both reports come from distinct
 # instrumentation runs — do not copy the non-e2e XML to the e2e path.
 # Coverage commands are re-created with the Python package.
-# coverage:
-#   measure_command: "./measure-coverage.sh"
-#   merge_command: "./merge-coverages.sh"
-#   non_e2e_path: "coverage/non-e2e-cobertura.xml"
-#   e2e_path: "coverage/e2e-cobertura.xml"
-#   output_path: "coverage/cobertura-coverage.xml"
+coverage:
+  measure_command: "./scripts/measure-coverage.sh"
+  merge_command: "./scripts/merge-coverages.sh"
+  non_e2e_path: "coverage/non-e2e-cobertura.xml"
+  e2e_path: "coverage/e2e-cobertura.xml"
+  output_path: "coverage/cobertura-coverage.xml"
 
 # The scripts receive GIVN_COVERAGE_NON_E2E_PATH,
 # GIVN_COVERAGE_E2E_PATH, GIVN_COVERAGE_OUTPUT_PATH, and GIVN_FEATURES.

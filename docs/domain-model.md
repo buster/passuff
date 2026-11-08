@@ -11,7 +11,9 @@ merging), delivery channels other than the local desktop surface, and
 organization-level policy.
 
 This model covers the implemented watch, status, activity-review, stack-review,
-and watch-scope capabilities through the `passuff-observation-targets` change. The core is UI-agnostic: a notification is a
+watch-scope, and initial-setup capabilities through the `python-rebuild`
+change. The rebuild preserves this structure; it changes the implementation
+language only. The core is UI-agnostic: a notification is a
 grouped report, and a UI adapter delivers it. Delivery is an external
 relationship, not part of the Notification value. An account's credential mode
 and expected login are configuration and validation attributes, not separate
@@ -115,8 +117,8 @@ flowchart TB
 
 | Aggregate | Owning context | Consistency responsibility |
 |---|---|---|
-| Watched Pull Request | Pull Request Watching | Holds the baseline, the seen activity identities, the last CI result, the pull request state, and the GitHub-reported stack membership for one authored pull request. Guarantees that an activity event is reported at most once. A short-lived pull request first seen after the first cycle is recorded as a Watched Pull Request with its state-change report already marked. |
-| Activity Record | Activity Review | Retains one activity event with a stable id, observation time, pull request key, and read flag. The history is bounded to 500 records. |
+| Watched Pull Request | Pull Request Watching | Holds the baseline, the seen activity identities, the last CI result, the pull request state, the GitHub-reported stack membership, and the presentation attributes the inbox reads (title, description, creator, assignees, involvement relations) for one authored pull request. Guarantees that an activity event is reported at most once. A short-lived pull request first seen after the first cycle is recorded as a Watched Pull Request with its state-change report already marked. |
+| Activity Record | Activity Review | Retains one activity event with a stable id, occurrence and observation time, pull request key, event summary, the selected comment or review body bounded at 4 KiB, and a read flag. The history is bounded to 500 records. |
 
 ## Relationships
 
@@ -143,6 +145,6 @@ flowchart TB
 None. Pull request stack is a GitHub-reported value on the Watched Pull Request,
 and the watch scope is configuration, not an aggregate. The Terminal UI has a
 read-model role and a configuration-edit role; the latter is not part of
-Activity Review. The model is complete for the approved capabilities.
-Implementation may refine internal component names without changing these
-domain relationships.
+Activity Review. The model is complete for the six approved capabilities,
+including initial setup; `python-rebuild` preserves this structure and changes
+only the implementation language.

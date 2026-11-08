@@ -1,0 +1,25 @@
+#!/bin/sh
+printf '%s user=%s\n' "$*" "${PASSUFF_GH_LOGIN_USER:-}" >> "${PASSUFF_GH_LOG:-/dev/null}"
+case "$1 $2" in
+  "auth token")
+    user=""; prev=""
+    for a in "$@"; do
+      [ "$prev" = "--user" ] && user="$a"
+      prev="$a"
+    done
+    var="PASSUFF_GH_TOKEN_$(printf '%s' "$user" | /usr/bin/tr '.-' '__')"
+    eval "token=\${$var:-}"
+    marker="${PASSUFF_GH_DIR:-/tmp}/login_ok"
+    if [ -z "$token" ] && [ -f "$marker" ]; then token="gh-token-$user"; fi
+    if [ -n "$token" ]; then printf '%s\n' "$token"; exit 0; fi
+    exit 1
+    ;;
+  "auth login")
+    printf 'auth login for %s\n' "${PASSUFF_GH_LOGIN_USER:-}" >> "${PASSUFF_GH_LOG:-/dev/null}"
+    if [ "${PASSUFF_GH_LOGIN_FAIL:-0}" = "1" ]; then exit 1; fi
+    if [ -n "${PASSUFF_GH_DIR:-}" ]; then touch "$PASSUFF_GH_DIR/login_ok"; fi
+    printf 'Logged in\n'
+    exit 0
+    ;;
+esac
+exit 0

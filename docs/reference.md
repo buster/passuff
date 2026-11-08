@@ -39,8 +39,9 @@ observation rules. First-run use lives in [README.md](../README.md).
 
 `notify-test` returns 1 when an enabled surface fails and 2 when both surfaces
 are disabled. `setup` returns 2 for validation or cancellation and 3 for an I/O
-failure. `passuff-tui` returns 3 when the terminal UI is requested without a
-terminal or when state loading fails.
+failure. `passuff-tui` returns 2 when the configuration is missing or invalid, and 3
+when a valid configuration is present but the terminal UI is requested without
+a terminal or state loading fails.
 
 ## passuff-tui options
 
@@ -226,7 +227,8 @@ The configuration is rejected, with exit 2, when:
 - `github_user` contains whitespace;
 - a token file is relative, is not a regular file, or is not owner-only;
 - a `sound_file` path is not a readable file;
-- `graphql_url` uses plain HTTP outside loopback.
+- `graphql_url` uses plain HTTP outside loopback;
+- an unknown configuration key.
 
 ## Setup
 

@@ -19,9 +19,9 @@ raises one desktop notification per check pass, and plays a sound.
 
 ## Install
 
-passuff is being rebuilt in Python from its specification. Run it from a
-checkout with `python -m passuff`; the package provides the `passuff` and
-`passuff-tui` entry points. The GitHub release carries the changelog.
+passuff requires Python 3.11 or newer. Install it from a checkout with
+`pip install .`; the package provides the `passuff` and `passuff-tui` entry
+points. The GitHub release carries the changelog.
 
 ## Quick start
 
@@ -48,7 +48,7 @@ passuff-tui
 
 | Requirement | Needed for |
 |---|---|
-| Python 3 | Run and develop |
+| Python 3.11 or newer | Run and develop |
 | GitHub token with `read:user` and repository read access | `github_pat` accounts |
 | `gh` 2.40 or newer | `gh_oauth` accounts |
 | D-Bus and `paplay`, `pw-play`, `aplay`, or `canberra-gtk-play` | Sound on Linux |
@@ -139,9 +139,11 @@ python -m passuff --help
 
 ## Development
 
-The Python rebuild recreates the Gherkin runner, the verify script, and the
-coverage scripts. Until they exist, `givn check` reports the runner as
-unconfigured. Feature files live under `givn/specs/`.
+The Gherkin corpus under `givn/specs/` is the executable specification. Run
+`./scripts/verify.sh` for the permanent non-E2E corpus, `./scripts/verify.sh
+--e2e` for the E2E corpus, and `./scripts/measure-coverage.sh` followed by
+`./scripts/merge-coverages.sh` for coverage. `./scripts/verify.sh --strictness`
+proves the runner rejects undefined, skipped, and no-op steps.
 
 Project workflow: `givn status` shows the next step; keep the `.feature` file as
 the executable source of behaviour; run both verify scopes before review; create
@@ -154,6 +156,7 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 <!-- givn:begin:coverage -->
 ## Coverage
 
-Coverage is regenerated with the Python rebuild. The previous report described
-the removed implementation and is no longer valid.
+Coverage is measured from the Python package with `./scripts/measure-coverage.sh`
+and merged with `./scripts/merge-coverages.sh`. The archive gate requires
+distinct non-E2E and E2E Cobertura reports.
 <!-- givn:end:coverage -->

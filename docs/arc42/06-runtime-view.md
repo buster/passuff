@@ -48,12 +48,11 @@ sequenceDiagram
 7. Events are grouped by pull request; empty groups are discarded. A target that
    was not observed keeps its previous probe baseline and is retried.
 8. The core persists state before returning the report.
-9. The CLI renders one notification for a single pull request; several pull
-   requests become one digest naming the total activity count. The delivery
-   adapter is called once for the pass, so the sound plays once.
-9. The CLI prints the transcript block and invokes the delivery adapter once per
-   group.
-10. The sound plays once per notification when enabled.
+9. The CLI renders one digest notification per pass: a single pull request
+   keeps its events together; several pull requests become one digest naming
+   the total activity count. The transcript keeps the per-pull-request detail.
+10. The delivery adapter is invoked once for the delivered digest, so the sound
+    plays once when enabled.
 
 **Notes:** The core has no delivery dependency. A state write failure returns an
 error before a report exists. A delivery failure is reported but not retried;
@@ -189,6 +188,7 @@ sequenceDiagram
 sequenceDiagram
     participant CLI
     participant Core
+    participant Inbox
     participant State
     CLI->>Core: refresh
     Core->>State: load
@@ -196,9 +196,9 @@ sequenceDiagram
     Core->>State: append ActivityRecord per event with fetch and occurrence time, cap 500
     Core->>State: save
     Core-->>CLI: RefreshReport
-    CLI->>Core: InboxService.view(config)
-    Core->>State: load (migrate v1, normalize)
-    Core-->>CLI: InboxView ordered by effective activity time
+    CLI->>Inbox: view(config)
+    Inbox->>State: load (migrate v1, normalize)
+    Inbox-->>CLI: InboxView ordered by effective activity time
     CLI->>CLI: render accounts, scope, watched PRs, unread/total
 ```
 
@@ -211,6 +211,7 @@ focus excludes it.
 sequenceDiagram
     participant CLI
     participant Core
+    participant Inbox
     participant State
     CLI->>Core: refresh (targeted or reconciliation)
     Core->>Core: search assigned, direct-review, team-review
@@ -218,9 +219,9 @@ sequenceDiagram
     Core->>State: append ActivityRecord for every event, cap 500
     Core->>Core: focus.includes(stored involvement relations)
     Core-->>CLI: RefreshReport with notifications for focused pull requests only
-    CLI->>Core: InboxService.view(config)
-    Core->>State: load
-    Core-->>CLI: InboxView filtered by the focus, unread recomputed
+    CLI->>Inbox: view(config)
+    Inbox->>State: load
+    Inbox-->>CLI: InboxView filtered by the focus, unread recomputed
 ```
 
 The activity for an excluded pull request is recorded and no notification names
@@ -251,7 +252,7 @@ repository or switches the mode.
 1. `ScopePicker` shows the mode, known repositories, selected state, and manual
    entry.
 2. `ScopeEditor` updates `[watch].mode` and `[watch].repositories` with
-   `toml_edit`, writes a temporary file in the same directory, and renames it.
+   `tomlkit`, writes a temporary file in the same directory, and renames it.
 3. The watcher compares the new scope with `WatcherState.last_scope`; a newly
    selected repository with retained watched pull requests becomes a catch-up
    repository for the next cycle.
@@ -295,8 +296,8 @@ repository or switches the mode.
    target; no cycle runs for activity after the terminal state.
 3. A relevant change starts a deferred targeted pass when the allowance can
    afford it; the core targeted refresh observes only the selected ids,
-   records activity, the CLI runtime delivers the notifications, and the account's
-   probe baseline advances only after its observation succeeded.
+   records activity, the `ObservationSession` delivers the notifications, and
+   the account's probe baseline advances only after its observation succeeded.
 4. When the configured reconciliation interval elapses, a reconciliation pass
    observes every watched open id and every open assigned/review-requested id,
    even without a probe signal.
@@ -313,14 +314,14 @@ Enter.
 1. The TUI key handler finds the selected activity and the matching
    `PullRequestView`, and stores an `ActivityDetail` with the record, the pull
    request, and its URL.
-2. The renderer draws a centered `Clear` + bordered overlay with the activity id,
+2. The renderer draws a centered bordered overlay with the activity id,
    event summary, observation time, pull request key and title, state, CI result,
-   stack position, read state, and the key hints. No comment or review body is
-   shown.
+   stack position, read state, and the key hints. The overlay also shows the
+   selected comment or review body, scrolled with the movement keys.
 3. Escape clears the overlay and the inbox is unchanged.
-4. Enter returns `TuiAction::OpenUrl`; the binary adapter calls the platform
-   opener. Success closes the overlay; a failure keeps it and sets the footer
-   status line.
+4. Enter returns an open intent; the adapter calls the platform opener.
+   Success closes the overlay; a failure keeps it and sets the footer status
+   line.
 
 ## Scenario: Mark activity read
 
@@ -337,9 +338,10 @@ Enter.
 
 **Trigger:** The developer starts `passuff-tui`.
 
-1. The binary loads configuration and the `InboxService` view; a configuration
-   error exits 2, a state error exits 3.
-2. `--snapshot` renders one frame with `TestBackend` and exits 0.
+1. The binary loads configuration and the `ActivityInboxService` and
+   `WatchStatusReader` views; a configuration error exits 2, a state error
+   exits 3.
+2. `--snapshot` renders one frame with the pure frame renderer and exits 0.
 3. Interactive mode enters the alternate screen, draws the accounts, scope,
    watched pull requests, and activity list.
 4. `j`/`k` adjust the selection; `r` marks the selected record, `a` everything;

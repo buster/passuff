@@ -57,3 +57,7 @@ flowchart TB
 
 The `passuff-tui` binary ships alongside `passuff` in the same package and
 requires no additional service or file.
+
+Deferred 2026-11-08: the `python-rebuild` change does not produce the
+`Passuff.app` bundle; a separate macOS packaging change owns it. The CLI and
+TUI ship from the Python package meanwhile.

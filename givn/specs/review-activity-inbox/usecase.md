@@ -10,7 +10,7 @@
 
 ## Goal
 
-The developer reviews the activity passuff recorded and marks it read.
+The developer keeps the retained activity's read state current through review.
 
 ## Trigger
 
@@ -44,14 +44,14 @@ The developer lists the inbox or marks activity read.
 - R7: A version-1 state loads with an empty history, preserves its watched pull requests, and is rewritten as version 2.
 - R8: A missing state file is an empty inbox and exit 0.
 - R9: The inbox, the status unread count, and the watched table show only pull requests whose involvement relations intersect the focus; a relation that is neither recorded nor derivable from the author leaves a pull request visible. Activity outside the focus is retained and appears when the focus widens.
-- R9: Recording history never replays a notification.
+- R10: Recording history never replays a notification.
 - T1: The terminal UI shows the unread and total activity counts, configured accounts, watch scope, watched pull requests, and the activity list on one screen.
 - T2: `j`/down and `k`/up move the selection and clamp at the list ends; Home and End jump to the first and last row; `q` quits, and Escape or `q` closes the focused dialog.
 - T3: `r` marks the selected activity record read and refreshes the view; `a` marks every record read and refreshes.
 - T4: An empty inbox shows "no activity yet".
 - T5: A configuration error exits 2 and a state error exits 3 before the interface starts; the message names the failure.
 - T6: `--snapshot` renders one frame to stdout with the same renderer and data and exits 0 without a terminal.
-- T7: The screen contains no token, no more than the recorded 80-character event excerpt, no helper command text, and no enum name.
+- T7: The activity list row contains no token, no more than the recorded 80-character event excerpt, no helper command text, and no enum name. The detail overlay shows the selected comment or review body as Markdown, bounded at 4 KiB.
 - T8: `Tab`/`Shift-Tab` cycles focus between the watched pull request pane and the activity pane; the footer names the focused pane.
 - T9: `j`/`k` and the arrow keys move the selected row in the focused pane; the watched table scrolls to keep the selection visible, including large stacks; the activity selection clamps.
 - T10: The terminal inbox observes the configured accounts while it is open and shows the result without a keypress or another command; it probes GitHub for a change, observes only the selected target pull requests, and preserves the selected pull request and clamps a vanished selection. A configured reconciliation interval also observes every watched open pull request and every open assigned or review-requested pull request, and defaults to one hour.
@@ -86,7 +86,8 @@ The inbox never shows activity for a pull request that was outside the watch sco
 
 ## Success guarantee
 
-The developer can review the retained activity and mark it read; the history and read state survive restarts without replaying notifications.
+The developer can review the retained activity with its read state and history
+intact across restarts, without replaying notifications.
 
 ## Personas
 

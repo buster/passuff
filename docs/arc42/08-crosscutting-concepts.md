@@ -2,7 +2,8 @@
 
 ## Configuration and credentials
 
-Configuration is TOML, validated with `deny_unknown_fields`. Each account
+Configuration is TOML, validated with typed decoding; unknown keys are
+rejected. Each account
 declares one credential mode: `gh_oauth` with an expected GitHub login, or
 `github_pat` with exactly one of an environment variable, a helper command, or a
 token file. A configuration without `auth` keeps the legacy personal-access-token
@@ -21,7 +22,8 @@ once per gh login per process.
 
 Watch state version 2 carries up to 500 activity records: one per event, with a
 stable `a<n>` id, the fetch time, the occurrence time when GitHub reports one,
-the pull request key, and a read flag. The oldest records are dropped on append.
+the pull request key, the event summary, the selected comment or review body
+bounded at 4 KiB, and a read flag. The oldest records are dropped on append.
 
 ### Activity time
 
@@ -84,9 +86,9 @@ notifications, account failures, and baselines recorded. It has no argument
 parsing, desktop notification, terminal rendering, terminal input, terminal
 formatting, or delivery dependency. `passuff` is the first adapter; it owns the
 transcript, desktop delivery, sound, signals, and exit codes. A `passuff-tui`
-consumes the config library and the same core contract. The regular Gherkin
-scenarios call the CLI runtime's check entry point with injected ports; the E2E
-scenarios spawn the CLI binary.
+consumes the config library and the same core contract. Every Gherkin scenario
+drives the real CLI or TUI as a subprocess; the regular and E2E scopes differ
+in process scope, not in an in-process port injection.
 
 ## Error handling and isolation
 
@@ -121,22 +123,25 @@ text.
 
 ## Terminal UI
 
-The TUI is a second adapter over `InboxService` and a second watcher. It renders
+The TUI is a second adapter over `ActivityInboxService` and
+`WatchStatusReader`, and a second watcher. It renders
 the same view as the read commands, marks records through the same service, and
-runs check cycles through `ObservationSession` while it is open. A blocking input
-thread feeds keys; observation updates arrive over a channel and redraw the
-frame. `--snapshot` renders against the terminal library's test backend and prints the frame for scripts
-and E2E; `--observe` performs one probe and cycle first, and `--observe-for`
-runs the real loop against the test backend. Interactive mode uses raw terminal
-mode and the alternate screen. No token, body, command text, or enum name is
-rendered.
+runs check cycles through `ObservationSession` while it is open. The main thread
+owns terminal input and redraw; observation runs on a worker thread and posts
+updates for the next frame. `--snapshot` renders the same pure text frame that
+the curses loop paints and prints it for scripts and E2E; `--observe` performs
+one probe and cycle first, and `--observe-for` observes for the given interval
+before the frame is rendered. Interactive mode uses raw terminal mode and the
+alternate screen. No token, helper command text, or enum name is rendered. The
+list row shows at most the 80-character excerpt; the detail overlay shows the
+selected comment or review body as Markdown, bounded at 4 KiB.
 
 ## Watch scope editing
 
 The watch scope is configuration with an explicit mode: all repositories or a
 selected set; an empty selected set observes none. The terminal picker edits the
 scope through `ScopeEditor`, which preserves unrelated configuration with
-`toml_edit` and writes atomically. Deselecting a repository stops observation
+`tomlkit` and writes atomically. Deselecting a repository stops observation
 and hides its records from the inbox and status while retaining them in state;
 reselecting restores them. Reselecting a repository with retained records marks
 a catch-up cycle: activity is recorded as unread without a desktop notification
@@ -169,8 +174,8 @@ see. The headless watcher reconciles on its `poll_interval_secs` cadence.
 The activity pane's Enter opens a modal overlay built only from persisted data:
 the activity record and its pull request view. Modal key precedence runs before
 the inbox keys, so Escape closes the overlay instead of quitting and no other
-key moves the selection underneath it. The key interpreter returns an
-`OpenUrl` intent; only the binary adapter spawns the platform opener, so widget
+key moves the selection underneath it. The key interpreter returns an open
+intent; only the binary adapter spawns the platform opener, so widget
 logic stays testable and free of process launches. A non-zero exit, a missing
 opener, or a spawn error is a footer status line and the overlay stays open.
 
@@ -219,18 +224,21 @@ response reports the reset time and skips only that account for the cycle.
 
 ## Testing and coverage
 
-The Gherkin `.feature` files are the executable specification. A custom
-Gherkin runner in the test suite honors the Givn
-`GIVN_FEATURES`, `GIVN_RESULT_SCOPE`, and `GIVN_RESULT_FILE` contract and fails
-on skipped or undefined steps. On Linux, E2E scenarios spawn the real CLI binary
-against a local HTTP stub for GitHub and a private `dbus-daemon` session with a mock
-`org.freedesktop.Notifications` service, so the real platform notification path is
-exercised. On macOS, E2E uses `RecordingDelivery` and the manual desktop smoke
-covers the real surface. A fake sound player records playback. Regular scenarios
-drive the CLI runtime's check entry point, which in turn calls the core refresh, with a
-`FakeGateway` in process. Coverage runs the regular and E2E scopes separately,
-instruments the config and core libraries, and
-produces two distinct Cobertura reports.
+The Gherkin `.feature` files are the executable specification. `behave` honors
+the Givn `GIVN_FEATURES`, `GIVN_RESULT_SCOPE`, and `GIVN_RESULT_FILE` contract
+through `scripts/verify.sh` and fails on skipped or undefined steps. The runner
+unions the permanent corpus with any delta features, so a change with no delta
+still verifies the permanent behavior. Every scenario drives the real CLI or TUI
+as a subprocess. On Linux, E2E scenarios spawn the real CLI against a local
+GraphQL twin on loopback and a private `dbus-daemon` session with a mock
+`org.freedesktop.Notifications` service, so the real platform notification path
+is exercised. On macOS, a platform-adapter test uses the `RecordingDelivery`
+test double under `tests/support/`; the manual desktop smoke covers the real
+surface. The permanent corpus runs on Linux. A fake sound player and browser
+opener record invocations. `--snapshot` asserts the same pure frame renderer the curses loop
+uses; one pty smoke test starts the interactive loop. Coverage runs the regular
+and E2E scopes separately, instruments the `passuff` package in every
+subprocess, and produces two distinct Cobertura reports.
 
 ## Platform paths
 

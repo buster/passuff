@@ -86,11 +86,11 @@ The developer starts the watcher, or runs a single check pass.
 - R39: When a repository scope excludes a repository, an authored pull request outside it is not observed or notified; already watched pull requests and activity are hidden from the inbox and status but retained in state.
 - R40: Activity on an already-merged or already-closed watched pull request does not notify. The transition that made it terminal, a short-lived pull request (R27), and a reopen (R28) are still reported.
 - R41: A check cycle observes only the pull requests selected from the change probe and the discovery search; a reconciliation pass observes every watched open pull request and every open assigned or review-requested pull request.
-- R44: A focus relation is one of authored, assigned, review requested from the developer, or review requested from a team the developer belongs to. Discovery reports the relations of each open pull request; a pull request may have several.
 - R42: A digest notification names the total activity count and the number of pull requests; the desktop body lists each pull request's activity count, capped at five pull requests followed by the number of remaining pull requests.
 - R43: The bundled default sound is three short beeps within one second.
-- R42: `notify-test` sends one test notification through the configured desktop and sound surfaces, reports the result of each enabled surface, exits 0 when every enabled surface succeeds, 1 when an enabled surface fails, and 2 for a configuration error or when both surfaces are disabled. On macOS the desktop notification is delivered through Notification Center via `osascript`.
-- R43: `--no-desktop` and `--no-sound` suppress the corresponding notification surface for that run without changing the configuration; both `passuff` and `passuff-tui` accept them, and `notify-test` respects them.
+- R44: A focus relation is one of authored, assigned, review requested from the developer, or review requested from a team the developer belongs to. Discovery reports the relations of each open pull request; a pull request may have several.
+- R45: `notify-test` sends one test notification through the configured desktop and sound surfaces, reports the result of each enabled surface, exits 0 when every enabled surface succeeds, 1 when an enabled surface fails, and 2 for a configuration error or when both surfaces are disabled. On macOS the desktop notification is delivered through Notification Center via `osascript`.
+- R46: `--no-desktop` and `--no-sound` suppress the corresponding notification surface for that run without changing the configuration; both `passuff` and `passuff-tui` accept them, and `notify-test` respects them.
 
 ## Examples
 

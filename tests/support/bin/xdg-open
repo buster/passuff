@@ -1,0 +1,4 @@
+#!/bin/sh
+printf '%s\n' "$*" >> "${PASSUFF_BROWSER_LOG:-/dev/null}"
+if [ "${PASSUFF_BROWSER_FAIL:-0}" = "1" ]; then exit 1; fi
+exit 0
