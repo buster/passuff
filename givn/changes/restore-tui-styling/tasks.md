@@ -1,6 +1,6 @@
 # Tasks: restore-tui-styling
 
-Acceptance: the change gate is 263/263, the regular corpus 247/247, and the E2E scope 22/22. The visual contract is terminal-interface rule 25 (palette and composition) and the save prompt is terminal-interface rule 22 (settings persistence). Work in behavior batches; each batch records the shared implementation revision with its batch name.
+Acceptance: the change gate is 264/264, the regular corpus 247/247, and the E2E scope 22/22. The visual contract is terminal-interface rule 25 (palette and composition) and the save prompt is terminal-interface rule 22 (settings persistence). Work in behavior batches; each batch records the shared implementation revision with its batch name.
 
 ## Setup
 

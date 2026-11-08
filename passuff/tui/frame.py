@@ -124,7 +124,7 @@ def _sort_prs(prs: list[dict[str, Any]], sort: str, direction: int) -> list[dict
 
 
 def _box(lines: list[StyledLine], title: str, title_role: str, width: int, border_role: str = "dim") -> list[StyledLine]:
-    top = _parts(("┌─ ", border_role), (title, title_role), (" ", border_role), ("─" * max(1, width - len(title) - 6), border_role), ("┐", border_role))
+    top = _parts(("┌─ ", border_role), (title, title_role), (" ", border_role), ("─" * max(1, width - len(title) - 5), border_role), ("┐", border_role))
     body = []
     for line in lines:
         text = line.text
@@ -303,12 +303,14 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
     if overlay == "help":
         pane = "PRs" if focus == "prs" else "activity"
         heading = "Pull request pane" if pane == "PRs" else "Activity pane"
+        help_width = min(content_width, max(60, width - 8))
         overlay_box = _box([
             _line(heading, "accent_bold"),
             _line("Key reference", "accent_bold"),
             _parts(("mark", "accent_bold"), (" visible read  ", "dim"), ("enter", "accent_bold"), (" open  ", "dim"), ("r", "accent_bold"), (" mark read  ", "dim"), ("a", "accent_bold"), (" mark visible read", "dim")),
-            _parts(("tab", "accent_bold"), (" switch  ", "dim"), ("j/k", "accent_bold"), (" move  ", "dim"), ("s", "accent_bold"), (" sort  ", "dim"), ("f", "accent_bold"), (" filter  ", "dim"), ("u", "accent_bold"), (" unread  ", "dim"), ("x", "accent_bold"), (" ignore  ", "dim"), (",", "accent_bold"), (" settings  ", "dim"), ("p", "accent_bold"), (" watch scope  ", "dim"), ("q", "accent_bold"), (" close", "dim")),
-        ], "Help", "accent_bold", overlay_width)
+            _parts(("tab", "accent_bold"), (" switch  ", "dim"), ("j/k", "accent_bold"), (" move  ", "dim"), ("s", "accent_bold"), (" sort  ", "dim"), ("f", "accent_bold"), (" filter  ", "dim"), ("u", "accent_bold"), (" unread", "dim")),
+            _parts(("x", "accent_bold"), (" ignore  ", "dim"), (",", "accent_bold"), (" settings  ", "dim"), ("p", "accent_bold"), (" watch scope  ", "dim"), ("q", "accent_bold"), (" close", "dim")),
+        ], "Help", "accent_bold", help_width)
     elif overlay == "settings":
         settings_lines: list[StyledLine] = []
         for index, (label, actual) in enumerate((("Desktop notifications", "desktop"), ("Sound", "sound"))):
@@ -334,7 +336,7 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
             picker_lines.append(_line("Add: owner/name", "dim"))
         picker_lines.append(_parts(("space", "accent_bold"), (" toggle   ", "dim"), ("esc", "accent_bold"), (" close", "dim")))
         picker_box = _box(picker_lines, "passuff — Watch scope", "bright_bold", overlay_width)
-        top = _parts(("┌─ ", "dim"), ("passuff ", "bright_bold"), ("— Watch scope ", "dim"), ("─" * max(1, overlay_width - 20), "dim"), ("┐", "dim"))
+        top = _parts(("┌─ ", "dim"), ("passuff ", "bright_bold"), ("— Watch scope ", "dim"), ("─" * max(1, overlay_width - 26), "dim"), ("┐", "dim"))
         picker_box[0] = top
         overlay_box = picker_box
     elif overlay in {"activity_detail", "pr_detail"}:
@@ -411,7 +413,7 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
     if overlay_box is not None:
         main = _composite(main, overlay_box, width)
 
-    top = _parts(("┌─ ", "dim"), ("passuff ", "bright_bold"), ("— Inbox ", "dim"), ("─" * max(1, width - 16), "dim"), ("┐", "dim"))
+    top = _parts(("┌─ ", "dim"), ("passuff ", "bright_bold"), ("— Inbox ", "dim"), ("─" * max(1, width - 20), "dim"), ("┐", "dim"))
     body_lines: list[StyledLine] = []
     for line in main:
         text = line.text

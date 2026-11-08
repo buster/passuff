@@ -1,17 +1,17 @@
-┌─ passuff — Inbox ────────────────────────────────────────────────────────────────────────────────────┐
+┌─ passuff — Inbox ────────────────────────────────────────────────────────────────────────────────┐
 │ personal @octo-personal   |   watch scope: acme/api                                              │
 │ 0 unread of 0   |   Focus: activity                                                              │
-│ ┌─ Watched pull requests · filtered · sort: updated ↓ ────────────────────────────────────────┐  │
-│             ┌─ passuff — Watch scope ──────────────────────────────────────────────┐             │
-│             │ Mode: selected                                                 │                   │
-│             │ [x] acme/api                                                   │                   │
-│             │ Focus                                                          │                   │
-│             │ [x] authored                                                   │                   │
-│             │ [x] assigned                                                   │                   │
-│             │ [x] review requested                                           │                   │
-│             │ [x] team review                                                │                   │
-│             │ space toggle   esc close                                       │                   │
-│             └────────────────────────────────────────────────────────────────┘                   │
+│ ┌─ Watched pull requests · filtered · sort: updated ↓ ─────────────────────────────────────────┐ │
+│                ┌─ passuff — Watch scope ────────────────────────────────────────┐                │
+│                │ Mode: selected                                                 │                │
+│                │ [x] acme/api                                                   │                │
+│                │ Focus                                                          │                │
+│                │ [x] authored                                                   │                │
+│                │ [x] assigned                                                   │                │
+│                │ [x] review requested                                           │                │
+│                │ [x] team review                                                │                │
+│                │ space toggle   esc close                                       │                │
+│                └────────────────────────────────────────────────────────────────┘                │
 │ │ mark visible read                                                                            │ │
 │ │ x ignore   tab switch   h help   q quit                                                      │ │
 │ └──────────────────────────────────────────────────────────────────────────────────────────────┘ │

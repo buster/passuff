@@ -1,8 +1,8 @@
-┌─ passuff — Inbox ────────────────────────────────────────────────────────────────────────────────────┐
+┌─ passuff — Inbox ────────────────────────────────────────────────────────────────────────────────┐
 │ personal @octo-personal   |   watch scope: all authored pull requests                            │
 │ 1 unread of 1   |   Focus: activity                                                              │
-│ ┌─ Watched pull requests · filtered · sort: updated ↓ ────────────────────────────────────────┐  │
-│                ┌─ Activity api#42 ─────────────────────────────────────────────┐                 │
+│ ┌─ Watched pull requests · filtered · sort: updated ↓ ─────────────────────────────────────────┐ │
+│                ┌─ Activity api#42 ──────────────────────────────────────────────┐                │
 │                │ Activity · acme/api#42                                         │                │
 │                │ Comment by @alice                                              │                │
 │                │ comment by @alice                                              │                │

@@ -4,34 +4,35 @@ Review kind: independent
 Author: maki-author
 Reviewer context: independent-reviewer-2
 
-Scope: the working tree at `e520e0dbb086de01717108edb2ab965119309dd2`; `git status --short` was clean before this review, and the only file this review writes is this `review.md`. The change receipt is 264 scenarios at `4fd7ae98d41c45b46470a4825e5174fca5f29172`, reused across the documentation-only receipt commit `e520e0d`. Revisions were inspected with `git cat-file -t` and `git ls-tree`; no `git log`, `git show`, `git diff`, `git reflog`, or `git blame` was used.
+Scope: the working tree at `657b44784eee34b568fdaf94e4c9995c7784f8ea`; `git status --short` was clean before this review, and the only file this review writes is this `review.md`. The change receipt is 264 scenarios at `7f0470683f9f186901f15c3094388cdae8cf74a2`, reused across the documentation-only revision `657b447`. Revisions were inspected with `git cat-file -t` and `git ls-tree`; no `git log`, `git show`, `git diff`, `git reflog`, or `git blame` was used.
 
 ## Implementation evidence check
 
 ### 0. `@e2e` tag integrity
 
-The delta has seventeen scenario entries: four under `activity-inbox`, eleven under `inbox-navigation`, one under `stacked-inbox`, and one under `watch-scope`. Four delta scenarios carry `@e2e`: two under `activity-inbox`, one under `inbox-navigation`, and one under `stacked-inbox`. No `@e2e` tag was removed or converted to a regular tag. The permanent corpus carries eighteen `@e2e` scenarios; the E2E scope is 22 executions (18 permanent + 4 delta modified copies), matching `tasks.md:16,199`. The change scope is 264 (247 regular + 17 delta), matching the receipt.
+The delta has seventeen scenario entries: four under `activity-inbox`, eleven under `inbox-navigation`, one under `stacked-inbox`, and one under `watch-scope`. Four delta scenarios carry `@e2e` (two under `activity-inbox`, one under `inbox-navigation`, one under `stacked-inbox`); no `@e2e` tag was removed or converted to a regular tag. The permanent corpus carries eighteen `@e2e` scenarios; the E2E scope is 22 executions (18 permanent + 4 delta modified copies), matching `tasks.md:16,199`. The delta E2E scenarios are modified copies of four inventory actions, not new actions.
 
 ### 1. Empty step body audit
 
-`python3 scripts/check_steps.py --path givn/steps --path givn/e2e_steps` exits 0: `check_steps: no no-op step bodies`, across the 17 tracked step files. The new steps call `assert_role`, `assert_role_member`, `assert_role_digits`, `assert_any_role`, `assert_metadata_lines`, `_assert`, or a persisted-value check; none is an empty body. The role-step audit is not clean, however: several new role steps are non-discriminating and can pass without the claimed element (finding F1).
+`python3 scripts/check_steps.py --path givn/steps --path givn/e2e_steps` exits 0: `check_steps: no no-op step bodies` across the 17 tracked step files. The new steps call `assert_role`, `assert_line_role`, `assert_line_role_any`, `assert_role_member`, `assert_role_digits`, `assert_metadata_line_role`, `_assert`, or a persisted-value check; none is an empty body. The residual issue is assertion precision, not fabrication (F2, V6).
 
 ### 2. Checked scenarios and their commits
 
-`tasks.md` has 40 `- [x]` entries: 20 task lines (setup plus 19 behavior tasks) and 20 `COMMIT:` lines, all with batch names. Tasks setup and 1-18 record `d13d99ef65bd289dbe55627358589a38a1bd0159`; task 19 records `7efd2c8cf4e32d39a28be55dbb9ac8538af3d1d3`. Both are commit objects (`git cat-file -t`). `git ls-tree` shows `d13d99` contains `passuff/tui/frame.py`, `passuff/tui/app.py`, `scripts/verify.sh`, `tests/support/harness.py`, `tests/support/world.py`, `docs/design/design-system.md`, `docs/glossary.md`, the four capability step files, the four E2E files, and the delta features. `7efd2c8` contains `passuff/tui/app.py`, `givn/steps/inbox_navigation_steps.py`, the modified `inbox-navigation.feature`, and `tasks.md`. No checked task points to a comment-only, tag-only, task-only, feature-only, or transcript-only commit.
+`tasks.md` has 40 `- [x]` entries: 20 task lines (setup plus 19 behavior tasks) and 20 `COMMIT:` lines, all with batch names. Tasks setup and 1-18 record `91422ab088b4233c718ca9f49776c7bea32f6c9a`; task 19 records `7efd2c8cf4e32d39a28be55dbb9ac8538af3d1d3`. Both are commit objects (`git cat-file -t`). `git ls-tree` shows `91422ab` contains `passuff/tui/frame.py`, `passuff/tui/app.py`, the step and E2E bindings, the four delta features, `tasks.md`, `design.md`, `docs/design/design-system.md`, `docs/glossary.md`, `README.md`, `scripts/verify.sh`, `tests/support/harness.py`, and the evidence; `7efd2c8` contains the settings-persistence feature and task change with the production modules. Every checked task has a revision touching production code or its regression test under a named batch.
 
 ### 3. Promised components
 
 | Design promise | Tree | Consumer |
 |---|---|---|
-| `Span`, `StyledLine`, `render_styled` | `passuff/tui/frame.py:16-28,145-451` | `passuff/tui/app.py:21,358` |
-| Palette owner | `passuff/tui/frame.py:31-43` (`PALETTE`) | `passuff/tui/app.py:21,364,392`; the design and glossary name `ROLE_STYLES`, which does not exist (finding D2) |
-| `render`, `render_ansi`, `render_roles` | `passuff/tui/frame.py:454-481` | `passuff/tui/app.py:492-500`; the visual steps through `--snapshot` |
-| Save prompt | `passuff/tui/app.py:113-133`; `passuff/tui/frame.py:434-439` | the `inbox-navigation` save scenarios |
-| Active-change runner and evidence | `scripts/verify.sh:51-66`; `tests/support/harness.py:46-70`; `tests/support/world.py:525-585` | the change/E2E scopes; the runner's literal "fail on more than one active change" clause is not implemented (finding D7) |
+| `Span`, `StyledLine`, `render_styled` | `passuff/tui/frame.py:15-27,155-424` | `passuff/tui/app.py:21,374` |
+| Palette owner `PALETTE` | `passuff/tui/frame.py:30-42` | `passuff/tui/app.py:21,357`; the design, glossary, and design system name `PALETTE` and role strings (D2 fixed) |
+| `render`, `render_ansi`, `render_roles` | `passuff/tui/frame.py:427-454` | `passuff/tui/app.py:21,492-500`; the visual steps through `--snapshot`/`--roles` |
+| Bordered panes and overlays | `passuff/tui/frame.py:126-152,248,286,298,320,336,381,402,410,412` | every surface; the outline widths are finding V5 |
+| Save prompt | `passuff/tui/app.py:113-133`; `passuff/tui/frame.py:405-410` | the `inbox-navigation` save scenarios |
+| Active-change runner and evidence | `scripts/verify.sh:48-54,73-93`; `tests/support/harness.py:46-70` | the change/E2E scopes; the multi-change fail clause is still absent (D7) |
 | Step bindings | `givn/steps/common.py`, the four capability files, the four E2E files | `givn/steps/support.py`; the E2E files import the regular bindings |
 
-The design also names a `Role` symbol (`design.md:86`); the implementation uses role-name strings and `PALETTE` keys, not a `Role` type. This is the same durable-symbol finding D2, not a missing rendering capability.
+`TerminalPresentation` is realized as the `passuff.tui.frame` module; the design's former `ROLE_STYLES`/`Role` symbols are removed and the durable documents agree on `PALETTE` and role-name strings.
 
 ### 4. Strict-mode proof
 
@@ -39,11 +40,11 @@ The design also names a `Role` symbol (`design.md:86`); the implementation uses 
 
 ### 5. Every `@e2e` Then asserts the real interface
 
-The four delta `@e2e` scenarios assert the printed snapshot, the role record, the exit status, or the browser fake's log. `Developer opens the inbox TUI`, `Developer opens an activity's details`, `Developer navigates the inbox panes`, and `Developer reviews a stacked inbox` all use `--snapshot`/`--snapshot --roles` through `tests/support/world.py`. No delta `@e2e` Then asserts only the state file or the repository. The permanent E2E CLI scenarios assert the command transcript and exit status; the browser scenario asserts the fake `xdg-open` log (`givn/e2e_steps/activity_inbox_e2e.py:24-27`).
+The four delta `@e2e` scenarios assert the printed snapshot, the role record, the exit status, or the browser fake's log. `Developer opens the inbox TUI`, `Developer opens an activity's details`, `Developer navigates the inbox panes`, and `Developer reviews a stacked inbox` use `--snapshot`/`--snapshot --roles` through `tests/support/world.py`. The delta E2E files import the regular bindings; the driver is the snapshot subprocess or the pty, not HTTP or fetch. The permanent CLI E2E scenarios assert the command transcript and exit status. No delta E2E Then asserts only the state file or the repository.
 
 ### 6. Exact `verify.e2e_command` and the files it invokes
 
-`givn/commands.yaml` sets `verify.e2e_command: "./scripts/verify.sh --e2e"` and `verify.command: "./scripts/verify.sh"`. `scripts/verify.sh:74-86` runs `behave --stage e2e --tags="@e2e"` over `givn/specs/*/*.feature`, `givn/changes/*/specs/*/*.feature`, and any `GIVN_FEATURES`; `givn/e2e_environment.py` loads `givn/e2e_steps/`. The tree contains no second E2E step implementation; `grep` for `@step` finds definitions only under `givn/steps`, `givn/e2e_steps`, and `tests/strictness`. The delta glob is all active changes, not the single selected change; with the empty `python-rebuild` change this selects the same features, but the design's literal fail clause is not implemented (D7).
+`givn/commands.yaml` sets `verify.e2e_command: "./scripts/verify.sh --e2e"` and `verify.command: "./scripts/verify.sh"`. `scripts/verify.sh:74-86` runs `behave --stage e2e --tags="@e2e"` over `givn/specs/*/*.feature`, `givn/changes/*/specs/*/*.feature`, and any `GIVN_FEATURES`; `givn/e2e_environment.py` loads `givn/e2e_steps/`. The tree contains no second E2E step implementation; `grep` finds definitions only under `givn/steps`, `givn/e2e_steps`, and `tests/strictness`.
 
 ### 7. E2E scope selection
 
@@ -51,11 +52,11 @@ The four delta `@e2e` scenarios assert the printed snapshot, the role record, th
 
 ### 8. E2E scope size and interaction coverage
 
-The three touched use cases hold 11 normalized inventory entries: 7 for `review-activity-inbox`, 1 for `review-pull-request-stacks`, and 3 for `change-watch-scope`. Each has one design matrix row and one `@e2e` scenario; the four delta E2E scenarios are modified copies of four of those inventory actions, not new actions. The 22 E2E executions are 18 permanent plus the 4 delta copies; no capability has an excess E2E scenario for a variant or error case. The settings overlay, PR detail, help, save prompt, ignored row, empty state, 80x24 frame, and picker are regular/delta visual variants of those inventory actions.
+The three touched use cases hold 11 normalized inventory entries: 7 for `review-activity-inbox`, 1 for `review-pull-request-stacks`, and 3 for `change-watch-scope`. Each has one design matrix row and one `@e2e` scenario; the four delta E2E scenarios are modified copies of four of those inventory actions, not new actions. The 22 E2E executions are 18 permanent plus the 4 delta copies; no capability has an excess E2E scenario for a variant or error case. The settings overlay, PR detail, help, save prompt, 80x24, ignored row, empty state, and picker are regular variants, correctly not `@e2e`.
 
 ### 9. Design conformance (commands, layout, framework, drivers)
 
-The `verify` commands, step-file layout, `behave` stage split, snapshot flags, and `--snapshot --roles` assertion source match `design.md`. The implementation deviates from the reviewed design in the durable palette symbol (`PALETTE` vs `ROLE_STYLES`), the absent `Role` symbol, the "fail on more than one active change" clause, and the table/controls composition (D2, D7, V1); `design.md` was not updated for those deviations.
+The `verify` commands, step-file layout, `behave` stage split, snapshot flags, and `--snapshot --roles` assertion source match `design.md`. The durable palette symbol and role names now match `design.md:86,121-128` and the glossary (D2 fixed). The one remaining named deviation is the multi-change fail clause: `design.md:161-163` says the runner fails when more than one active change exists and the id is unset; `scripts/verify.sh:48-54` exports an empty `GIVN_CHANGE_ID` and `tests/support/harness.py:50-56` falls back to the single specs root. That is minor D7. The visual composition defect is V5, a rendering defect rather than a design-command change.
 
 ### 10. Interaction coverage cross-reference
 
@@ -73,7 +74,7 @@ The `verify` commands, step-file layout, `behave` stage split, snapshot flags, a
 | change-watch-scope | switch the watch scope mode | yes | Developer switches the watch scope mode | `watch_scope_steps.py` | `--scope-mode --picker --snapshot` |
 | change-watch-scope | narrow the focus | yes | Developer narrows the focus in the watch scope | `watch_scope_steps.py` | `--focus-set --picker --snapshot` |
 
-Every inventory entry maps to a matrix row, an existing `@e2e` scenario, and step definitions using the promised mechanism.
+Every inventory entry maps to a matrix row, an existing `@e2e` scenario, and step definitions using the promised mechanism. 11/11.
 
 ### 11. Local run command
 
@@ -84,73 +85,78 @@ Every inventory entry maps to a matrix row, an existing `@e2e` scenario, and ste
 | Arc42 chapter or fact | Durable-doc source | `arc42.md` claim | `design.md` | `tasks.md` | Implementation evidence | Match? |
 |---|---|---|---|---|---|---|
 | Visual contract refines the terminal goal | `docs/arc42/01-introduction-and-goals.md:42-44` | Affected | Visual Design Contract | task 17 | `docs/design/design-system.md` | yes |
-| Styled frame with plain/ANSI/role projections | `docs/arc42/04-solution-strategy.md:77` | Affected | D1 | tasks 1-16 | `passuff/tui/frame.py:145-481` | yes |
-| `TerminalPresentation` composes tables and controls | `docs/arc42/05-building-block-view.md:72-73` | Affected | Modules | tasks 1-16 | `frame.py:218-223,265-270,303-322` renders rules, not the design-system bordered blocks | no (V1) |
-| Save prompt on quit | `docs/arc42/06-runtime-view.md:344-353` | Affected | save-prompt decision | tasks 11-14, 19 | `app.py:113-133`; `frame.py:434-439` | yes |
-| Palette roles and accessibility | `docs/arc42/08-crosscutting-concepts.md:134-142` | Affected | palette model | tasks 1-16 | `frame.py:31-43` | yes |
-| QS-034 visual fidelity follows the design system | `docs/arc42/10-quality-requirements.md:66` | Affected | Visual Design Contract | task 17 | composition mismatch (V1) | no |
-| R-037 palette/composition drift | `docs/arc42/11-risks-and-technical-debt.md:43` | Affected | Risks | task 17 | the composition drift is present (V1) | no |
-| Chapter 12 links the glossary | `docs/arc42/12-glossary.md` | Affected | glossary task | task 17 | `docs/glossary.md:63-64` names `ROLE_STYLES`/`Role`, absent from the code (D2) | no |
+| Styled frame with plain/ANSI/role projections | `docs/arc42/04-solution-strategy.md:77` | Affected | D1 | tasks 1-16 | `passuff/tui/frame.py:155-454` | yes |
+| `TerminalPresentation` composes the frame, tables, controls, and overlays | `docs/arc42/05-building-block-view.md:72-73` | Affected | Modules | tasks 1-16 | `frame.py:126-152,248,286,298,320,336,381,402,410,412`; the composition exists but the outline widths are finding V5 | yes (composition present; V5 is visual) |
+| Save prompt on quit | `docs/arc42/06-runtime-view.md:344-353` | Affected | save-prompt decision | tasks 11-14, 19 | `app.py:113-133`; `frame.py:405-410` | yes |
+| Palette roles and accessibility | `docs/arc42/08-crosscutting-concepts.md:134-142` | Affected | palette model | tasks 1-16 | `frame.py:30-42` | yes (the help row role collapse is V6) |
+| QS-034 visual fidelity follows the design system | `docs/arc42/10-quality-requirements.md:66` | Affected | Visual Design Contract | task 17 | the frame outlines are not closed (V5) and the help reference is clipped/collapsed (V6) | no |
+| R-037 palette/composition drift | `docs/arc42/11-risks-and-technical-debt.md:43` | Affected | Risks | task 17 | the composition drift is present in the frame outlines (V5) and the help row (V6) | no |
+| Chapter 12 links the glossary | `docs/arc42/12-glossary.md` | Affected | glossary task | task 17 | `docs/glossary.md:63-67` names `PALETTE`, role strings, `render_styled`, `render_roles`, and the snapshot flags, all present (D2 fixed) | yes |
 
-`ARC42 CONFORMANCE: FINDINGS`; the visual composition and the stale glossary symbols are unresolved, so this block is not `CLEAN`.
+`ARC42 CONFORMANCE: FINDINGS`; the visual fidelity rows (10, 11) do not match, so this block is not `CLEAN`.
 
 ## Ubiquitous language conformance
 
-The glossary adds `Watn palette`, `Palette role`, `Styled frame`, `Role record`, and `Rendered snapshot` (`docs/glossary.md:63-67`). `render_styled`, `render_roles`, and the snapshot flags exist; `docs/domain-model.md:154` correctly says the visual layer adds no domain structure. The glossary's symbols `ROLE_STYLES` and `Role` do not exist in the code; the actual symbol is `PALETTE` (`passuff/tui/frame.py:31`) and the roles are strings. This is finding D2. The save prompt's durable wording is T22, and T26 still says settings persist immediately in `ui.json` (finding U1). No single authoritative source remains for those terms.
+The glossary adds `Watn palette` (`PALETTE`), `Palette role` (role-name strings), `Styled frame` (`render_styled`), `Role record` (`render_roles`), and `Rendered snapshot` (the snapshot flags) at `docs/glossary.md:63-67`. `passuff/tui/frame.py:30-42` owns `PALETTE`; `render_styled`, `render_roles`, and the snapshot flags exist; the design system and `design.md` use the same role names and no longer name `ROLE_STYLES` or `Role`. `docs/domain-model.md:154` correctly says the visual layer adds no domain structure. D2 is resolved. No stale old-value sweep is outstanding.
 
 ## Use-case and Persona conformance
 
-The three owning use cases keep their goals, triggers, guarantees, typed relationships, and capability ownership; the delta changes presentation and the T22 save prompt, not the domain structure. `review-pull-request-stacks` still extends `review-activity-inbox`; `change-watch-scope` remains separate. T25's palette agrees with `docs/design/design-system.md` and the original `theme.rs`, but its composition claim and the design system's `bordered block` rows are not met by the main tables/controls (V1). T22 agrees with the save prompt and the receipt scenarios; T26 is stale (U1). The theme/picker/details save prompt copy in `docs/reference.md:113,118` matches.
+The three owning use cases keep their goals, triggers, guarantees, typed relationships, and capability ownership; the delta changes presentation and the T22 save prompt, not the domain structure. `review-pull-request-stacks` still extends `review-activity-inbox`; `change-watch-scope` remains separate. T25's palette matches the design system, and the composition elements exist; the frame outlines are not faithful (V5). T22 and T26 hold: the save prompt appears only for changed sort, direction, filters, ignored view, or notification settings; `y` persists, `n` discards, `Esc` cancels; the settings toggle updates the live `config.notifications` (`passuff/tui/app.py:299-305`) that `ObservationSession.deliver` reads (`passuff/tui/session.py:27-38`), so the immediate-application statement holds (U1 resolved). The save prompt defers persistence to `y` (`app.py:113-133`).
 
 Persona disposition:
 
 | Persona | Confirmed | Outcome in this change |
 |---|---|---|
-| `multi-account-developer` | yes, 2026-11-02 | The main inbox, activity detail, stack, and picker goals are visible in the ANSI/role evidence; the settings and save-prompt goals have no committed visual evidence, and the main-frame original composition is not restored (V1, V3). |
+| `multi-account-developer` | yes, 2026-11-02 | The main inbox, activity detail, PR detail, settings, save prompt, help, picker, and stack surfaces are committed as real captures and role records. The Persona's functional goals are reachable; the visual contract has the frame-outline defect (V5) and the clipped help reference (V6). |
 
 PERSONAS: multi-account-developer
 
 ## Coverage
 
-Measured evidence, all regenerated after the implementation and distinct files with branch instrumentation: `coverage/non-e2e-cobertura.xml` 2029/2349 lines (86.38%), 702/886 branches (79.23%); `coverage/e2e-cobertura.xml` 1520/2349 (64.71%), 387/886 (43.68%); `coverage/cobertura-coverage.xml` 2062/2349 (87.78%), 719/886 (81.15%). In the merged report `tui/frame.py` is 322/344 lines (93.6%) and `tui/app.py` 284/420 (67.6%).
+Measured evidence, all regenerated after the implementation and distinct files with branch instrumentation: `coverage/non-e2e-cobertura.xml` 2048/2366 lines (86.56%), 712/896 branches (79.46%); `coverage/e2e-cobertura.xml` 1534/2366 (64.84%), 392/896 (43.75%); `coverage/cobertura-coverage.xml` 2081/2366 (87.95%), 729/896 (81.36%). In the merged report `tui/frame.py` is 339/359 lines and `tui/app.py` 286/422.
 
-The measurement commands run only the regular and E2E scopes (`scripts/measure-coverage.sh:17,22`), so the delta non-E2E visual scenarios are outside the Cobertura reports. That is a measurement boundary, not missing tests: the settings overlay, PR detail, help, save prompt, 80x24, ignored-row, empty-state, and picker scenarios run in the change scope and are inside the 264/264 receipt. The uncovered lines `tui/app.py:127-132,439-443` and `tui/frame.py:377,404,407,432,446-447` are exactly those delta-only paths.
+The measurement commands run only the regular and E2E scopes (`scripts/measure-coverage.sh:17,22`), so the delta non-E2E visual scenarios are outside the Cobertura reports. That is a measurement boundary, not missing tests: the settings overlay, PR detail, help, save prompt, 80x24, ignored-row, empty-state, and picker scenarios run in the change scope and are inside the 264/264 receipt. The uncovered lines `tui/app.py:127-132,439-443` and `tui/frame.py:344,373,376,404,419-420` are those delta-only and interactive paths.
 
-Bucket 1 (dead code): `markdown_lines` (`passuff/tui/frame.py:90-91`) and `render_from_paths` (`passuff/tui/frame.py:484-485`) have no consumer; `grep` finds them only at their definitions, and the merged report leaves `render_from_paths` at `hits=0`. These are bucket 1 and must be deleted (D1).
+Bucket 1 (dead code): none. `markdown_lines` and `render_from_paths` are gone from `passuff/tui/frame.py`; `grep` finds them only in the historical review/design-review prose (D1 resolved). No other changed symbol is unused.
 
-Bucket 2 (missing test coverage): the non-discriminating role steps (F1) are missing assertions, not hard-to-test code. The `metadata values are dim` step is identical to the labels step; the overlay-border steps assert the outer frame's `┌`; the PR-detail heading and picker-brand steps accept the main frame's spans. These need discriminating assertions.
+Bucket 2 (missing test coverage): the residual role-precision gap (F2) and the visual-contract assertions (V5, V6). The unfocused-border and unfocused-title steps are identical line-level checks, the picker border and suffix steps are identical, and the metadata-values step can be satisfied by the dim border on the metadata line. The frame outlines and the help row are not asserted at all. These are missing assertions, not hard-to-test code; the fix is span-specific assertions plus the renderer corrections.
 
-Bucket 3 (legitimately hard to test): the curses color-pair initialization and the 256-color fallback (`passuff/tui/app.py:388-402`) depend on the real terminal; the role record and ANSI snapshot are the terminal-independent assertions, and the design records the fallback as a hard-to-test risk. The interactive loop's start/quit is covered by the regular pty smoke; this row is justified.
+Bucket 3 (legitimately hard to test): the curses color-pair initialization and the 256-color fallback (`passuff/tui/app.py:346-370`) depend on the real terminal; the role record and ANSI snapshot are the terminal-independent assertions, and the design records the fallback as a hard-to-test risk. The interactive loop's start/quit is covered by the regular pty smoke. This row is justified.
 
 No redundant unit tests: the `.feature` corpus is the only test surface.
 
 ## Visual review
 
-The design declares `Interface: terminal` (`design.md:170-190`) with the 80x24 minimum, the 100x30 default snapshot, and the palette/composition in `docs/design/design-system.md`. The 22 E2E executions produce 18 committed evidence directories because the four delta E2E scenarios reuse four permanent slugs; five directories carry `roles.json`, fifteen carry `transcript.ansi`, and the CLI-only scenarios carry `transcript.txt`. The states the review saw:
+The design declares `Interface: terminal` (`design.md:168-197`) with the 80x24 minimum, the 100x30 default snapshot, and the palette/composition in `docs/design/design-system.md`. The committed evidence is complete: 27 visual scenario directories, 13 role records, 18 ANSI transcripts, the eight real captures under `evidence/screens/real/`, the three comparisons, the three reference frames, and the durable main capture `docs/design/passuff-tui-alacritty.png` (byte-identical to `evidence/screens/real/main-inbox.png`, with the 81/15/214/114/252 palette in the pixels). V3 and V4 are resolved.
+
+The states the review saw:
 
 | Evidence | State seen |
 |---|---|
-| `developer-opens-the-inbox-tui` | main inbox, header, counts/focus, watched/activity rows, controls, accent/gold/green/body roles |
-| `developer-opens-an-activity-s-details` | activity detail overlay, accent-bold title, accent labels, dim values, rule separator, body, hint roles |
-| `developer-navigates-the-inbox-panes` | focused/unfocused titles and borders, selected row, header roles |
-| `developer-reviews-a-stacked-inbox` | `☰` header, `1/2`/`2/2` bright positions, selected row |
-| `developer-toggles-a-repository-in-the-watch-scope` | picker, mode, selected repository, focus marks |
-| `developer-switches-the-watch-scope-mode` | picker, `Mode: selected`, focus marks |
-| `developer-narrows-the-focus-in-the-watch-scope` | picker, focus marks, watched row |
-| the remaining permanent/CLI transcripts | startup, status, inbox/read, check, notifications, usage/version |
+| `evidence/screens/real/main-inbox.png` | main inbox; outer frame and title, account/watch-scope header, counts/focus, bordered watched table with stack column (`☰`, 1/2, 2/2), bordered activity table, bordered controls; accent headers, gold selected rows, green focused activity border, dim unfocused border |
+| `evidence/screens/real/main-selected.png` | watched pane focused: green border and title, gold selected row and `▶`, dim unfocused activity border |
+| `evidence/screens/real/activity-detail.png` | activity detail overlay: centered dim-bordered block over a cleared activity region, accent-bold title, accent labels, dim values, rule separator, bright-gray body, accent-bold hint keys |
+| `evidence/screens/real/pr-detail.png` | PR detail overlay: centered dim-bordered block, accent-bold title, metadata labels accent and values dim, green-bold description heading, bright-gray body |
+| `evidence/screens/real/settings-overlay.png` | settings overlay: centered dim-bordered block, accent-bold title, gold selected row, green enabled value, dim disabled value |
+| `evidence/screens/real/save-prompt.png` | save prompt: centered dim-bordered block titled `Leave`, bright question, accent-bold keys |
+| `evidence/screens/real/help-overlay.png` | help overlay: dim-bordered block, accent-bold title and headings; the second key row is clipped and all-cyan (V6) |
+| `evidence/screens/real/scope-picker.png` | watch-scope picker: centered dim-bordered block, bright-bold brand, dim suffix, accent-bold mode, green focus marks, gold selected repository |
+| `evidence/screens/comparisons/*.png` | side-by-side original/rebuilt main inbox, selected PR, and settings overlay; composition, palette, focus, selection, headers, and overlay placement compared |
+| `evidence/reference/*.png` | the original frames; every original bordered block closes its outline at the top-right corner |
+| `evidence/visual/the-80x24-frame-keeps-the-composition/`, `an-ignored-row-is-dim-and-marked/`, `the-empty-inbox-uses-the-primary-text/`, `a-missing-browser-opener-is-reported-and-keeps-the-detail/` | 80x24 composition, dim `⊘` ignored row, bright empty state, gold status line |
 
-The ANSI/role evidence shows the palette exactly as the design system records it (81, 15, 214, 114, 252, 240, dim/bold); the palette part of the Persona goal is visible. The composition is not the original:
+Findings against the contract:
 
-- The original reference `evidence/reference/main-inbox.png` and the original `Block::bordered()` calls (`/home/buster/projects/gh-notify/crates/passuff-cli/src/tui.rs:1744,1824,1926,1978`) show bordered blocks for the watched table, activity table, and controls bar. The rebuilt frame draws only `── title ──` rules (`passuff/tui/frame.py:218-223,265-270,303-322`), and the committed screenshot shows no inner table or controls borders. This contradicts `docs/design/design-system.md:48,56,60` (V1).
-- The original settings overlay uses `Block::bordered()`, `Clear`, and a centered rect (`tui.rs:2045-2049`); the rebuilt overlay is appended at the bottom at full width and never clears the background (`frame.py:336,352,370-372,411,430,439`). This contradicts `docs/design/design-system.md:64` (V2).
-- `docs/design/passuff-tui-alacritty.png` is a grayscale/plain frame: its 195-colour histogram contains no accent/gold/green text pixels; it does not show the palette. The committed ANSI transcripts are the styled artifact, but the design's "rendered reference" capture is not styled (V4).
-- There is no committed visual evidence for the settings overlay, save prompt, PR detail, or help. `tests/support/harness.py:46-70` writes evidence only for `e2e`-tagged scenarios; the settings and save-prompt delta scenarios are not `@e2e` (`inbox-navigation.feature:24-37,100-149`). The settings and save-prompt Persona goals therefore cannot be judged from committed evidence (V3).
+- **V5 (blocking):** the rendered frame outlines do not close. The outer frame's top edge is four cells wider than its sides (`frame.py:414` builds `3 + 8 + 8 + (width - 16) + 1 = width + 4`; the transcript `evidence/visual/developer-opens-the-inbox-tui/transcript.txt:1` is 104 characters against 100 for the body). Every `_box` top edge is one cell narrower than its sides (`frame.py:127`; the settings transcript `.../the-settings-overlay-follows-the-palette/transcript.txt:7-8` has `┐` at column 81 and the body `│` at 82; the watched/activity/controls boxes show the same at 96 vs 97). The picker's top edge is six cells wider (`frame.py:337`; `.../the-scope-picker-renders-the-watn-palette/transcript.txt:5-6` has `┐` at 85 and the body `│` at 79). The real captures show the disconnected corners: `main-inbox.png`, `settings-overlay.png`, `save-prompt.png`, `pr-detail.png`, `help-overlay.png`, `activity-detail.png`, and `scope-picker.png` (the picker top edge visibly overhangs the body). The reference `reference/main-inbox.png` closes the outer frame at the top-right. This contradicts `design-system.md:40-41` (outer frame), `:48,56,60` (bordered blocks), and `:64` (modal overlays use a dim bordered block). A frame whose top edge does not meet its side is not the original composition; the Persona's visual-fidelity goal is not met on every required surface.
+- **V6 (blocking):** the help key reference is clipped and its second row collapses to one accent-bold span. `frame.py:310` defines a row longer than the overlay; `_box` truncates it (`frame.py:131-133`) and rewrites the line with the first span's role, so the labels lose the dim role and the tail (`p watch scope`, `q close`) disappears. The committed role record `evidence/visual/the-developer-opens-the-key-reference/roles.json` shows the second key row as a single `accent_bold` span ending `, `; the real `help-overlay.png` shows the row all-cyan, ending `setting`, with the rest missing. The first row in the 100x30 snapshot is truncated mid-word (`... mark visible rea`). This contradicts `design-system.md:73` (help key/label rows) and the README's "full keymap" claim (`README.md:92`); the Persona opening the key reference cannot read the complete reference and cannot distinguish keys from labels on that row.
 
-Persona judgment: the `multi-account-developer` main inbox, activity detail, stack, and picker goals are visible; the settings/save-prompt goals are not evidenced, and the main inbox is not the original composition. `VISUAL-REVIEW: FAIL`.
+The palette and focus/selection roles are otherwise correct: the main, activity, PR, settings, save, and picker roles match `design-system.md` and the original (accent 81, bright 15, body 252, gold 214, green 114, rule 240, dim). The overlays are centered over a cleared rectangle inside the main frame, matching the original overlay placement (V2's defect is fixed); the watched, activity, and controls panes are bordered blocks (V1's missing-block defect is fixed), but their outlines are malformed (V5).
+
+Persona judgment: the `multi-account-developer` can reach the inbox, activity, PR detail, settings, save, help, picker, and stack goals, and the palette is restored. The Persona's visual contract is not fully met because the frames do not close and the help reference is incomplete. `VISUAL-REVIEW: FAIL`.
 
 ## Scenario execution evidence
 
-Receipt `givn/changes/restore-tui-styling/verification/tasks-verification.json`: status `passed`, head `4fd7ae98d41c45b46470a4825e5174fca5f29172`, 264 total, 264 passed, 0 failed, 0 skipped; `tasks-result.json` records `{"failed":0,"passed":264,"skipped":0,"total":264}`. `tasks.md:16,199` records regular 247/247 and E2E 22/22. `./scripts/verify.sh --strictness` exits 0. The receipt is reused at `e520e0d`; the gate reports "documentation-only revision". Review does not re-run the suite.
+Receipt `givn/changes/restore-tui-styling/verification/tasks-verification.json`: status `passed`, head `7f0470683f9f186901f15c3094388cdae8cf74a2`, 264 total, 264 passed, 0 failed, 0 skipped; `tasks-result.json` records `{"failed":0,"passed":264,"skipped":0,"total":264}`. `tasks.md:16,199` records regular 247/247 and E2E 22/22. `./scripts/verify.sh --strictness` exits 0. The receipt is reused at `657b447`; the gate reports "documentation-only revision". Review does not re-run the suite.
 
 ## Overlap dispositions
 
@@ -421,41 +427,45 @@ Receipt `givn/changes/restore-tui-styling/verification/tasks-verification.json`:
 | Developer sets up passuff on first run | The 80x24 frame keeps the composition | variant |
 | Developer sets up passuff on first run | The developer cancels the quit from the save prompt | variant |
 | Developer sets up passuff on first run | Developer reviews a stacked inbox | variant |
+
 ## README impact
 
 README-IMPACT: updated - Terminal inbox, Coverage
 
-The change is user-visible (the TUI palette and the new `y`/`n` save-prompt keys), so the README's Terminal inbox key table and coverage evidence are in scope. Neither section was edited: `README.md:77-101` still says `q`/`Esc` quits and lists neither `y` nor `n`, and `README.md:3-5,166-167` still reports 89%/83% (1931/2178, 685/828) while the regenerated merged report is 87.78%/81.15% (2062/2349, 719/886). This is finding R1; the declared update is not an edit.
+The Terminal inbox key table now lists the sort (`s`/`S`), filter (`f`/`F`), unread (`u`), clear (`c`/`C`), settings (`,`), scope (`p`), and save-prompt (`y`/`n`/`Esc`) keys (`README.md:77-101`). The coverage badges and summary report 88%/81% (2081/2366, 729/896), matching `coverage/cobertura-coverage.xml` (`README.md:3-5,166-167`). R1 is resolved.
 
 ## Findings
 
 | ID | Severity | Finding | Evidence | Status |
 |---|---|---|---|---|
-| V1 | blocking | The main watched table, activity table, and controls bar are not the design system's bordered blocks and not the original composition. | `docs/design/design-system.md:48,56,60`; `passuff/tui/frame.py:218-223,265-270,303-322`; `evidence/reference/main-inbox.png`; `/home/buster/projects/gh-notify/crates/passuff-cli/src/tui.rs:1824,1926,1978` | open |
-| V2 | blocking | Modal overlays are appended at full width with no clear rectangle; the original uses centered `Clear`/`Block` overlays. | `docs/design/design-system.md:64`; `passuff/tui/frame.py:336,352,370-372,411,430,439`; `tui.rs:2045-2049` | open |
-| V3 | blocking | No committed visual evidence for the settings overlay, save prompt, PR detail, or help; the settings/save-prompt Persona goals cannot be judged. | `tests/support/harness.py:46-70`; `givn/changes/restore-tui-styling/specs/review-activity-inbox/inbox-navigation.feature:24-37,100-149`; `givn/changes/restore-tui-styling/evidence/visual/` | open |
-| V4 | major | The committed "styled" screenshot is grayscale/plain and does not show the palette. | `docs/design/passuff-tui-alacritty.png` (195-colour histogram, no colored text pixels); `docs/design/design-system.md:100-105`; `Isetest-design.md:318` | open |
-| F1 | blocking | Several new role steps are non-discriminating: metadata values repeats the labels check; overlay-border steps match the outer frame's `┌`; PR-detail heading and picker brand match main-frame spans; the settings selected-row `▶` matches the main-frame row. | `givn/steps/common.py:262-264`; `givn/steps/support.py:46-54`; `givn/steps/activity_inbox_steps.py:230-232`; `givn/steps/inbox_navigation_steps.py:282-284,307-309,317-319,337-339`; `givn/steps/watch_scope_steps.py:137-144`; `givn/steps/inbox_navigation_steps.py:293-295` | open |
-| D1 | blocking | Dead code: `markdown_lines` and `render_from_paths` have no consumer; `render_from_paths` is uncovered. | `passuff/tui/frame.py:90-91,484-485`; `grep` finds no consumer; merged report `hits=0` at line 485 | open (bucket 1) |
-| D2 | blocking | The durable design and glossary name `ROLE_STYLES` and `Role`; the code owns `PALETTE` and string roles, and no `Role` symbol exists. | `docs/glossary.md:63-64`; `givn/changes/restore-tui-styling/design.md:86`; `passuff/tui/frame.py:31-43` | open |
-| U1 | blocking | T26 still says settings persist in `ui.json` and apply immediately to live delivery; the save prompt makes persistence conditional and the live `ObservationSession` reads `config.notifications`, not the toggled `view`. | `givn/specs/review-activity-inbox/usecase.md:74`; `passuff/tui/app.py:113-133,299-305`; `passuff/tui/session.py:19-37`; `design.md:43-48` | open |
-| R1 | blocking | The user-visible change did not update the README Terminal inbox key table or the coverage evidence. | `README.md:3-5,77-101,166-167`; `coverage/cobertura-coverage.xml` | open |
-| P1 | blocking (gate) | The proposal's `## Capability Routing` table has three columns; `givn check review` requires the `Route's recommendation` column and reports the four delta capabilities as undeclared. | `givn/changes/restore-tui-styling/proposal.md:79-84`; `givn check review` error; archived four-column table at `givn/archive/python-rebuild/proposal.md:81-89` | open |
-| T1 | minor | The tasks acceptance line still says 263/263 while the receipt and the rest of tasks.md record 264/264. | `givn/changes/restore-tui-styling/tasks.md:3` vs `:16,199` and `verification/tasks-verification.json` | open |
-| D7 | minor | `scripts/verify.sh:51-57` exports an empty `GIVN_CHANGE_ID` when more than one active change directory exists instead of failing as `design.md:161-163` promises; the harness's single-specs-root fallback masks it. | `scripts/verify.sh:51-57`; `tests/support/harness.py:52-56`; `design.md:161-163` | open |
-| R4-17 | resolved | The design-review round-4 PASS recorded 16 delta entries; the 17th scenario is the T22 settings-mute regression test, added after that review, and `design.md` now records 17. It adds a regression test for the existing save-prompt rule, not a new behavior; it does not change the reviewed plan. | `design.md:315-320`; `tasks.md:203-212`; `inbox-navigation.feature:150-162`; commit `7efd2c8` | resolved |
+| V5 | blocking | The frame outlines do not close: the outer frame top is four cells wider than its sides, every `_box` top is one cell narrower, and the picker top is six cells wider. The reference frames close every box. | `passuff/tui/frame.py:127,337,414`; `evidence/visual/developer-opens-the-inbox-tui/transcript.txt:1` (104 vs 100); `evidence/visual/the-scope-picker-renders-the-watn-palette/transcript.txt:5-6` (85 vs 79); `evidence/visual/the-settings-overlay-follows-the-palette/transcript.txt:7-8` (81 vs 82); `evidence/screens/real/{main-inbox,settings-overlay,save-prompt,pr-detail,help-overlay,activity-detail,scope-picker}.png`; `evidence/reference/main-inbox.png`; `docs/design/design-system.md:40-41,48,56,60,64` | open (blocking) |
+| V6 | blocking | The help key reference is clipped mid-word and its second row collapses to one accent-bold span: the labels lose the dim role and `p watch scope`/`q close` are absent; the README promises the full keymap. | `passuff/tui/frame.py:310,131-133`; `evidence/visual/the-developer-opens-the-key-reference/roles.json` (second key row is one `accent_bold` span ending `, `); `evidence/screens/real/help-overlay.png` (all-cyan row ending `setting`); `docs/design/design-system.md:73`; `README.md:92` | open (blocking) |
+| F2 | major | The recorded F1 steps are line-specific now, but the residual role assertions are not span-specific: the unfocused-border and unfocused-title steps are identical, the picker border and suffix steps are identical, and the metadata-values step is satisfied by the dim border on the metadata line. | `givn/steps/inbox_navigation_steps.py:272-279`; `givn/steps/watch_scope_steps.py:137-149`; `givn/steps/common.py:257-264`; `givn/steps/support.py:109-116`; the metadata role records under `evidence/visual/` | open (bucket 2) |
+| D7 | minor | `scripts/verify.sh:48-54` exports an empty `GIVN_CHANGE_ID` when more than one active change directory exists instead of failing as `design.md:161-163` promises; the harness's single-specs-root fallback masks it. | `scripts/verify.sh:48-54`; `tests/support/harness.py:50-56`; `design.md:161-163`; `givn/changes/` contains `python-rebuild/` and `restore-tui-styling/` | open (minor; fix with V5/V6) |
+| T1 | minor | The tasks acceptance line still says 263/263 while the receipt and the rest of tasks.md record 264/264. | `givn/changes/restore-tui-styling/tasks.md:3` vs `:16,199` and `verification/tasks-verification.json` | open (minor; fix with V5/V6) |
+| V1 | resolved | The watched, activity, and controls panes are bordered `_box` blocks with the focused block green, the unfocused block dim, and the selected rows gold. | `passuff/tui/frame.py:126-152,248,286,298`; `evidence/screens/real/main-inbox.png`, `main-selected.png` | resolved (the outline widths are V5) |
+| V2 | resolved | Overlays are centered by `_composite` over a cleared rectangle inside the main frame; the main behind is replaced within the overlay rectangle. | `passuff/tui/frame.py:140-152,411-412`; `evidence/screens/real/settings-overlay.png`, `save-prompt.png`, `pr-detail.png`, `help-overlay.png`, `scope-picker.png`, `activity-detail.png`; `evidence/reference/settings-overlay.png` | resolved (the outline widths are V5) |
+| V3 | resolved | Real Alacritty captures exist for the main inbox, selected PR, activity detail, PR detail, settings, save prompt, help, and scope picker; the comparisons and index are committed; transcripts/ANSI/roles are committed for the regular visual scenarios. | `evidence/screens/real/` (8 PNGs); `evidence/screens/comparisons/` (3 PNGs); `evidence/screens/README.md`; `evidence/visual/` (27 dirs, 13 roles, 18 ANSI) | resolved |
+| V4 | resolved | The curses color pairs are initialized inside the loop after `initscr`; the real captures show the gold/green/cyan palette; the durable capture is styled. | `passuff/tui/app.py:346-370`; `docs/design/passuff-tui-alacritty.png` (byte-identical to `evidence/screens/real/main-inbox.png`, colored pixels in the 81/214/114 palette) | resolved |
+| F1 | resolved | The recorded non-discriminating steps are line-specific and target the overlay, metadata, heading, and picker lines. | `givn/steps/common.py:257-264`; `givn/steps/activity_inbox_steps.py:230-237`; `givn/steps/inbox_navigation_steps.py:282-354`; `givn/steps/watch_scope_steps.py:137-154` | resolved (the residual span precision is F2) |
+| D1 | resolved | `markdown_lines` and `render_from_paths` are removed; no consumer remains. | `grep` finds them only in the historical review/design-review prose; `passuff/tui/frame.py` ends at `render_roles` (`:449-454`) | resolved |
+| D2 | resolved | The docs name `PALETTE` and role-name strings; no `ROLE_STYLES` or `Role` symbol remains. | `docs/glossary.md:63-67`; `givn/changes/restore-tui-styling/design.md:86,121-128`; `docs/design/design-system.md:13-25`; `passuff/tui/frame.py:30-42` | resolved |
+| U1 | resolved | The settings toggle updates the live `config.notifications`, which `ObservationSession.deliver` reads; the save prompt defers persistence to `y`. | `passuff/tui/app.py:113-133,299-305`; `passuff/tui/session.py:27-38`; T22/T26 in `givn/specs/review-activity-inbox/usecase.md:69,74` | resolved |
+| R1 | resolved | The README key table and coverage evidence are refreshed. | `README.md:77-101,3-5,166-167`; `coverage/cobertura-coverage.xml` | resolved |
+| P1 | resolved | The proposal has the filled four-column capability routing table with `Route's recommendation` and the four EXTEND decisions. | `givn/changes/restore-tui-styling/proposal.md:79-89` | resolved |
+| R4-17 | resolved | The design-review round 4 recorded 16 delta entries; the 17th scenario is the T22 settings-persistence regression (`The developer mutes notifications from the settings dialog`), added after that review. It is a variant/regression of the existing save-prompt rule, not a new behavior; `design.md` records 17. | `design.md:307-312`; `tasks.md:203-212`; `inbox-navigation.feature` (the settings-mute scenario); commit `7efd2c8` | resolved |
 
 ## Sign-off
 
-- [ ] Fabrication audit: clean - `check_steps.py` reports 0 no-op bodies, but the non-discriminating role steps remain (F1).
-- [x] Every checked task has a verified commit touching production code - 40/40 checked; `d13d99` and `7efd2c8` contain the production, step, feature, and task changes with batch names.
-- [ ] Every promised component exists - the frame, palette, snapshots, save prompt, runner, and bindings exist; the promised `Role`/`ROLE_STYLES` symbols do not (D2).
-- [x] Every consumer uses only its declared contract - `app.py` imports the frame's public render functions and palette; the visual steps use `--snapshot`/`--snapshot --roles`, not the component.
+- [x] Fabrication audit: clean - `check_steps.py` reports 0 no-op bodies across the 17 step files.
+- [x] Every checked task has a verified commit touching production code - 40/40 checked; `91422ab` and `7efd2c8` contain the production, step, feature, task, and evidence changes with batch names.
+- [x] Every promised component exists - the frame model, `PALETTE`, projections, save prompt, runner, harness, and bindings exist; `TerminalPresentation` is `passuff.tui.frame`.
+- [x] Every consumer uses only its declared contract - `app.py` imports the frame's public render functions and palette; the visual steps use `--snapshot`/`--roles`, not the component.
 - [x] Strict-mode proof present and passing - `./scripts/verify.sh --strictness` exits 0 with all three probes.
 - [x] Scenario execution evidence is recorded per scope - receipt 264/264, regular 247/247, E2E 22/22, zero failed or skipped.
 - [x] Coverage classification uses the most recent measured evidence - three distinct branch-instrumented reports; the delta-only paths are classified from the change receipt.
-- [ ] Every coverage gap classified and resolved - the dead code (D1) and the missing discriminating assertions (F1) remain.
-- [ ] Dead code deleted. Missing tests added. Hard-to-test gaps justified - D1 and F1 are open; the curses terminal fallback is justified as bucket 3.
+- [ ] Every coverage gap classified and resolved - F2 is bucket 2 and unresolved; V5/V6 add the missing visual assertions.
+- [ ] Dead code deleted. Missing tests added. Hard-to-test gaps justified - D1 is resolved and the curses fallback is justified as bucket 3; the F2 assertions and the V5/V6 visual assertions are not added.
 - [x] Redundant unit tests removed - there is no separate unit-test tree.
 - [x] No `@wip` tags remain. No implementation-layer detail in the spec - `givn lint` reports clean; the delta features contain no `@wip`.
 - [x] Canonical E2E policy was read from the resolved specs instruction; every normalized inventory action has one `@e2e` scenario and variants are regular scenarios - 11/11.
@@ -463,26 +473,30 @@ The change is user-visible (the TUI palette and the new `y`/`n` save-prompt keys
 - [x] The local run command starts the full stack cleanly - `.venv/bin/python -m passuff --help` exits 0; the committed receipt covers the fake GitHub, D-Bus, and binary twins.
 - [x] The exact files `verify.e2e_command` invokes were identified and read; the tree (including untracked files) has no second E2E implementation.
 - [x] The E2E scope is selected explicitly (`GIVN_RESULT_SCOPE` and `--e2e`); the receipt reports zero failures and skips.
-- [ ] Implementation (commands, file layout, framework/driver) matches what `design.md` explicitly named - the palette symbol, `Role` symbol, runner fail clause, and composition diverge (D2, D7, V1).
+- [ ] Implementation (commands, file layout, framework/driver) matches what `design.md` explicitly named - the multi-change fail clause is still missing (D7); the visual composition is V5.
 - [x] Interaction coverage verified: every inventory entry maps to a matrix row, an existing `@e2e` scenario, and step definitions using the promised driving mechanism - 11/11.
-- [x] No finding was excused with a classification outside the three buckets - D1 is bucket 1, F1 is bucket 2, and the curses fallback is bucket 3; no deferral or invented exception is used.
+- [x] No finding was excused with a classification outside the three buckets - D1 is resolved; F2 and the V5/V6 assertions are bucket 2; the curses fallback is bucket 3; D7/T1 are minor non-coverage findings for the same repair batch.
+- [ ] Visual review completed with every Persona finding dispositioned - V5 and V6 remain open.
 
 ## Result
 
-Execution evidence is present and mechanically sound: 264/264 change, 247/247 regular, 22/22 E2E, strictness exit 0, clean `check_steps.py`, and verified commits. The round-4 design-review PASS versus the 17th scenario is resolved: the scenario is a T22 regression test, not a new behavior, and `design.md` records 17 entries.
+Execution evidence is present and mechanically sound: 264/264 change, 247/247 regular, 22/22 E2E, strictness exit 0, clean `check_steps.py`, and verified commits. The recorded corrections are fixed: P1 (routing table), V1 (bordered panes), V2 (centered/cleared overlays), V3 (real captures and evidence), V4 (color pairs and durable palette capture), the recorded F1 items, D1 (dead code), D2 (`PALETTE`/role strings), U1 (live notification settings), and R1 (README). The design-review 16-vs-17 count is resolved: the 17th scenario is the T22 settings-persistence regression, and `design.md` records 17.
 
-The review fails on the visual contract and evidence (V1-V4), the non-discriminating role steps (F1), the dead code (D1), the durable-doc drift (D2, U1), the README (R1), and the proposal routing gate (P1). The exact `givn check review --change restore-tui-styling` result after writing this file is:
+The review fails on V5: the outer frame, every inner pane/overlay, and the picker draw a top edge that does not meet the side borders, so the "bordered block" composition is visibly broken in the committed captures and the reference comparison; and on V6: the help key reference is clipped and its second row collapses to all accent-bold, losing the dim labels and the tail keys. F2 (residual span-level role precision) is a bucket-2 gap; D7 and T1 are minor fixes for the same repair batch.
+
+The exact `givn check review --change restore-tui-styling` result after writing this file is:
 
 ```text
 EXIT=1
+givn lint: 4 file(s) checked — clean
+net delta: 9 added, 8 modified, 0 removed
   ✓ overlap dispositions passed
-  ✓ change verification receipt reused across documentation-only revision e520e0dbb086de01717108edb2ab965119309dd2 (tested at 4fd7ae98d41c45b46470a4825e5174fca5f29172, 264 scenario(s))
+  ✓ change verification receipt reused across documentation-only revision 657b44784eee34b568fdaf94e4c9995c7784f8ea (tested at 7f0470683f9f186901f15c3094388cdae8cf74a2, 264 scenario(s))
 error: review checks failed:
   integrity checks failed:
   review.md actual verdict is FAIL
-  capability routing decisions do not match the built delta:
-  proposal.md has no filled '## Capability Routing' table — the delta capabilities [activity-inbox, inbox-navigation, stacked-inbox, watch-scope] are undeclared; record decisions (EXTEND <capability> / NEW in <usecase-id>)
 ```
 
-REVIEW: FAIL
 VISUAL-REVIEW: FAIL
+
+REVIEW: FAIL

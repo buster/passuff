@@ -47,11 +47,14 @@ fi
 "$PY" "$ROOT/scripts/check_steps.py" --path "$ROOT/givn/steps" --path "$ROOT/givn/e2e_steps" || exit 1
 
 shopt -s nullglob
-ACTIVE=("$ROOT"/givn/changes/*/)
+ACTIVE=("$ROOT"/givn/changes/*/specs/)
 if [ -n "${GIVN_CHANGE_ID:-}" ]; then
   export GIVN_CHANGE_ID
 elif [ ${#ACTIVE[@]} -eq 1 ]; then
-  export GIVN_CHANGE_ID="$(basename "${ACTIVE[0]%/}")"
+  export GIVN_CHANGE_ID="$(basename "$(dirname "${ACTIVE[0]%/}")")"
+elif [ ${#ACTIVE[@]} -gt 1 ]; then
+  echo "verify: multiple active changes; set GIVN_CHANGE_ID" >&2
+  exit 2
 else
   export GIVN_CHANGE_ID=""
 fi

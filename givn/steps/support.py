@@ -114,3 +114,34 @@ def assert_metadata_line_role(context, role: str) -> None:
             assert any(span.get("role") == role for span in line), (role, line)
             return
     raise AssertionError((role, lines))
+
+
+def assert_line_span_role(context, line_needle: str, span_needle: str, role: str) -> None:
+    lines = frame_roles(context)
+    for line in lines:
+        if line_needle in _line_text(line):
+            if any(span.get("role") == role and span_needle in str(span.get("text", "")) for span in line):
+                return
+    raise AssertionError((line_needle, span_needle, role, lines))
+
+
+def assert_line_span_role_any(context, line_needles, span_needles, role: str) -> None:
+    lines = frame_roles(context)
+    for line in lines:
+        text = _line_text(line)
+        if any(needle in text for needle in line_needles):
+            if any(span.get("role") == role and any(needle in str(span.get("text", "")) for needle in span_needles) for span in line):
+                return
+    raise AssertionError((line_needles, span_needles, role, lines))
+
+
+def assert_metadata_value_role(context) -> None:
+    lines = frame_roles(context)
+    for line in lines:
+        text = _line_text(line)
+        if "Status:" in text or "When:" in text:
+            for span in line:
+                value = str(span.get("text", "")).strip()
+                if span.get("role") == "dim" and value and value not in {"│", "│ ", " │"}:
+                    return
+    raise AssertionError(("no metadata value", lines))

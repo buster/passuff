@@ -12,7 +12,7 @@ from pathlib import Path
 import tomlkit
 from behave import given, step, then, use_step_matcher
 
-from givn.steps.support import _assert, _config, _parse_key, assert_line_role_any, assert_metadata_line_role, assert_role, assert_role_contains, transcript, w
+from givn.steps.support import _assert, _config, _parse_key, assert_line_span_role_any, assert_metadata_line_role, assert_metadata_value_role, assert_role, transcript, w
 from tests.support.pty_driver import run_pty
 
 
@@ -251,7 +251,7 @@ def activity_headers_role(context):
 
 @step('the focused pane title is green and bold')
 def focused_title_role(context):
-    assert_line_role_any(context, ("Activity", "Watched pull requests"), "green_bold")
+    assert_line_span_role_any(context, ("Activity", "Watched pull requests"), ("Activity", "Watched pull requests"), "green_bold")
 
 
 @step('the metadata labels are cyan-blue')
@@ -261,4 +261,4 @@ def metadata_labels_role(context):
 
 @step('the metadata values are dim')
 def metadata_values_role(context):
-    assert_metadata_line_role(context, "dim")
+    assert_metadata_value_role(context)

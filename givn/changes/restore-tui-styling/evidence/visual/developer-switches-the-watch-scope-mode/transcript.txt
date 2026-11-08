@@ -1,16 +1,16 @@
-┌─ passuff — Inbox ────────────────────────────────────────────────────────────────────────────────────┐
+┌─ passuff — Inbox ────────────────────────────────────────────────────────────────────────────────┐
 │ personal not resolved   |   watch scope: acme/api                                                │
 │ 0 unread of 0   |   Focus: activity                                                              │
-│             ┌─ passuff — Watch scope ──────────────────────────────────────────────┐             │
-│             │ Mode: selected                                                 │                   │
-│             │ [x] acme/api                                                   │                   │
-│             │ Focus                                                          │                   │
-│             │ [x] authored                                                   │                   │
-│             │ [x] assigned                                                   │                   │
-│             │ [x] review requested                                           │                   │
-│             │ [x] team review                                                │                   │
-│             │ space toggle   esc close                                       │                   │
-│             └────────────────────────────────────────────────────────────────┘                   │
+│                ┌─ passuff — Watch scope ────────────────────────────────────────┐                │
+│                │ Mode: selected                                                 │                │
+│                │ [x] acme/api                                                   │                │
+│                │ Focus                                                          │                │
+│                │ [x] authored                                                   │                │
+│                │ [x] assigned                                                   │                │
+│                │ [x] review requested                                           │                │
+│                │ [x] team review                                                │                │
+│                │ space toggle   esc close                                       │                │
+│                └────────────────────────────────────────────────────────────────┘                │
 │ │ x ignore   tab switch   h help   q quit                                                      │ │
 │ └──────────────────────────────────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘

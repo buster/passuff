@@ -12,7 +12,7 @@ from pathlib import Path
 import tomlkit
 from behave import given, step, then, use_step_matcher
 
-from givn.steps.support import _assert, _config, _parse_key, assert_line_role, transcript, w
+from givn.steps.support import _assert, _config, _parse_key, assert_line_span_role, transcript, w
 from tests.support.pty_driver import run_pty
 
 
@@ -136,24 +136,24 @@ def focus_is(context, relations):
 
 @step('the picker border is dim')
 def picker_border_role(context):
-    assert_line_role(context, "Watch scope", "dim")
+    assert_line_span_role(context, "Watch scope", "┌", "dim")
 
 
 @step('the picker brand is bright and bold')
 def picker_brand_role(context):
-    assert_line_role(context, "Watch scope", "bright_bold")
+    assert_line_span_role(context, "Watch scope", "passuff", "bright_bold")
 
 
 @step('the picker title suffix is dim')
 def picker_suffix_role(context):
-    assert_line_role(context, "Watch scope", "dim")
+    assert_line_span_role(context, "Watch scope", "— Watch scope", "dim")
 
 
 @step('the picker mode is cyan-blue and bold')
 def picker_mode_role(context):
-    assert_line_role(context, "Mode:", "accent_bold")
+    assert_line_span_role(context, "Mode:", "selected", "accent_bold")
 
 
 @step('the selected repository is gold')
 def picker_selected_role(context):
-    assert_line_role(context, "[x]", "gold_bold")
+    assert_line_span_role(context, "[x]", "[x]", "gold_bold")
