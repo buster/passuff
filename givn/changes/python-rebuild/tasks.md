@@ -19,7 +19,7 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
   - Step skeletons: `givn/steps/` and `givn/e2e_steps/`, one file per capability, plus `givn/steps/common.py`, `givn/environment.py`, and `givn/e2e_environment.py`.
   - proof: run the undefined, pass-only, docstring-only, and skipped fixtures under `tests/strictness/`; paste each command and non-zero exit here; keep the fixtures as the reproducible proof and re-run the configured runner; every normal scope runs `check_steps.py` over the durable step trees. The permanent corpus remains intentionally RED.
   - Coverage: `scripts/measure-coverage.sh` creates distinct non-E2E and E2E data sets; `scripts/merge-coverages.sh` combines them; measured population `passuff/`, excluded `tests/`, `givn/`, `scripts/`.
-- Evidence: `./scripts/verify.sh --strictness` — undefined step errored, skipped scenario counted 1/1 skipped, pass-only body rejected by `check_steps.py`. Full scopes after implementation: change 230/230, regular 197/197, e2e 19/19; `check_steps.py` runs in every scope. Coverage: `coverage/non-e2e-cobertura.xml`, `coverage/e2e-cobertura.xml`, `coverage/cobertura-coverage.xml`.
+- Evidence: `./scripts/verify.sh --strictness` — undefined step errored, skipped scenario counted 1/1 skipped, pass-only body rejected by `check_steps.py`. Full scopes after implementation: change 248/248, regular 197/197, e2e 19/19; `check_steps.py` runs in every scope. Coverage: `coverage/non-e2e-cobertura.xml`, `coverage/e2e-cobertura.xml`, `coverage/cobertura-coverage.xml`.
 - [x] COMMIT: 14e0b99b19b4851e203c78ac375f3ce69a863da9 -- Batch: setup
 
 - [x] Setup: E2E stack and strictness
@@ -2318,6 +2318,21 @@ The permanent corpus is the RED baseline for this rebuild: every step starts as 
   - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "The stored activity body is bounded to 4 KiB"`
   - Step definition: `givn/steps/inbox_navigation_steps.py`
 - [x] COMMIT: 7a83b2db117a8bc5eb2f4fd5e670964c89a55e3d -- Batch: boundary-body
+
+- [x] 151b. Every configuration validation rule exits 2 with its message
+
+- Batch: `boundary-config`
+- Tags: @givn.added
+- Use case: `givn/specs/watch-pull-requests/usecase.md`
+- Design constraints:
+  - Contracts: `ConfigStore` -> `TomlConfigStore`.
+  - Components: `passuff/config.py`, `givn/steps/pr_activity_notification_steps.py`.
+  - Rules: `docs/reference.md` Validation; every listed rejection is an exit-2 configuration error with the specified message.
+  - Step files: `givn/steps/pr_activity_notification_steps.py`.
+  - Delta evidence: `givn/changes/python-rebuild/specs/watch-pull-requests/pr-activity-notification.feature`; the invalid-configuration outline now carries every rule.
+  - Runner: `GIVN_RESULT_SCOPE=change ./scripts/verify.sh --name "An invalid configuration is reported with exit 2"`
+  - Step definition: `givn/steps/pr_activity_notification_steps.py`
+- [x] COMMIT: 6302255782f7275a9463ce28e2b7c5e7e1cfceb7 -- Batch: boundary-config
 
 
 ## Batch: inbox-navigation
