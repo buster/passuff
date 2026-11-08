@@ -1014,3 +1014,46 @@ the design's activity data model (`design.md:230`), or the delta
 exits 2 (WIP and shape advisories only).
 
 DESIGN-REVIEW: PASS
+
+## Re-review (2026-11-08)
+
+Review kind: independent
+Author: maki-author
+Reviewer context: independent-reviewer-1
+
+This section re-checks the updated design after the implementation and review
+round. The original review above is unchanged.
+
+**What changed since the signed review, and whether it is a correction.**
+
+| Change | Evidence | Classification |
+|---|---|---|
+| Strictness fixtures are retained as the reproducible proof instead of being removed after setup | `design.md:330-337`, `tasks.md:5`, `scripts/verify.sh:35-47` | Correction of the retained-fixture finding (F12); no behavior change |
+| The Interaction Coverage Matrix row for `Developer opens the inbox TUI` names the as-built `--observe --snapshot` mechanism and the regular pty-smoke scenario | `design.md:503`, `givn/steps/activity_inbox_steps.py:87-95` | Correction of the driving-mechanism finding (F13); no behavior change |
+| The as-built module names `passuff/status.py`, `passuff/tui/session.py`, and `tests/support/recording_delivery.py` | `design.md:63,109,103` | Already the reviewed design; the tree was conformed to it (F2-F5), not the reverse |
+| The 4 KiB body, the 80-character list-row excerpt, `afplay`, `--stage e2e`, and the empty-run-set skip | `design.md:230,447-469,551,368-390,312-314` | Already the reviewed decisions; the implementation now matches |
+
+No new observable behavior is introduced: no command, flag, configuration key,
+persisted field, screen, or external boundary was added after the sign-off.
+
+**Operator decisions Q1-Q11 are honored.**
+
+| Question | Check performed | Result |
+|---|---|---|
+| Q1 | `.givn-skip` absent; five delta features with 33 entries / 19 scenarios; `proposal.md:51-65,83-89` amended; the delta covers the enumerated gap list (unknown key, invalid TOML, missing config, plain HTTP, duplicate scope, CLI usage, GitHub failures, state boundaries, delivery surfaces, `gh`, list-row excerpt) | honored |
+| Q2 | `design.md:230` persists the body at 4 KiB; T7 scoped to the list row; `docs/glossary.md:24`, `docs/arc42/05:165`, `06:319-321`, `08:23-26` corrected; delta `activity-inbox.feature:11-14` asserts the body | honored |
+| Q3 | `docs/reference.md:230` keeps unknown-key rejection; delta `An invalid configuration is reported with exit 2` includes the unknown-key case | honored |
+| Q4 | `design.md:368-390` names `givn/steps/`, `givn/e2e_steps/`, `givn/environment.py`, `givn/e2e_environment.py`, `givn/steps/common.py`, `--stage e2e`; the tree matches | honored |
+| Q5 | `docs/design/design-system.md` exists; `design.md:451` points to it | honored |
+| Q6 | Matrix drivers are the implemented TUI options (`passuff/tui/app.py:359-371`): `--scope-select`, `--scope-mode`, `--focus-set`, `--observe-for`, `--observe --snapshot` | honored |
+| Q7 | `design.md:222-240` carries title, description, creator, assignees, involvement relations, body, 500-record cap, `sort_direction` | honored |
+| Q8 | `design.md:186-205`: no `TerminalInbox`; `WatchStatus`, `ActivityInbox`, `StackedInbox` split; `SetupSession` has no `CredentialSource` edge; adapters and CLI split | honored |
+| Q9 | `givn/commands.yaml` matches `design.md:299-312`; `--name`; the empty-run-set skip; `check_steps.py` in every scope | honored |
+| Q10 | `pyproject.toml` `requires-python >=3.11`; bundle deferred (`design.md:276-282`); `RecordingDelivery` under `tests/support/` | honored |
+| Q11 | `review-activity-inbox/usecase.md:13-25` single outcome; `watch-pull-requests` R1-R46 in order; `design.md:396` traceability | honored |
+
+No design change reopens a grilling branch or introduces unreviewed behavior.
+The residual coverage classification belongs to the final review, not to this
+design change.
+
+DESIGN-REVIEW: PASS

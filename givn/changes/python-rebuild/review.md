@@ -4,421 +4,379 @@ Review kind: independent
 Author: maki-author
 Reviewer context: independent-reviewer-1
 
-Scope: the current working tree at `a3a717ef0a15ab538ea4c888a15e184eef03b673`.
-The operator forbids `git log`, `git show`, `git diff`, reflog, and blame, so
-commit evidence was checked by object inspection only (`git cat-file -t`,
-`git ls-tree`), which does not expose the change history.
+Scope: the working tree at `5b6b815174fb9713d0cc7e224e758221870ec6e1`. The review
+gate reuses the committed verification receipt tested at
+`624fe70a9f496fb7ead8d3169f2d63321c29b0ac`; the implementation fixes are in
+`7a83b2db117a8bc5eb2f4fd5e670964c89a55e3d`. The operator forbids `git log`,
+`git show`, `git diff`, reflog, and blame, so revisions were inspected only
+with `git cat-file -t`, `git ls-tree`, `git ls-files`, and the working tree.
 
 ## Implementation evidence check
 
 ### 0. `@e2e` tag integrity
 
-`givn/changes/python-rebuild/specs/**/*.feature` carries one `@e2e` scenario:
-`Developer opens an activity's details` (`@givn.modified @e2e`). The permanent
-corpus carries 18 `@e2e` entries, exactly one per row of every use case's
-`## Interactions` inventory. The change-scope count 229, the regular count 197,
-and the E2E count 19 recompute from the feature files:
-
-| Scope | Entries | Outline rows | Executions |
-|---|---|---|---|
-| Permanent non-E2E | 167 | 30 | 197 |
-| Permanent `@e2e` | 18 | 0 | 18 |
-| Delta (all) | 18 | 14 | 32 |
-| Change (`delta` + permanent non-E2E) | — | — | 229 |
-| E2E (permanent + delta `@e2e`) | 19 | 0 | 19 |
-
-No `@e2e` tag was removed: 18 permanent E2E entries map one-to-one onto the 18
-inventory rows, and each inventory row resolves to an existing scenario title.
-`givn lint` reports no tag-removal warning and no inventory mismatch.
+The delta carries one `@e2e` scenario: `@givn.modified @e2e Developer opens an
+activity's details` (`givn/changes/python-rebuild/specs/review-activity-inbox/activity-inbox.feature:4-5`).
+The permanent corpus carries 18 `@e2e` scenarios, one per row of the six use
+cases' `## Interactions` inventories (18 rows). No scenario lost its `@e2e`
+tag; the 18 permanent plus one delta entry equal the 19 E2E executions the
+change records. Counts recompute from the feature files: permanent 215 entries
+(197 non-E2E + 18 E2E), delta 33 entries (32 non-E2E + 1 E2E), change 230
+(197 + 33), regular 197, E2E 19.
 
 ### 1. Empty step body audit
 
-`python3 scripts/check_steps.py` **fails**:
-
-```text
-givn/steps/common.py:1476: no-op step reopens
-exit 1
-```
-
-`the developer reopens passuff` is bound to a bare `return None`
-(`givn/steps/common.py:1475-1476`) and is used by the permanent scenario
-`Read state survives a restart` (`givn/specs/review-activity-inbox/activity-inbox.feature:91`).
-That is a fabricated step by the review rule and by the project's own audit.
-`scripts/verify.sh` never runs `check_steps.py` over the real step trees (only
-`--strictness` runs it against `tests/strictness/pass_only.py`), which is why
-the audit failure did not stop the runner.
-
-Result: **1 no-op step body across 9 step files** (`givn/steps/common.py`,
-`givn/e2e_steps/common.py`, and the seven one-line `givn/e2e_steps/*_e2e.py`
-placeholders).
+`python3 scripts/check_steps.py` exits 0: `check_steps: no no-op step bodies`.
+It scans the seven per-capability regular files plus `givn/steps/common.py` and
+`givn/steps/support.py`, and the seven per-capability E2E files plus
+`givn/e2e_steps/common.py` — 0 empty or trivial bodies across 17 files.
+`scripts/verify.sh:47` runs the same audit over `givn/steps` and
+`givn/e2e_steps` in every normal scope (regular, change, E2E), so a no-op body
+cannot bypass it. The `the developer reopens passuff` step that failed the
+previous audit no longer exists.
 
 ### 2. Checked scenarios and their commits
 
-- 205 tasks are checked (`### [x]`), each with a `COMMIT:` line.
-- 205 distinct `COMMIT:` lines all name
-  `14e0b99b19b4851e203c78ac375f3ce69a863da9` and every line names its
-  `Batch: <name>`; `givn changes` allows a shared batch revision only with the
-  batch name, and the names are present.
-- The object `14e0b99b19b4851e203c78ac375f3ce69a863da9` exists and is a commit.
-  `git ls-tree -r` on it lists 31 files under `passuff/`, `givn/steps/`,
-  `givn/e2e_steps/`; the production modules, the step bindings, the runner, and
-  the test twins are all in that tree. It is not a comment-only, task-only, or
-  feature-only commit.
-- The task-evidence commit `dea85c84efab68cbcd8022794922fcdf8d5b23d1` exists and
-  carries the change artifacts.
-- The verification receipts `1c84c428e423afded5dc60cfae9a55253cd24f22` and
-  `a3a717ef0a15ab538ea4c888a15e184eef03b673` exist; `givn check review` reports
-  `change verification receipt passed (229 scenario(s) at a3a717ef...)`, and
-  `verification/tasks-result.json` records `total=229 passed=229 failed=0
-  skipped=0`.
-- Not a characterization change (`CHARACTERIZATION` is absent); the rebuild is a
-  normal change.
+`givn/changes/python-rebuild/tasks.md` records 206 checked tasks (204 numbered
+scenario batches, including `151a`, plus two setup batches) and 206
+`- [x] COMMIT: <hash> -- Batch: <name>` lines in the gate's shape;
+`givn status` reports 412/412 and the review gate's hash-presence check passes.
+Two revisions carry the evidence:
+`14e0b99b19b4851e203c78ac375f3ce69a863da9` (205 lines) and
+`7a83b2db117a8bc5eb2f4fd5e670964c89a55e3d` (the `boundary-body` batch).
+`git ls-tree` shows 14e0b99 contains `passuff/` and the step bindings;
+7a83b2d contains the seven regular step files, the seven E2E files,
+`passuff/status.py`, `passuff/tui/session.py`, and
+`tests/support/recording_delivery.py`. Every line names its batch, so the
+shared revision is a batch revision. The prior `COMMIT`-format defect (F14) is
+resolved.
 
 ### 3. Promised components
 
-| Promised in `design.md` | Present | Evidence |
+| `design.md` promise | Tree | Consumers |
 |---|---|---|
-| `passuff/cli.py`, `composition.py`, `config.py`, `credentials.py`, `github.py`, `classify.py`, `core.py`, `state.py`, `inbox.py`, `stacking.py`, `scope.py`, `setup.py`, `render.py`, `notify.py`, `sound.py`, `browser.py` | yes | module files exist |
-| `passuff/tui/app.py`, `passuff/tui/frame.py` | yes | files exist |
-| `passuff/status.py` (`WatchStatusReader`) | **no** | class lives in `passuff/inbox.py:54`; `passuff/status.py` does not exist |
-| `passuff/tui/session.py` (`ObservationSession`) | **no** | class absent; live loop is `_observe`/`_interactive` in `passuff/tui/app.py:338,354` |
-| `tests/support/recording_delivery.py` (`RecordingDelivery`) | **no** | absent; `DesktopDelivery(recording_path=...)` (`passuff/notify.py:17,27-30`) is a test hook inside production code and has no caller |
-| `tests/support/bin/osascript`, `tests/support/bin/afplay` | **no** | only `gh`, `paplay`, `xdg-open` exist |
-| `givn/steps/pr_activity_notification_steps.py`, `watch_status_steps.py`, `activity_inbox_steps.py`, `inbox_navigation_steps.py`, `stacked_inbox_steps.py`, `watch_scope_steps.py`, `initial_setup_steps.py` | **no** | `givn/steps/` contains only `common.py` (1788 lines, 237 bindings) |
-| `givn/e2e_steps/<capability>_e2e.py` (“E2E bindings, one file per capability”) | placeholders | each of the seven files is a single docstring line with no binding; all bindings load through `givn/e2e_steps/common.py:5` importing `givn/steps/common.py` |
-| `TuiApp` frame renderer, `PassuffCore`, `ActivityClassifier`, `ActivityInboxService`, `WatchStatusReader`, `ScopeEditor`, `SetupSession`, `GitHubApiAdapter`, `JsonStateStore`, `TomlConfigStore`, `SystemCredentialSource`, `DesktopDelivery`, `SystemSoundPlayer`, `SystemBrowserOpener` | yes | classes exist and are exercised |
+| `WatchStatusReader` → `passuff/status.py` | `passuff/status.py:11` | `passuff/cli.py:21,86,94`; `passuff/tui/app.py:19,66,89`; `passuff/tui/frame.py:11,87` |
+| `ObservationSession` → `passuff/tui/session.py` | `passuff/tui/session.py:15` | `passuff/tui/app.py:21,323,422` |
+| `ActivityInboxService` | `passuff/inbox.py:70` | `passuff/cli.py`, `passuff/tui/app.py` |
+| Seven regular step files | `givn/steps/{activity_inbox,inbox_navigation,initial_setup,pr_activity_notification,stacked_inbox,watch_scope,watch_status}_steps.py` | `givn/steps/common.py` shared phrases |
+| Seven E2E step files | `givn/e2e_steps/{activity_inbox,inbox_navigation,initial_setup,pr_activity_notification,stacked_inbox,watch_scope,watch_status}_e2e.py` | each imports its capability's regular bindings |
+| `RecordingDelivery` under `tests/support/` | `tests/support/recording_delivery.py:9` | `tests/support/fake_notifications.py:9,30` |
+| macOS twins | `tests/support/bin/afplay`, `tests/support/bin/osascript` | reserved for the deferred macOS smoke (`design.md:551`) |
+| `StackGrouper` / `composition.py` | absent; no importer | — |
+| `render_activity_detail` | absent from `passuff/render.py` | — |
+| production `recording_path` hook | absent from `passuff/notify.py` | — |
 
-A promised component that is absent is incomplete implementation, not a
-“hard to test” gap.
+The per-capability step layout matches `design.md:368-390`; the E2E files
+`activity_inbox_e2e.py`, `inbox_navigation_e2e.py`, `initial_setup_e2e.py`, and
+`pr_activity_notification_e2e.py` define their E2E-only phrases and import the
+regular bindings; `stacked_inbox_e2e.py`, `watch_scope_e2e.py`, and
+`watch_status_e2e.py` are staged imports because those capabilities need no
+E2E-only phrase. The prior missing-component findings (F2-F5) are resolved.
 
 ### 4. Strict-mode proof
 
-`./scripts/verify.sh --strictness` was run during this review and exits 0:
-the undefined fixture errors, the skipped fixture counts `1/1 skipped`, and the
-pass-only fixture is rejected by `check_steps.py`. The proof is present in
-`tasks.md` (“Setup: runner, strictness, and coverage”) and is reproducible.
-
-The proof covers the fixtures only. The durable tree it is meant to protect
-fails the same audit (finding F1), and `verify.sh` does not run `check_steps.py`
-in the `change`, `regular`, or `e2e` scopes.
+`./scripts/verify.sh --strictness` exits 0: the undefined-step probe errors,
+the skipped-scenario probe reports `skipped=1`, and the pass-only body is
+rejected by `check_steps.py`. The fixtures under `tests/strictness/` are
+retained as the reproducible proof, matching `design.md:330-337` and
+`tasks.md:5`; `scripts/verify.sh:35-43` runs them and `:47` runs the durable
+audit in every normal scope. The prior strictness-retention finding (F12) is
+resolved.
 
 ### 5. Every `@e2e` Then asserts the real interface
 
-All 19 `@e2e` scenarios assert on what the consumer sees or receives:
-
-- TUI scenarios assert the rendered frame text through
-  `the TUI shows "..."` on the subprocess output of
-  `passuff-tui --snapshot` (`givn/steps/common.py:866-885,960-970`);
-- CLI scenarios assert the subprocess transcript and exit status
-  (`givn/steps/common.py:818-863`);
-- notification scenarios assert the fake D-Bus service and the sound log, and
-  the browser scenario asserts the opener URL log;
-- counters (`the inbox has asked GitHub for the stack fields "2" times`) are
-  secondary evidence beside a frame assertion.
-
-No `@e2e` scenario asserts only repository or state-file content.
-
-The terminal interface classification holds: the product renders a curses TUI
-and a CLI transcript. The opposite classification — a rendered page is a Web UI
-— does not apply, because nothing renders HTML/CSS/JS in a browser; the TUI is
-driven through real subprocesses and a pty. A browser driver would be wrong
-here.
+Every `@e2e` Then asserts the command transcript, the rendered `--snapshot`
+frame, the exit status, or a real-interface log:
+`the terminal shows a notification for "<key>"` waits on the watcher's output
+(`givn/steps/pr_activity_notification_steps.py`), `the desktop notification
+reports "<text>"` reads the fake D-Bus delivery record
+(`pr_activity_notification_steps.py:429-438`), `the configured sound is played
+once` reads the fake player's sound log (`:393-396`), `the browser opened
+"<url>"` reads the fake opener's log (`givn/e2e_steps/activity_inbox_e2e.py`),
+and the TUI steps assert the printed frame. No `@e2e` Then asserts only the
+state file or the repository, and no step calls the product over HTTP from
+inside a page. The watcher scenario asserts the terminal notification, the
+D-Bus summary/body, and one sound.
 
 ### 6. Exact `verify.e2e_command` and the files it invokes
 
-`givn/commands.yaml` declares `verify.e2e_command: "./scripts/verify.sh --e2e"`,
-matching `design.md` exactly. `scripts/verify.sh:71-75` runs
-`behave --stage e2e --tags="@e2e"` over `givn/specs/*/*.feature` and the delta
-features; `--stage e2e` loads `givn/e2e_environment.py` and `givn/e2e_steps/`.
-The only bindings reachable from that tree are
-`givn/e2e_steps/common.py` → `givn/steps/common.py`.
-
-A tree-wide search (tracked and untracked, excluding `.venv`) found exactly one
-E2E implementation tree. There is no weaker parallel implementation to compare
-against, and no second step tree was hidden by the command.
+`givn/commands.yaml` sets `verify.e2e_command: "./scripts/verify.sh --e2e"`.
+`scripts/verify.sh:73-77` runs `behave --stage e2e --tags="@e2e"` over
+`givn/specs/*/*.feature` and `givn/changes/python-rebuild/specs/*/*.feature`;
+`--stage e2e` loads `givn/e2e_environment.py` and `givn/e2e_steps/` instead of
+`givn/environment.py` and `givn/steps/`. The tree was searched for a parallel
+implementation: only those two step trees exist (`git ls-files`; no untracked step
+files), and no second E2E driver or HTTP-only implementation exists.
 
 ### 7. E2E scope selection
 
-`scripts/verify.sh:11` reads `GIVN_RESULT_SCOPE` (default `regular`); `--e2e`
-sets `SCOPE=e2e`; `change` runs the delta plus the permanent non-`@e2e` corpus;
-`regular` runs the permanent non-`@e2e` corpus; `e2e` runs only `@e2e`. The
-scope is selected explicitly, not inferred from the command string.
+`--e2e` sets `SCOPE=e2e` and the runner also honors `GIVN_RESULT_SCOPE`;
+`givn/commands.yaml` records the same E2E command. The receipt
+`givn/changes/python-rebuild/verification/tasks-verification.json` records
+change 230 total, 230 passed, 0 failed, 0 skipped at
+`624fe70a9f496fb7ead8d3169f2d63321c29b0ac`; `tasks.md:19` records regular
+197/197 and E2E 19/19, both with zero failures and skips. The two scopes select
+different tags and are not the same execution. Review does not re-run the
+suite.
 
 ### 8. E2E scope size
 
-The inventory is 18 normalized actions (3 watch-scope, 1 watch-status, 5
-activity-inbox, 2 inbox-navigation, 1 stacked-inbox, 1 initial-setup, 5
-pr-activity-notification). Each has exactly one `@e2e` scenario. The delta adds
-one `@givn.modified @e2e` scenario that replaces the permanent
-`Developer opens an activity's details`. Outlines in the delta are regular
-scenarios; no action is double-covered.
+The six use cases' `## Interactions` sections hold 18 normalized actions:
+watch-scope 3, watch-status 1, activity-inbox 5, inbox-navigation 2,
+stacked-inbox 1, initial-setup 1, pr-activity-notification 5. Each has exactly
+one matching `@e2e` scenario; no action has two. Variants and error cases are
+regular or delta non-E2E scenarios. The E2E count (19 executions) is strictly
+less than the change count (230).
 
-### 9. Design conformance (commands, layout, framework)
+### 9. Design conformance (commands, layout, framework, drivers)
 
-| `design.md` says | As built | Match |
-|---|---|---|
-| `verify.command: ./scripts/verify.sh`, `verify.e2e_command: ./scripts/verify.sh --e2e` | identical in `givn/commands.yaml` | yes |
-| behave via `behave.ini`, `givn/environment.py`, `givn/e2e_environment.py` | present | yes |
-| stdlib `curses` + pure frame renderer, `--snapshot` | `passuff/tui/app.py`, `passuff/tui/frame.py` | yes |
-| `httpx`, `tomllib`, `tomlkit`, `jeepney` | present | yes |
-| `givn/steps/` regular bindings, one file per capability, named in the Step Definitions table | one 1788-line `common.py` | **no** (F2) |
-| `givn/e2e_steps/`, one file per capability, bindings | seven docstring-only files | **no** (F2) |
-| `passuff/status.py`, `passuff/tui/session.py` | absent | **no** (F3, F4) |
-| `tests/support/recording_delivery.py`, `bin/osascript`, `bin/afplay` | absent | **no** (F5) |
-| `tests/strictness/` fixtures removed after the proof | fixtures retained and tracked | **no** (F12) |
+- `givn/commands.yaml` matches `design.md:299-312` exactly.
+- `scripts/verify.sh` implements the scopes, the empty-run-set skip
+  (`design.md:312-314`), `--name`, the JSON merge, and the
+  `total > 0 / failed = 0 / skipped = 0` exit rule.
+- The step trees match `design.md:368-390` and the `--stage e2e` layout.
+- The matrix drivers exist: `passuff/tui/app.py:359-371` defines
+  `--snapshot`, `--observe`, `--observe-for`, `--scope-select`,
+  `--scope-deselect`, `--scope-mode`, `--focus-set`, `--picker`, and `--keys`.
+- The TUI-open matrix row now names the as-built `--observe --snapshot`
+  mechanism and the regular pty smoke scenario (`design.md:502`);
+  `givn/steps/activity_inbox_steps.py:87-95` runs that scenario through
+  `tests/support/pty_driver.py`.
+- The strictness fixtures are retained and the decision is recorded in
+  `design.md` and `tasks.md`.
 
-`design.md` was not updated for any of these deviations, and `design-review.md`
-Q4 explicitly resolved the opposite (a staged per-capability E2E tree). The
-Step Definitions table was not edited to match what was built.
+No implementation deviation from the reviewed design remains.
 
 ### 10. Interaction coverage cross-reference
 
-| Inventory entry | Design matrix row | `@e2e` scenario | Driving mechanism | Match |
-|---|---|---|---|---|
-| watch-scope: toggle a repository | yes | Developer toggles a repository in the watch scope | `passuff-tui --picker --snapshot --scope-select/--scope-deselect` | yes |
-| watch-scope: switch the mode | yes | Developer switches the watch scope mode | `--scope-mode selected --picker --snapshot` | yes |
-| watch-scope: narrow the focus | yes | Developer narrows the focus in the watch scope | `--focus-set authored --picker --snapshot` | yes |
-| watch-status: show the watch state | yes | Developer sees the watch state | subprocess `passuff status` | yes |
-| activity-inbox: list unread | yes | Developer lists unread activity | subprocess `passuff inbox` | yes |
-| activity-inbox: mark read | yes | Developer marks activity read | subprocess `passuff read <id>` | yes |
-| activity-inbox: open the TUI | yes | Developer opens the inbox TUI | `passuff-tui --observe --snapshot`; a pty smoke is promised for this row but is not in this scenario (it exists in the regular scenario `The developer starts the inbox TUI binary`) | **partial** (F13) |
-| activity-inbox: open a detail | yes | Developer opens an activity's details (delta) | `--snapshot --keys "enter"`; asserts the comment body | yes |
-| activity-inbox: open the pull request | yes | Developer opens the pull request from an activity | `--snapshot --keys "enter,enter"` + fake `xdg-open` log | yes |
-| inbox-navigation: navigate panes | yes | Developer navigates the inbox panes | `--snapshot --keys "tab,j"` | yes |
-| inbox-navigation: live refresh | yes | The inbox shows activity observed while it is open | `--observe-for` + injected comment | yes |
-| stacked-inbox: review a stack | yes | Developer reviews a stacked inbox | `--snapshot` with fake stack metadata | yes |
-| initial-setup: first run | yes | Developer sets up passuff on first run | subprocess `passuff setup` + TUI `--snapshot` | yes |
-| pr-activity: start watching | yes | Developer starts watching and is notified of a new comment | background `passuff` + fake D-Bus/sound | yes |
-| pr-activity: one check | yes | Developer runs a single check and sees the current activity | subprocess `passuff check` | yes |
-| pr-activity: usage | yes | Developer asks for usage | subprocess `passuff --help` | yes |
-| pr-activity: version | yes | Developer asks for the version | subprocess `passuff --version` | yes |
-| pr-activity: notification test | yes | The developer tests notifications on the command line | subprocess `passuff notify-test` | yes |
+| Use case | Inventory entry | Matrix row | `@e2e` scenario | Step file | Driving mechanism |
+|---|---|---|---|---|---|
+| change-watch-scope | toggle a repository | yes | Developer toggles a repository in the watch scope | `watch_scope_steps.py` | `--scope-select`/`--scope-deselect` + `--picker --snapshot` |
+| change-watch-scope | switch the mode | yes | Developer switches the watch scope mode | `watch_scope_steps.py` | `--scope-mode selected --picker --snapshot` |
+| change-watch-scope | narrow the focus | yes | Developer narrows the focus in the watch scope | `watch_scope_steps.py` | `--focus-set authored --picker --snapshot` |
+| inspect-watch-status | show the watch state | yes | Developer sees the watch state | `watch_status_steps.py` | subprocess `passuff status` |
+| review-activity-inbox | list unread | yes | Developer lists unread activity | `activity_inbox_steps.py` | subprocess `passuff inbox` |
+| review-activity-inbox | mark read | yes | Developer marks activity read | `activity_inbox_steps.py` | subprocess `passuff read` |
+| review-activity-inbox | open the TUI | yes | Developer opens the inbox TUI | `activity_inbox_e2e.py` | `--observe --snapshot`; pty smoke in the regular scenario |
+| review-activity-inbox | open a detail | yes | Developer opens an activity's details | `common.py` + `inbox_navigation_steps.py` | `--observe --snapshot --keys "enter"` |
+| review-activity-inbox | open the pull request | yes | Developer opens the pull request from an activity | `activity_inbox_e2e.py` | `--keys "enter,enter"` with fake `xdg-open` |
+| review-activity-inbox | navigate panes | yes | Developer navigates the inbox panes | `common.py` + `inbox_navigation_steps.py` | `--snapshot --keys "tab,j"` |
+| review-activity-inbox | live refresh | yes | The inbox shows activity observed while it is open | `inbox_navigation_e2e.py` | `--observe-for 4000 --snapshot`; injected comment |
+| review-pull-request-stacks | review a stack | yes | Developer reviews a stacked inbox | `stacked_inbox_steps.py` | `--snapshot` with fake stack metadata |
+| set-up-passuff | first run | yes | Developer sets up passuff on first run | `initial_setup_e2e.py` | `passuff setup` stdin, then TUI `--snapshot` |
+| watch-pull-requests | start watching | yes | Developer starts watching and is notified of a new comment | `pr_activity_notification_e2e.py` | `timeout --signal=INT 10 passuff`; fake D-Bus/sound |
+| watch-pull-requests | one check | yes | Developer runs a single check and sees the current activity | `pr_activity_notification_steps.py` | subprocess `passuff check` |
+| watch-pull-requests | usage | yes | Developer asks for usage | `pr_activity_notification_e2e.py` | subprocess `passuff --help` |
+| watch-pull-requests | version | yes | Developer asks for the version | `pr_activity_notification_e2e.py` | subprocess `passuff --version` |
+| watch-pull-requests | notification test | yes | The developer tests notifications on the command line | `pr_activity_notification_e2e.py` | subprocess `passuff notify-test`; logs |
 
-Every inventory row has a matrix row and one `@e2e` scenario. The one driving
-mechanism that is promised but absent from its scenario is recorded as F13.
+Every inventory entry has one matrix row and one `@e2e` scenario, and each
+step file uses the driving mechanism the matrix names. The prior pty-driver
+mismatch (F13) is resolved.
 
 ### 11. Local run command
 
-`python -m passuff --help` (the declared `run.command`) runs and exits 0 in this
-tree. The full stack with the digital twins is started by `./scripts/verify.sh`
-(one twin set per scenario: fake GitHub on loopback, private D-Bus, fake `gh`,
-`paplay`, `xdg-open`, per-scenario XDG dirs). The suite was not re-run: the
-verification receipt is the execution evidence.
+`python -m passuff --help` exits 0. The harness starts the fake GraphQL server,
+the private D-Bus session, and the fake `gh`/player/opener binaries per
+scenario (`tests/support/harness.py`, `tests/support/world.py:420-435`); the
+full-stack execution evidence is the committed receipt, which review does not
+re-run.
 
-### 12. Additional evidence findings from this check
+### 12. Additional evidence from this check
 
-- **F6 — the 80-character list-row excerpt is not implemented and its scenario
-  does not assert it.** T7
-  (`givn/specs/review-activity-inbox/usecase.md:54`) requires the activity list
-  row to show at most the recorded 80-character event excerpt. The TUI renders
-  the fixed summary only (`passuff/tui/frame.py:154-160`), no truncation exists
-  anywhere in `passuff/`, and the delta step
-  `the activity list row excerpt is at most 80 characters`
-  (`givn/steps/common.py:1758-1767`) checks `len(line) <= 100` on any line
-  containing “comment by” — a line that is not the list row and a bound that is
-  not 80. The delta scenario
-  `The activity list row is bounded to the recorded excerpt` therefore passes
-  without exercising the rule it names.
-- **F7 — the 4 KiB body bound is not implemented.** `design.md` (“Watch state”)
-  and T7 bound the stored comment/review body at 4 KiB. `passuff/classify.py:53`
-  stores the body unbounded and no scenario covers the bound.
-- **F8 — macOS sound is not implemented.** `README.md:55`,
-  `docs/reference.md:288`, `docs/arc42/03-context-and-scope.md:42`, and
-  `docs/arc42/07-deployment-view.md:30` state macOS sound uses `afplay`;
-  `passuff/sound.py:9` lists only `paplay`, `pw-play`, `aplay`,
-  `canberra-gtk-play`, so macOS sound fails with “sound unavailable”.
+- The coverage measurement runs only the `regular` and `e2e` scopes
+  (`scripts/measure-coverage.sh`), so the change delta's non-E2E scenarios are
+  not instrumented in any Cobertura report. This is the declared process
+  boundary at `design.md:572-589`; static inspection classified the delta-only
+  regions.
+- The four E2E step files that define phrases repeat their capability import
+  line twice (`givn/e2e_steps/activity_inbox_e2e.py:17-18`,
+  `inbox_navigation_e2e.py:17-18`, `initial_setup_e2e.py:17-18`,
+  `pr_activity_notification_e2e.py:17-18`) and carry unused imports. This is
+  cosmetic and does not affect behaviour or phrase ownership.
+- The prior findings F1-F15 were each checked: F1 `check_steps.py` exit 0 and
+  its call in every scope; F2 the seven-plus-seven step files; F3
+  `ObservationSession`; F4 `passuff/status.py`; F5 the dead-code removal and
+  `tests/support/recording_delivery.py`; F6 the 80-character row excerpt
+  (`passuff/tui/frame.py:160`) and its delta scenario
+  (`inbox-navigation.feature:5-14`, step
+  `givn/steps/inbox_navigation_steps.py:248-256`); F7 the 4 KiB bound
+  (`passuff/classify.py:47-54`) and `The stored activity body is bounded to
+  4 KiB`; F8 `afplay` for darwin (`passuff/sound.py:11,31`) and the fake twins;
+  F9 the watcher transcript; F10/F11 the arc42 and glossary symbols; F12 the
+  retained strictness fixtures; F13 the matrix row; F14 the `COMMIT:` shape;
+  F15 the tracked receipt. All are resolved.
 
 ## Arc42 implementation conformance
 
-Affected chapters were re-derived from the implementation, `design.md`, and
-`tasks.md` before accepting `arc42.md`. Rows 2, 3, 9, and 10 were re-derived as
-unaffected and their files carry current content.
+Affected chapters were re-derived from `design.md`, `tasks.md`, and the
+implementation before accepting `givn/changes/python-rebuild/arc42.md`.
 
 | Arc42 chapter or fact | Durable-doc source | `arc42.md` claim | `design.md` | `tasks.md` | Implementation evidence | Match? |
 |---|---|---|---|---|---|---|
-| Six use cases, including `set-up-passuff` | `01-introduction-and-goals.md:34-41` | Affected: corrected to six | six use cases in Use-Case Context | tasks route all seven capabilities | six `givn/specs/*/usecase.md` files | yes |
-| Gherkin runner `behave`; the runner contract | `04-solution-strategy.md:60`, `08-crosscutting-concepts.md:227` | Affected: replaced the custom runner | V2 `behave` | setup task | `behave.ini`, `scripts/verify.sh`, `givn/environment.py` | yes |
-| Terminal UI: `curses` + pure frame renderer | `04-solution-strategy.md:77` | Affected: replaced the TUI library | V3 | TUI tasks | `passuff/tui/app.py`, `frame.py` | yes |
-| Separate E2E step tree with bindings per capability | `arc42.md` ch4/ch8 claim; `05-building-block-view.md:74,164,180` | Affected: separate E2E steps, component map unchanged | Step Definitions table names seven regular files and per-capability E2E files | tasks name the same files | one `common.py`; E2E per-capability files are docstring placeholders | **no** (F2) |
-| `ObservationSession` owns probe/reconcile scheduling and drives notifications | `05-building-block-view.md:51,74`, `06-runtime-view.md:299`, `08-crosscutting-concepts.md:129`, `glossary.md` “Terminal UI” | Affected: corrected; component map unchanged | contract `ObservationSchedule` → `passuff.tui.session.ObservationSession` | TUI tasks name `passuff/tui/session.py` | no such module or class; `_observe`/`_interactive` in `app.py:338,354` | **no** (F3) |
-| `StackGrouper` groups stacks for the read models | `05-building-block-view.md:70,164` | Affected: component map unchanged | contract `StackedInbox` → `StackGrouper` | stacked-inbox tasks name `passuff/stacking.py` | `StackGrouper` exists but is never imported; the TUI groups inline (`frame.py:141-147`) | **no** (F5) |
-| `RecordingDelivery` under `tests/support/recording_delivery.py`, macOS adapter tests | `05-building-block-view.md:77,180`, `04-solution-strategy.md:76`, `08-crosscutting-concepts.md:235`, `10-quality-requirements.md:44` | Affected: test double moved out of production | module layout keeps it under `tests/support/`; Q10 | not scheduled as a file in any task | file absent; a `recording_path` hook sits in production (`notify.py:17,27-30`) with no caller | **no** (F5) |
-| List row shows at most the 80-character excerpt; detail body bounded at 4 KiB | `05`/`08` claim; `glossary.md` “Activity detail” | Affected: activity-detail body corrected | “the list row keeps the 80-character excerpt (T7)” | delta task 151 | no truncation in `passuff/`; row shows the fixed summary | **no** (F6, F7) |
-| macOS audio player `afplay` | `03-context-and-scope.md:42`, `07-deployment-view.md:30` | ch3/ch7 unaffected | macOS `afplay` in the local stack | setup/e2e tasks name fake `afplay` | `sound.py:9` omits `afplay`; no fake `afplay` | **no** (F8) |
-| `Passuff.app` deferred 2026-11-08; TD-007 | `07-deployment-view.md:58-61`, `11-risks-and-technical-debt.md:53` | Affected: dated deferral and TD-007 | deferred to a packaging change | — | no bundle expected; the rest of the Python package ships | yes |
-| TOML writes with `tomlkit`, atomic replace | `06-runtime-view.md:255`, `08-crosscutting-concepts.md:144` | Affected | `TomlConfigStore` | scope tasks | `passuff/config.py`, `passuff/scope.py` | yes |
-| Typed configuration rejects unknown keys with exit 2 | `08-crosscutting-concepts.md` | Affected | Data model: unknown keys rejected | config tasks | `passuff/config.py`; delta scenario `An invalid configuration is reported with exit 2` | yes |
-| TD-005 resolved by this change | `11-risks-and-technical-debt.md:51` | Affected: “recorded TD-005 as planned” | coverage scripts land in this change | setup task | `scripts/merge-coverages.sh` uses `coverage combine` + `coverage xml`; no custom merger remains | **no** — TD-005 is still written as an unresolved plan (F10) |
+| Six use cases including `set-up-passuff` | `01-introduction-and-goals.md` | Affected | six use cases | all seven capabilities | six `usecase.md` files | yes |
+| `behave` runner and the runner contract | `04-solution-strategy.md:60`, `08-crosscutting-concepts.md:227` | Affected | V2 | setup batches | `behave.ini`, `scripts/verify.sh` | yes |
+| `curses` and the pure frame renderer | `04-solution-strategy.md:77` | Affected | V3 | TUI batches | `passuff/tui/app.py`, `frame.py` | yes |
+| Separate E2E step tree per capability | `05-building-block-view.md:74,180` | Affected | `design.md:368-390` | step-file references | `givn/e2e_steps/` | yes |
+| `ObservationSession` | `05-building-block-view.md:51,74`; `06-runtime-view.md:299`; `08:129`; glossary | Affected | `design.md:202` | TUI batches | `passuff/tui/session.py:15`, `app.py:21,323,422` | yes |
+| `WatchStatusReader` | `05:20,70,163`; `08:127`; glossary | Affected | `design.md:186-205` | status batch | `passuff/status.py:11` | yes |
+| `RecordingDelivery` under `tests/support/` | `05:77,179`; `04:76`; `08:235`; `10:44` | Affected | `design.md:103` | test-support tasks | `tests/support/recording_delivery.py`, used by the fake service | yes |
+| 80-character list row; 4 KiB body | `05`/`08`; glossary | Affected | `design.md:447-469` | boundary batches | `frame.py:160`, `classify.py:47-54`, delta scenarios | yes |
+| macOS `afplay` | `03:42`; `07:30` | Not affected | `design.md:551` | setup/E2E | `passuff/sound.py:11,31` | yes |
+| Bundle deferred (2026-11-08); TD-007 | `07:58-61`; `11:53` | Affected | `design.md:276-282` | — | no bundle expected | yes |
+| TD-005 and TD-006 resolved | `11:51-52` | Affected | coverage scripts; read models | setup/tasks | `scripts/merge-coverages.sh`, `passuff/status.py` | yes |
+| QS-011 / QS-012 | `10:43-44` | Not affected | read-model contracts | — | `WatchStatusReader`, D-Bus twin | yes |
 
-ARC42 CONFORMANCE: FINDINGS
+The chapter files are present, contain decision-specific content, and contain
+no box-drawing characters or ASCII pseudo-diagrams (all matches are Markdown
+tables; Mermaid diagrams are in chapters 03, 05, 06, 07, and 10). One mermaid
+edge in `05-building-block-view.md:51` uses the node id `Session` with the edge
+label `ObservationSession`; the building-block table names the same component,
+so this is a diagram-label nit, not a contradictory fact.
 
-The durable chapters 4, 5, 8, and 11 describe components, a step layout, an
-excerpt rule, a macOS audio path, and a debt item that the implementation does
-not have or no longer matches. Either the implementation is completed to the
-reviewed documents or the documents are corrected in the same change; a silent
-divergence is not acceptable.
+ARC42 CONFORMANCE: CLEAN
 
 ## Ubiquitous language conformance
 
-The glossary is the single vocabulary authority and the specs/design reuse its
-terms. Two entries name code symbols that do not exist:
-
-- `Inbox` — `docs/glossary.md:59` names `passuff.status.WatchStatusReader`;
-  there is no `passuff.status` module (the class is `passuff.inbox.WatchStatusReader`).
-- `Terminal UI` and `Watcher` — `docs/glossary.md:62,67` name
-  `ObservationSession`; no such class exists.
-
-Both are finding **F4**/**F3** residues of the same divergence. The structural
-model (`docs/domain-model.md`) records no structural change for this rebuild
-and its boundaries/relationships match the implemented aggregates; no edit is
-required there, and none was made.
+The specs, design, and code reuse the glossary's terms. `docs/glossary.md:59`
+names `passuff.status.WatchStatusReader` and `:62,67` name
+`ObservationSession`; both exist and are the symbols the code and arc42
+chapters use. `docs/domain-model.md:14` records the `python-rebuild` scope and
+`:121` records the 4 KiB body and the 500-record cap; the model's boundaries
+and relationships match the implemented aggregates. No stale glossary symbol
+remains, and no no-op structural edit was made: the rebuild changes the
+implementation language, not the structure.
 
 ## Use-case and Persona conformance
 
-Six use cases are the owning contracts and each was checked against the
-rejection criteria: `watch-pull-requests` (goal: be notified of others' activity
-on authored pull requests; primary actor developer; trigger names the
-watcher/check), `inspect-watch-status`, `review-activity-inbox`,
-`review-pull-request-stacks`, `change-watch-scope`, `set-up-passuff`. No `Goal`
-joins two verb phrases, every `Trigger` names the primary actor, extensions
-carry their main-flow step number, preconditions are not re-established by the
-flow, and no goal/trigger/guarantee names a mechanism. Capability names are
-goal-shaped. No leaf's main flow names three or more actor goals.
+The six use cases are the owning contracts and pass the rejection criteria:
+each `## Goal` is one outcome, each `## Trigger` names the developer, extensions
+carry their main-flow step, preconditions are not re-established, and no goal,
+trigger, or guarantee names a mechanism. Capability names are goal-shaped.
+`review-activity-inbox`'s goal and success guarantee are single-outcome
+(`givn/specs/review-activity-inbox/usecase.md:13-25`) and the watch-pull-requests
+rules run R1-R46 in order.
 
 Persona disposition:
 
 | Persona | Confirmed | Outcome in this change |
 |---|---|---|
-| `multi-account-developer` (`givn/personas/multi-account-developer.md`) | yes, 2026-11-02 | Every user-visible capability the Persona uses is rebuilt unchanged: the watcher transcript and notification, status, inbox/read, the terminal inbox with details and stacks, scope editing, and first-run setup. The rebuild restores the outcomes; it adds none. The terminal transcripts under `evidence/visual/` show the Persona reaching the inbox, activity detail, stack, scope picker, and status goals. |
+| `multi-account-developer` (`givn/personas/multi-account-developer.md`) | yes, 2026-11-02 | The rebuild restores every user-visible outcome the Persona relies on: the watcher notification, status, inbox/read, the terminal inbox with details and stacks, scope editing, and first-run setup. The committed transcripts show the notification, inbox, detail, stack, picker, and status goals. Multi-account behavior is covered by the regular two-account scenarios (`Two accounts share the global scope`, `A failed account does not stop the other account`); the E2E corpus does not repeat it. |
 
-No other Persona is invented or promoted. Actors in the specs remain
-interaction roles (`developer`), not Personas.
+No other Persona is invented or promoted; `developer` remains the interaction
+role, not a Persona.
 
-Use-case conformance is preserved. The functional gaps F6 (list-row excerpt),
-F7 (body bound), and F8 (macOS sound) are implementation failures against the
-owning rules, not use-case defects.
+PERSONAS: multi-account-developer
 
 ## Coverage
 
-Measured evidence: `coverage/cobertura-coverage.xml` (merged, lines 1845/2191,
-branches 649/842), `coverage/non-e2e-cobertura.xml` (1838/2191, 644/842), and
-`coverage/e2e-cobertura.xml` (1376/2191, 360/842). The three reports are
-distinct files with distinct measurement timestamps and counts; the E2E report
-is not a copy of the non-E2E report. Branch instrumentation is present.
+Measured evidence: `coverage/cobertura-coverage.xml` (merged, 1879/2178 lines,
+651/828 branches), `coverage/non-e2e-cobertura.xml` (1869/2178, 646/828), and
+`coverage/e2e-cobertura.xml` (1411/2178, 361/828). The reports are distinct
+files with distinct timestamps (`1794129613893`, `1794129648775`,
+`1794129649172`) and distinct counts; branch instrumentation is present.
 
-Every gap is classified in the three allowed buckets.
+The measurement covers the regular and E2E scopes only, so the change delta's
+non-E2E scenarios are not in the reports; their regions are classified by
+static inspection, not by the report alone.
 
 ### Bucket 1 — dead code (delete)
 
-| Region | Evidence | Fix |
-|---|---|---|
-| `passuff/stacking.py` (all 21 lines, 0%) | `StackGrouper` has no importer anywhere in `passuff/`, `tests/`, `givn/`; the TUI groups stacks inline | delete the module, or make `StackedInbox` → `StackGrouper` the TUI's only grouping path and test it |
-| `passuff/composition.py` (all 6 lines, 0%) | `openers()` has no caller; `cli.py` is the composition root | delete, or route the CLI/TUI adapter construction through it |
-| `passuff/render.py:99-121` `render_activity_detail` | no caller; `passuff/tui/frame.py` renders the detail | delete, or use it from the TUI |
-| `passuff/notify.py:17,27-30` `recording_path` | never passed by any caller; a test hook in production code | delete, and add the promised `tests/support/recording_delivery.py` |
+None found. `passuff/stacking.py`, `passuff/composition.py`,
+`render_activity_detail`, and the `recording_path` hook are gone; every
+remaining production module has a consumer.
 
-### Bucket 2 — missing test coverage (add tests, then implement/refactor)
+### Bucket 2 — missing test coverage (add tests)
 
-| Region | Missed lines / branches | Gap |
+| Region | Evidence | Gap |
 |---|---|---|
-| `passuff/config.py` | 43 lines, 28 branches | the validation branches (unknown key, bad intervals, watch table/array, duplicate repository, ignored entry, read errors) — the delta outline covers four of them; the rest are unexercised |
-| `passuff/setup.py` | 14 lines, 14 branches | prompt validation (empty label, unknown auth mode, empty env var, token command/file rules, duplicate label, watch mode) |
-| `passuff/credentials.py` | 8 lines, 4 branches | gh run failure, credential-command failure/empty output, non-regular token file, non-private token file, “exactly one source” |
-| `passuff/github.py` | 19 lines, 13 branches | pending/build CI mapping, review-requested relation, transport/malformed-JSON/no-data error mapping, stack-rejection message |
-| `passuff/state.py` | 23 lines, 10 branches | quarantine failure, duplicate-id repair, unknown-version/failed-load paths, save failure paths |
-| `passuff/classify.py` | 8 lines, 7 branches | review-comment events, CI recovery without notification, own-action early exits |
-| `passuff/inbox.py` | 6 lines, 2 branches | unparsable time fallbacks, unknown key |
-| `passuff/scope.py` | 3 lines, 4 branches | all-mode deselect, invalid mode, invalid focus relation |
-| `passuff/core.py` | 14 lines, 12 branches | target-selection guards, discovery failure fallback, per-account failure reporting |
-| `passuff/render.py:59` | 1 line | digest truncation when more than five pull requests are grouped |
-| `passuff/tui/app.py` | 122 lines, 40 branches | scroll/home/end/picker-cursor handlers, filter clearing, detail scroll keys |
-| `passuff/tui/frame.py` | 18 lines, 17 branches | review/review-comment labels, CI-recovered label, assignee-only rows, empty-state branches |
+| `passuff/config.py:121-125` `reconciliation_interval_secs` below 1 | `coverage/cobertura-coverage.xml` hits `0` at line 125; no feature contains the message | `docs/reference.md:221` specifies exit 2; no scenario covers it (the delta covers only `poll_interval_secs`) |
+| `passuff/config.py:139-140` watch repository not `owner/repo` | hits `0` at line 140; no feature contains the message | `docs/reference.md:222`; the permanent repository-entry scenario drives `ScopeEditor`, not configuration load |
+| `passuff/config.py:154-158` ignored pull request not `owner/repo#number` | hits `0` at 155,158; no feature contains the message | `docs/reference.md:223` |
+| `passuff/config.py:160-161` duplicate ignored pull request | hits `0` at 161; no feature contains the message | `docs/reference.md:223` |
+| `passuff/config.py:201` no accounts | hits `0`; no feature contains the message | `docs/reference.md:219` |
+| `passuff/config.py:204` empty account label | hits `0`; no feature contains the message | `docs/reference.md:220` |
+| `passuff/config.py:218-219` `github_user` contains whitespace | hits `0`; no feature contains the message | `docs/reference.md:227` |
+| `passuff/config.py:187-188` `sound_file` not a readable file | hits `0`; no feature contains the message | `docs/reference.md:229` |
+| `passuff/config.py:131,136,146-148,151,167,171,176,182,191,206,234` structural validation | hits `0`; no feature configures a non-table `watch`/`focus`/`events`/`notifications`, an invalid `watch.mode`, an invalid `notifications.urgency`, a non-table account, or a non-HTTP(S) `graphql_url` | the same bucket-2 class: configuration input validation with no scenario |
+| `passuff/config.py:110-111` configuration read error | hits `0`; no scenario makes the file unreadable | the same bucket-2 class (the prior review's "read errors") |
+
+These are reachable, user-visible exit-2 rules (verified by loading crafted
+configurations through `passuff.config.load_config`); they are missing test
+coverage, not dead code, and not a bucket-3 exception.
 
 ### Bucket 3 — legitimately hard to test (concrete technical justification)
 
 | Region | Justification |
 |---|---|
-| `passuff/notify.py:62-69` `_send_macos` — the real `osascript` process call | executing the real macOS notification surface requires a macOS host and a logged-in Notification Center session; the suite runs on Linux. The surface itself is covered by the twin on Linux; the real macOS call is TD-001's open item. |
-| `passuff/browser.py:15` — the `darwin` `open` branch | the same macOS-only process call; on Linux the `xdg-open` branch runs and the fake opener records it. |
-
-Not bucket 3, and recorded as missing test coverage instead: the macOS
-notification **double** is a promised boundary that would make the recording
-path testable, so its absence stays bucket 2 (F5). External-input validation
-and every error path above are bucket 2, not “defensive code”.
+| `passuff/notify.py:53-63` `_send_macos` | the real `osascript` Notification Center surface requires a macOS host and a logged-in session; the suite runs on Linux. |
+| `passuff/browser.py:15-19` the `open` branch | the same macOS-only process call; Linux covers `xdg-open`. |
+| `passuff/sound.py:31,40-43` the `afplay` selection and player failures | `sys.platform == "darwin"` selects it; the Linux suite cannot take that branch without a production platform seam. The `tests/support/bin/afplay` twin is reserved for the deferred macOS smoke (`design.md:551`, Q10). |
+| `passuff/tui/app.py:319-354` the interactive curses loop | the regular pty smoke starts it (and presses `q`); driving every interactive key path through a pty is the manual smoke's scope, and the key dispatch it calls is covered through `--keys`. |
 
 ### E2E coverage
 
-The canonical E2E policy was read from `givn instructions specs`. The interface
-is a terminal (CLI subprocess + curses TUI). Every normalized inventory action
-has exactly one `@e2e` scenario, each primary assertion is on the transcript or
-the rendered frame, and the real drivers are subprocesses, `--snapshot`, a pty
-smoke, the fake D-Bus service, the fake sound player, and the fake opener. No
-action is over-covered. No `@e2e` scenario was downgraded. The E2E count (19)
-is strictly less than the change count (229), and the scope is explicit.
+The canonical E2E policy was read from `givn instructions specs --change
+python-rebuild`. The interface is a terminal: CLI subprocesses and a curses
+TUI. Every inventory action has one `@e2e` scenario; the primary assertions are
+on the transcript, the printed frame, the exit status, or the twin logs;
+drivers are real subprocesses, `--snapshot`, `--observe-for`, the private
+D-Bus service, the fake sound player, and the fake opener. No `@e2e` scenario
+was downgraded or over-produced, and the scope is explicit.
 
 ### Redundant unit tests
 
-There is no separate unit-test tree: the `.feature` corpus is the only test
+There is no separate unit-test tree; the `.feature` corpus is the only test
 surface, so no redundant unit test exists to remove.
 
 ## Visual review
 
-The design declares `Interface: terminal` (`design.md` “Visual Design
-Contract”) with viewports 80x24 / 120x40 and a transcript per `@e2e` scenario.
-The committed transcripts under
+The design declares `Interface: terminal` (`design.md:447-469`) with viewports
+80x24 / 120x40 and a transcript per `@e2e` scenario. All 18 committed
+transcripts under
 `givn/changes/python-rebuild/evidence/visual/<scenario-slug>/transcript.txt`
-were read during this review:
+were read:
 
 | Scenario slug | State seen |
 |---|---|
-| `developer-toggles-a-repository-in-the-watch-scope` | scope picker, “watching nothing” empty state |
-| `developer-switches-the-watch-scope-mode` | picker, `Mode: selected`, focus marks |
-| `developer-narrows-the-focus-in-the-watch-scope` | picker with focus marks and the watched row |
-| `developer-sees-the-watch-state` | status transcript |
-| `developer-lists-unread-activity` | inbox list row with id, summary, key, time, read state |
-| `developer-marks-activity-read` | empty inbox after the mark |
-| `developer-opens-the-inbox-tui` | live-observe frame |
-| `developer-opens-an-activity-s-details` | activity detail overlay with the comment body and `Enter open in browser` |
-| `developer-opens-the-pull-request-from-an-activity` | frame before the open intent |
-| `developer-navigates-the-inbox-panes` | two-pane frame with focus on PRs |
+| `developer-starts-watching-and-is-notified-of-a-new-comment` | watcher: `passuff: watching`, baseline, `no notifications`, then `acme/api#42: New comment from @alice` |
+| `developer-opens-the-inbox-tui` | live-observe frame with unread activity and detail body |
+| `developer-opens-an-activity-s-details` | activity detail overlay: metadata, rule, body, `Enter open in browser` |
+| `developer-opens-the-pull-request-from-an-activity` | frame with the detail and the open affordance |
+| `developer-navigates-the-inbox-panes` | two-pane frame, focus on PRs, selection moved |
 | `the-inbox-shows-activity-observed-while-it-is-open` | frame with the injected activity |
-| `developer-reviews-a-stacked-inbox` | stack positions `1/2`, `2/2`, base |
-| `developer-sets-up-passuff-on-first-run` | empty inbox after setup |
+| `developer-reviews-a-stacked-inbox` | stack `☰ 1/2`, `☰ 2/2`, `stack 7 base main` |
+| `developer-toggles-a-repository-in-the-watch-scope` | picker, `watching nothing` empty state |
+| `developer-switches-the-watch-scope-mode` | picker, `Mode: selected`, focus marks |
+| `developer-narrows-the-focus-in-the-watch-scope` | picker, focus marks, watched row |
+| `developer-sees-the-watch-state` | status transcript with account, scope, last check |
+| `developer-lists-unread-activity` | inbox list row: id, summary, key, time, read state |
+| `developer-marks-activity-read` | `0 unread of 1`, `no unread activity` |
 | `developer-runs-a-single-check-and-sees-the-current-activity` | check transcript |
-| `developer-asks-for-usage` / `developer-asks-for-the-version` | CLI output |
-| `the-developer-tests-notifications-on-the-command-line` | both surfaces reported |
+| `developer-sets-up-passuff-on-first-run` | first-run setup then empty inbox |
+| `developer-asks-for-usage` / `developer-asks-for-the-version` | CLI usage and version |
+| `the-developer-tests-notifications-on-the-command-line` | `desktop notification sent`, `sound played` |
 
-Persona judgment (`multi-account-developer`): the transcripts show the label,
-resolved login, watch scope, unread count, per-row key/summary/time/read state,
-stack position and base, the activity detail body, and the browser affordance.
-The Persona can reach the inbox, detail, stack, scope, and status goals with
-what is shown. No finding names a failed Persona goal in the transcripts that
-exist.
+Persona judgment (`multi-account-developer`): the watcher transcript shows the
+Persona's primary goal — a new comment on their own pull request produces the
+notification line after the baseline — and the remaining transcripts show the
+inbox, read state, detail body, stack positions, scope picker, status, and both
+notification surfaces. No finding names a failed Persona goal. The macOS
+desktop attribution is outside the terminal transcript and is covered by the
+deferred manual smoke; it is not a failed Persona goal in the committed
+evidence.
 
-The evidence is **incomplete**: the `@e2e` scenario
-`Developer starts watching and is notified of a new comment` has no committed
-transcript. `tests/support/harness.py:52` writes a transcript only when
-`world.last` is set, and `World.start_watch` (`tests/support/world.py:524`)
-leaves it `None`, so the scenario that proves the Persona's primary outcome
-(start the watcher, receive the notification) has no visual evidence. The
-design's contract says every `@e2e` scenario commits one.
-
-VISUAL-REVIEW: UNVERIFIED
-
-A human must check: (1) start the watcher with the fake GitHub, D-Bus, and
-sound twins and confirm the terminal transcript shows “New comment from
-@alice”, the notification, and the single sound for the Persona's primary
-outcome; (2) confirm the missing transcript is committed for
-`developer-starts-watching-and-is-notified-of-a-new-comment` so the evidence
-set covers 19 of 19 `@e2e` runs.
+VISUAL-REVIEW: PASS
 
 ## Scenario execution evidence
 
-Receipt status: proven. `givn check review` reports
-`change verification receipt passed (229 scenario(s) at a3a717ef0a15ab538ea4c888a15e184eef03b673)`;
-the receipt `1c84c428e423afded5dc60cfae9a55253cd24f22` records change 229/229,
-regular 197/197, E2E 19/19, with zero failed and zero skipped. Review does not
-re-run the suite.
+Receipt status: proven. `givn check review --change python-rebuild` reports
+`change verification receipt reused across documentation-only revision
+5b6b815174fb9713d0cc7e224e758221870ec6e1 (tested at
+624fe70a9f496fb7ead8d3169f2d63321c29b0ac, 230 scenario(s))`. The receipt
+`givn/changes/python-rebuild/verification/tasks-verification.json` records
+change 230/230, 0 failed, 0 skipped; `tasks.md:19` records regular 197/197 and
+E2E 19/19. Review does not re-run the suite.
 
 ## Overlap dispositions
 
@@ -1063,69 +1021,81 @@ permanent copy remains until then.
 
 README-IMPACT: updated - Install, Prerequisites, Development, Coverage
 
-The README was edited for this change: Install states the Python 3.11 package
-and the `pip install .` path with the `passuff` and `passuff-tui` entry points;
-Prerequisites lists Python 3.11+, `gh` 2.40+, the Linux players, and
-Notification Center/`afplay`; Development names the `behave` runner scopes and
-the strictness proof; Coverage names the two Cobertura reports. Commands,
-Terminal inbox, Notifications, and Configuration were also rewritten for the
-rebuilt product.
+The README was refreshed for the rebuilt product: Install names Python 3.11 and
+the `passuff`/`passuff-tui` entry points; Prerequisites names `gh` 2.40+, the
+Linux sound players, and Notification Center/`afplay`; Development names the
+`behave` runner scopes and the strictness proof; Coverage names the two
+Cobertura reports.
 
 ## Findings
 
+The previous review's findings F1-F15 are resolved:
+
+| ID | Previous finding | Current evidence | State |
+|---|---|---|---|
+| F1 | no-op step `the developer reopens passuff` | `scripts/check_steps.py` exit 0; `scripts/verify.sh:47` in every scope | resolved |
+| F2 | per-capability step layout missing | seven `givn/steps/*_steps.py`, seven `givn/e2e_steps/*_e2e.py`, shared `common.py`; `design.md:368-390` matches | resolved |
+| F3 | `ObservationSession` missing | `passuff/tui/session.py:15`, used at `app.py:21,323,422` | resolved |
+| F4 | `passuff/status.py` missing | `passuff/status.py:11`, imported by CLI and TUI | resolved |
+| F5 | dead code and missing `RecordingDelivery` | `stacking.py`, `composition.py`, `render_activity_detail`, `recording_path` absent; `tests/support/recording_delivery.py` used by `fake_notifications.py:9,30` | resolved |
+| F6 | 80-character list-row excerpt | `passuff/tui/frame.py:160`; delta scenario and `givn/steps/inbox_navigation_steps.py:248-256` | resolved |
+| F7 | 4 KiB body bound | `passuff/classify.py:47-54`; delta `The stored activity body is bounded to 4 KiB` | resolved |
+| F8 | macOS `afplay` | `passuff/sound.py:11,31`; fake `afplay` and `osascript` twins present | resolved (macOS branch classified bucket 3) |
+| F9 | watcher transcript missing | `evidence/visual/developer-starts-watching-and-is-notified-of-a-new-comment/transcript.txt` shows the notification | resolved |
+| F10/F11 | arc42 and glossary symbols | `passuff.status.WatchStatusReader`, `ObservationSession`, no `StackGrouper`/`composition.py`/production recording hook; TD-005/TD-006 resolved; QS-011/QS-012 corrected | resolved |
+| F12 | strictness fixtures retained without a decision | retained and recorded in `design.md:330-337` and `tasks.md:5`; `verify.sh --strictness` exits 0 | resolved |
+| F13 | pty-driver mismatch in the matrix | `design.md:502` names `--observe --snapshot` and the regular pty scenario; `activity_inbox_steps.py:87-95` implements it | resolved |
+| F14 | task `COMMIT` shape | 206 `- [x] COMMIT: <hash> -- Batch: <name>` lines; `givn check review` passes hash presence | resolved |
+| F15 | receipt untracked | `givn/changes/python-rebuild/verification/tasks-verification.json` is tracked (`git ls-files`) | resolved |
+
+Open findings:
+
 | ID | Severity | Finding | Fix |
 |---|---|---|---|
-| F1 | critical | Fabricated step body: `givn/steps/common.py:1476` `the developer reopens passuff` is `return None`; `python scripts/check_steps.py` exits 1 on the current tree. | Give the step an observable effect or delete it and let the following command perform the restart; run `check_steps.py` over `givn/steps` and `givn/e2e_steps` in `scripts/verify.sh`'s normal scopes so the audit cannot be bypassed. |
-| F2 | critical | Promised step layout missing: the seven per-capability files named in `design.md`'s Step Definitions table and in every `tasks.md` task do not exist; all 237 bindings live in `givn/steps/common.py`. The seven `givn/e2e_steps/<capability>_e2e.py` files are one-line docstrings with no bindings, contrary to “E2E bindings, one file per capability” and `design-review.md` Q4's operator resolution. | Split the bindings into the named per-capability files in both trees (shared phrases stay in `givn/steps/common.py`), or update `design.md` with the single-module decision and re-run design-review; either way the tasks' step-file references must match the tree. |
-| F3 | critical | Contract without implementation: `ObservationSchedule` → `passuff.tui.session.ObservationSession` does not exist; live observation is `_observe`/`_interactive` in `passuff/tui/app.py:338,354`. `arc42` ch5/ch6/ch8 and the glossary all name `ObservationSession`. | Add `passuff/tui/session.py` with `ObservationSession` and have the TUI use it, or update `design.md`, the arc42 chapters, and the glossary to the as-built responsibility. |
-| F4 | major | `passuff/status.py` does not exist; `WatchStatusReader` lives in `passuff/inbox.py:54`, so one module owns the `ActivityInbox` and `WatchStatus` contracts. `design.md`'s module layout and `docs/glossary.md:59` name `passuff.status.WatchStatusReader`. | Split `WatchStatusReader` into `passuff/status.py`, or correct the design and glossary symbols. |
-| F5 | major | Dead code and a missing promised double: `passuff/stacking.py` `StackGrouper` has no consumer (0% coverage) while `arc42` ch5 says read models “group stacks through `StackGrouper`”; `passuff/composition.py` `openers()` has no caller; `passuff/render.py:99-121` `render_activity_detail` has no caller; `passuff/notify.py:27-30` `recording_path` is a test hook in production with no caller and `tests/support/recording_delivery.py` is absent. | Delete the dead modules/blocks or wire them to their declared consumers; move the recording double to `tests/support/recording_delivery.py` and use it from the macOS adapter test. |
-| F6 | critical | The 80-character list-row excerpt (T7) is unimplemented and its delta scenario does not assert it: `passuff/tui/frame.py:154-160` renders the fixed summary, and `givn/steps/common.py:1758-1767` checks `<= 100` on any line containing “comment by”, not the list row and not 80. | Implement the bounded excerpt in the list row and make the step assert the row's excerpt length `<= 80` from the frame the consumer sees. |
-| F7 | major | The 4 KiB stored body bound (`design.md` data model, T7) is unimplemented: `passuff/classify.py:53` stores the body unbounded and no scenario covers it. | Bound the stored body at 4 KiB and add a scenario asserting the stored and rendered bound. |
-| F8 | major | macOS sound is unimplemented although `README.md:55`, `docs/reference.md:288`, and arc42 ch3/ch7 require `afplay`: `passuff/sound.py:9` lists only the Linux players. | Add `afplay` to the player selection for `sys.platform == "darwin"` and cover it with the fake `afplay` twin, or correct the documents. |
-| F9 | major | Visual evidence incomplete: the `@e2e` scenario `Developer starts watching and is notified of a new comment` has no committed transcript (17 of 19 `@e2e` runs have one) because `World.start_watch` (`tests/support/world.py:524`) never sets `world.last` and `tests/support/harness.py:52` only writes a transcript when it is set. | Capture and commit `evidence/visual/developer-starts-watching-and-is-notified-of-a-new-comment/transcript.txt` from the watcher output; a human must then confirm the notification and sound for the Persona's primary goal. |
-| F10 | major | Arc42 conformance is not clean (see `ARC42 CONFORMANCE: FINDINGS`): ch4/ch5/ch8 document `ObservationSession`, `RecordingDelivery`, the per-capability E2E step tree, and the 80-character excerpt that the implementation lacks; ch11 TD-005 is still written as an unresolved plan although the coverage scripts landed in this change. | Complete the implementation to the documents or correct chapters 4, 5, 8, and 11 and the change-level `arc42.md`; a design change re-runs design-review. |
-| F11 | major | The glossary names nonexistent code symbols: `passuff.status.WatchStatusReader` (`docs/glossary.md:59`) and `ObservationSession` (`docs/glossary.md:62,67`). | Resolve together with F3/F4 so one authoritative symbol exists per term. |
-| F12 | minor | `tests/strictness/` fixtures are retained and tracked although `design.md` and the setup task say they are removed after the proof; `scripts/verify.sh --strictness` still depends on them. | Either keep them and record the decision in `design.md`, or remove them and run `check_steps.py` over the durable trees instead. |
-| F13 | minor | Driving-mechanism mismatch: `design.md`'s Interaction Coverage Matrix promises a pty smoke for `Developer opens the inbox TUI`; that `@e2e` scenario runs only `--snapshot --observe`. The pty smoke exists in a regular scenario (`The developer starts the inbox TUI binary`). | Add the pty step to the `@e2e` scenario or correct the matrix row to the as-built driving mechanism. |
-| F14 | major | `givn check review` cannot read the task evidence: tasks are `### [x] N. <title>` headings with a separate `- COMMIT: <hash> -- Batch: <name>` line, and the gate reports `[integrity] no \`- [x] COMMIT:\` lines found in tasks.md — revision identifiers must be recorded` and `integrity check failed: hash presence`. The evidence exists (205/205) but not in the shape the gate reads. | Record each checked task's revision in the gate's expected shape (a checked task line carrying `COMMIT: <hash>`), or fix the task authoring format for the whole file; a line in `review.md` does not satisfy it, so this is a `tasks.md` fix. |
-| F15 | major | The verification receipt the review gate reads is untracked: `givn/changes/python-rebuild/verification/tasks-verification.json` is not in `git ls-files` (only `tasks-result.json` is), and removing it makes `givn check review` fail with `change verification receipt missing`. The receipt that proves 229/229 is therefore not part of the change's committed evidence. | Commit `verification/tasks-verification.json` with the task-evidence batch so a clean checkout can be reviewed and archived. |
+| C1 | major | Coverage classification leaves eight specified configuration rules without any scenario (bucket 2, missing test coverage): `docs/reference.md:219-229` specifies exit 2 for no accounts, an empty label, `reconciliation_interval_secs` below 1, a watch repository not `owner/repo`, an ignored pull request not `owner/repo#number` or duplicated, `github_user` whitespace, and an unreadable `sound_file`. The measured report shows `hits=0` at `passuff/config.py:110-111,125,131,136,140,146-148,151,155,158,161,167,171,176,182,188,191,201,204,206,219,234`, and no feature under `givn/specs/` or `givn/changes/python-rebuild/specs/` contains the corresponding messages. The Q1 delta closed the enumerated boundary list but not these rules. | Add the cases to the existing `Given a configuration with <case>` outline (or add a parallel outline), record the batch commit, regenerate the receipt, and re-run the affected scope. Do not defer: external-input validation is bucket 2, never bucket 3. |
+
+Non-blocking observation: the four E2E step files that define phrases repeat
+their capability import line twice and carry unused imports
+(`givn/e2e_steps/activity_inbox_e2e.py:17-18`, `inbox_navigation_e2e.py:17-18`,
+`initial_setup_e2e.py:17-18`, `pr_activity_notification_e2e.py:17-18`). This is
+style polish for the backlog and does not affect behaviour or phrase ownership.
 
 ## Sign-off
 
-- [ ] Fabrication audit: clean — **fails**: `scripts/check_steps.py` exits 1 on `givn/steps/common.py:1476` (F1).
-- [ ] Every checked task has a verified commit touching production code — the evidence exists (205/205 name `14e0b99...` with a batch name, and that commit tree contains `passuff/` and the step bindings), but `givn check review` cannot read the format and fails on hash presence (F14).
-- [ ] Every promised component exists — **fails**: `passuff/status.py`, `passuff/tui/session.py`, the seven per-capability step files, `tests/support/recording_delivery.py`, `bin/osascript`, `bin/afplay` (F2-F5).
-- [ ] Every consumer uses only its declared contract — **fails**: `StackGrouper` and `openers()` have no consumer, and `ObservationSession` has no implementation (F3, F5).
-- [x] Strict-mode proof present and passing — `./scripts/verify.sh --strictness` exits 0; the durable-tree audit it cannot reach fails (F1).
-- [x] Scenario execution evidence is recorded per scope — change 229/229, regular 197/197, E2E 19/19; review does not re-run the suite. The receipt itself is untracked (F15).
-- [x] Coverage classification uses the most recent measured evidence — merged, non-E2E, and E2E Cobertura reports are distinct.
-- [ ] Every coverage gap classified and resolved — classified in the three buckets; the bucket 1 and bucket 2 items are unresolved findings (F5-F7).
-- [ ] Dead code deleted. Missing tests added. Hard-to-test gaps justified. — **fails**: bucket 1 dead code remains; bucket 2 gaps have no tests.
+- [x] Fabrication audit: clean — `check_steps.py` reports 0 no-op bodies across 17 step files; the sampled steps assert transcripts, frames, logs, or state, not "it ran".
+- [x] Every checked task has a verified commit touching production code — 206 tasks, 206 batch `COMMIT:` lines; `14e0b99` contains `passuff/` and the bindings, `7a83b2d` the fix batch and step layout.
+- [x] Every promised component exists — `WatchStatusReader`, `ObservationSession`, `ActivityInboxService`, the seven-plus-seven step files, `RecordingDelivery`, the macOS twins.
+- [x] Every consumer uses only its declared contract — the CLI, TUI, and frame renderer consume `WatchStatusReader`/`ActivityInboxService`; no consumer imports an implementation-only surface; `status.py` reuses `inbox.py`'s internal helpers, which is the reviewed split.
+- [x] Strict-mode proof present and passing — `./scripts/verify.sh --strictness` exits 0 with all three probes failing as required.
+- [x] Scenario execution evidence is recorded per scope — receipt 230/230, regular 197/197, E2E 19/19, zero failed or skipped; the gate reuses the receipt at `624fe70`.
+- [x] Coverage classification uses the most recent measured evidence — three distinct Cobertura reports with branch instrumentation; the delta scope is classified by static inspection because the declared measurement boundary excludes it.
+- [ ] Every coverage gap classified and resolved — **fails**: C1's eight specified validation rules are classified bucket 2 and remain untested.
+- [ ] Dead code deleted. Missing tests added. Hard-to-test gaps justified. — dead code and hard-to-test rows are clean; the missing tests are C1.
 - [x] Redundant unit tests removed — there is no separate unit-test tree.
 - [x] No `@wip` tags remain. No implementation-layer detail in the spec.
-- [x] Canonical E2E policy read from the resolved specs instruction; every normalized inventory action has one `@e2e` scenario and variants are regular scenarios.
+- [x] Canonical E2E policy was read from the resolved specs instruction; every normalized inventory action has one `@e2e` scenario and variants are regular scenarios.
 - [x] Every E2E scenario has a real-interface primary assertion and uses the reviewed driver; no browser UI scenario is replaced by HTTP/fetch.
-- [x] The local run command starts the full stack cleanly — `python -m passuff --help` exits 0; the twins start per scenario under `./scripts/verify.sh`.
-- [x] The exact files `verify.e2e_command` invokes were identified and read; the tree was searched for a second E2E implementation and none exists.
-- [x] The E2E scope is selected explicitly (`GIVN_RESULT_SCOPE` plus `--e2e`); the receipt reports zero failures and skips.
-- [ ] Implementation matches what `design.md` names — **fails**: step layout, `status.py`, `session.py`, `recording_delivery.py`, and the pty driver deviate without a design update (F2, F3, F4, F5, F13).
-- [ ] Interaction coverage verified — every inventory entry maps to a matrix row and an `@e2e` scenario, but one driving mechanism is missing (F13).
-- [x] No finding is excused with a classification outside the three buckets.
+- [x] The local run command starts the full stack cleanly — `python -m passuff --help` exits 0; the twins start per scenario under the runner.
+- [x] The exact files `verify.e2e_command` invokes were identified and read; the tree (including untracked files) has no second E2E implementation.
+- [x] The E2E scope is selected explicitly (`GIVN_RESULT_SCOPE` and `--e2e`); the receipt reports zero failures and skips.
+- [x] Implementation (commands, file layout, framework/driver) matches what `design.md` explicitly named; the step layout, `status.py`, `session.py`, recording double, strictness retention, and matrix row were all conformed and the design records them.
+- [x] Interaction coverage verified: every inventory entry maps to a matrix row, an existing `@e2e` scenario, and step definitions using the promised driving mechanism.
+- [x] No finding was excused with a classification outside the three buckets — C1 is bucket 2, not a deferral or an invented exception.
 
 ## Result
 
-The change is not ready to archive. The implementation passes its own runner and
-the receipts are internally consistent, but four evidence-level defects block
-sign-off: a fabricated step that the project's own audit rejects (F1), the
-reviewed step layout and three promised components missing from the tree
-(F2-F5), a specified boundary whose scenario asserts something else (F6), and
-an arc42/glossary set that describes the plan rather than the code (F10, F11).
-The visual evidence is incomplete for the Persona's primary outcome (F9), and
-the task-evidence format defeats the review gate's hash-presence check (F14)
-while the receipt it depends on is untracked (F15).
-`givn check review --change python-rebuild` therefore exits 1 with
-`integrity check failed: hash presence`, `review.md actual verdict is FAIL`, and
-`visual review is VISUAL-REVIEW: UNVERIFIED`.
+The previous review's F1-F15 are all resolved, the verification receipt is
+tracked and valid, the design conformance is clean, the E2E evidence uses the
+real interfaces, the arc42 and glossary match the tree, and the Visual Design
+Contract's transcript evidence supports the Persona. The change still cannot
+sign off: the coverage classification leaves eight specified, reachable exit-2
+configuration rules with no scenario (C1), so the "executable gate is complete"
+claim is not yet true for those behaviours. Add the scenarios, regenerate the
+receipt, and re-run the review. This is a missing-test finding, not a
+production defect.
+
+Review kind: independent
+Author: maki-author
+Reviewer context: independent-reviewer-1
 
 REVIEW: FAIL
