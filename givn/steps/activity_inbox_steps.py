@@ -94,6 +94,20 @@ def start_tui_binary(context):
 
     world.last = Result(output, "", code)
 
+@step('the developer starts the inbox TUI binary and presses the tab key')
+def start_tui_binary_tab(context):
+    world = w(context)
+    world.write_config()
+    cmd = world._command(True)
+    env = world._base_env()
+    env["TERM"] = "xterm-256color"
+    env["LINES"] = "24"
+    env["COLUMNS"] = "100"
+    output, code = run_pty(cmd, env, "\tq")
+    from tests.support.world import Result
+
+    world.last = Result(output, "", code)
+
 @step('the browser will fail to open')
 def browser_fail(context):
     w(context).browser_fail = True

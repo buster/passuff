@@ -32,6 +32,14 @@ Feature: Inbox navigation
     Then  the TUI shows "Focus: activity"
 
   @inbox-navigation
+  Scenario: The developer switches the focus in the running terminal
+    Given  a configured account "personal" with login "octo-personal"
+    And  an authored pull request "acme/api#42" by "octo-personal"
+    And  the watcher has already observed "acme/api#42"
+    When  the developer starts the inbox TUI binary and presses the tab key
+    Then  the TUI shows "PRs"
+
+  @inbox-navigation
   Scenario: The watched pull request selection scrolls
     Given  a configured account "personal" with login "octo-personal"
     And  25 authored pull requests in "acme/api" by "octo-personal"
@@ -236,6 +244,20 @@ Feature: Inbox navigation
     When  the developer presses "esc"
     Then  the TUI does not show "Activity pane"
     And  the exit status is 0
+
+  @inbox-navigation
+  Scenario: The pull request detail leaves the watched pane intact
+    Given  a configured account "personal" with login "octo-personal"
+    And  25 authored pull requests in "acme/api" by "octo-personal"
+    And  the watcher has already observed all of them
+    When  the developer opens the inbox TUI at 120x40
+    And  the developer presses "tab"
+    And  the developer presses "end"
+    And  the developer presses "enter"
+    Then  the TUI shows "PR - acme/api#25"
+    And  the TUI shows "Watched pull requests"
+    And  the TUI shows "▶ acme/api#25"
+    And  the TUI shows "Activity"
 
   @inbox-navigation
   Scenario: The pull request detail shows its metadata

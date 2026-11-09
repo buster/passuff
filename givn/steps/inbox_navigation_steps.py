@@ -361,6 +361,13 @@ def open_tui_80x24(context):
     world.open_tui(["--snapshot"])
 
 
+@step('the developer opens the inbox TUI at 120x40')
+def open_tui_120x40(context):
+    world = w(context)
+    world.tui_size = (120, 40)
+    world.open_tui(["--snapshot"])
+
+
 @step('the saved sort is "{value}"')
 def saved_sort(context, value):
     assert saved_ui(context).get("sort", "updated") == value, saved_ui(context)

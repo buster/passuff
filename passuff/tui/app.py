@@ -39,6 +39,33 @@ KEYS = {
 }
 
 
+def _key_name(ch: int) -> str:
+    import curses
+
+    special = {
+        9: "tab",
+        10: "enter",
+        13: "enter",
+        27: "esc",
+        curses.KEY_BTAB: "backtab",
+        curses.KEY_LEFT: "left",
+        curses.KEY_RIGHT: "right",
+        curses.KEY_UP: "up",
+        curses.KEY_DOWN: "down",
+        curses.KEY_PPAGE: "pageup",
+        curses.KEY_NPAGE: "pagedown",
+        curses.KEY_HOME: "home",
+        curses.KEY_END: "end",
+        curses.KEY_ENTER: "enter",
+        curses.KEY_F1: "F1",
+    }
+    if ch in special:
+        return special[ch]
+    if 0 <= ch < 256:
+        return chr(ch)
+    return str(ch)
+
+
 def _view(config, ui: dict[str, Any]) -> dict[str, Any]:
     return {
         "focus": "activity",
@@ -375,7 +402,7 @@ def _interactive(config, state_path, config_path, view) -> int:
             lines = render_styled(config, state, view)
             height, width = stdscr.getmaxyx()
             stdscr.erase()
-            for row, line in enumerate(lines[: max(0, height - 1)]):
+            for row, line in enumerate(lines[: max(0, height)]):
                 x = 0
                 for span in line.spans:
                     attr = curses.color_pair(color_pairs.get(span.role, 0)) if color_pairs else 0
@@ -384,7 +411,7 @@ def _interactive(config, state_path, config_path, view) -> int:
                     if span.role == "dim":
                         attr |= curses.A_DIM
                     try:
-                        stdscr.addnstr(row, x, span.text, max(1, width - 1 - x), attr)
+                        stdscr.addnstr(row, x, span.text, max(1, width - x), attr)
                     except curses.error:
                         pass
                     x += len(span.text)
@@ -395,11 +422,7 @@ def _interactive(config, state_path, config_path, view) -> int:
             if ch == -1:
                 time.sleep(0.05)
                 continue
-            try:
-                key = chr(ch) if 0 <= ch < 256 else str(ch)
-            except ValueError:
-                key = ""
-            apply_key(key, config, state_path, config_path, view)
+            apply_key(_key_name(ch), config, state_path, config_path, view)
         stop.set()
 
     try:

@@ -137,11 +137,31 @@ def _box(lines: list[StyledLine], title: str, title_role: str, width: int, borde
     return [top] + body + [bottom]
 
 
-def _composite(main: list[StyledLine], box: list[StyledLine], width: int) -> list[StyledLine]:
+def _window_blocks(blocks: list[list[StyledLine]], selected: int, budget: int) -> list[StyledLine]:
+    if not blocks:
+        return []
+    selected = min(max(0, selected), len(blocks) - 1)
+    start = selected
+    end = selected + 1
+    used = len(blocks[selected])
+    while start > 0 and used + len(blocks[start - 1]) <= budget:
+        start -= 1
+        used += len(blocks[start])
+    while end < len(blocks) and used + len(blocks[end]) <= budget:
+        used += len(blocks[end])
+        end += 1
+    return [line for block in blocks[start:end] for line in block][:budget]
+
+
+def _composite(main: list[StyledLine], box: list[StyledLine], width: int, start: int | None = None) -> list[StyledLine]:
     box_width = max(len(line.text) for line in box)
     content_width = width - 4
     left = max(0, (content_width - box_width) // 2)
-    start = max(1, (len(main) - len(box)) // 2)
+    if start is None:
+        start = max(1, (len(main) - len(box)) // 2)
+        start = min(start, max(1, len(main) - len(box)))
+    else:
+        start = max(0, start)
     result = list(main)
     for offset, box_line in enumerate(box):
         index = start + offset
@@ -181,7 +201,9 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
     unread = sum(1 for record in service.view(include_read=True) if not record.get("read"))
     focus = view.get("focus", "activity")
     width = max(40, int(view.get("width", 100)))
+    height = max(10, int(view.get("height", 30)))
     content_width = width - 4
+    inner_height = max(6, height - 2)
     main: list[StyledLine] = []
 
     header: list[Span] = []
@@ -210,17 +232,39 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
     main.append(StyledLine(counts))
     if config.watch.mode == "selected" and not config.watch.repositories:
         main.append(_line("watching nothing", "dim"))
+    header_lines = list(main)
+
+    ignored_selected = False
+    if prs:
+        current = prs[min(view.get("pr_index", 0), len(prs) - 1)]
+        ignored_selected = current.get("key", "").casefold() in ignored
+    controls_lines = [
+        _line("mark visible read", "dim"),
+        _parts(("x", "accent_bold"), (" unignore" if ignored_selected else " ignore", "dim"), ("   ", "dim"), ("tab", "accent_bold"), (" switch", "dim"), ("   ", "dim"), ("h", "accent_bold"), (" help", "dim"), ("   ", "dim"), ("q", "accent_bold"), (" quit", "dim")),
+    ]
+    if view.get("status"):
+        controls_lines.append(_line(str(view["status"]), "gold"))
+    controls_box = _box(controls_lines, "Controls", "accent", content_width, "dim")
+    remaining = inner_height - len(header_lines) - len(controls_box)
+    watched_target = max(5, inner_height * 30 // 100)
+    watched_height = max(5, min(watched_target, remaining - 5))
+    activity_height = max(5, remaining - watched_height)
+    if watched_height + activity_height > remaining:
+        activity_height = max(5, activity_height - (watched_height + activity_height - remaining))
+    if watched_height + activity_height > remaining:
+        watched_height = max(4, remaining - activity_height)
+    if watched_height + activity_height > remaining:
+        watched_height = max(4, remaining // 2)
+        activity_height = max(4, remaining - watched_height)
 
     watched_focus = focus == "prs"
     watched_border = "green" if watched_focus else "dim"
     watched_title = "green_bold" if watched_focus else "dim"
     direction = "↑" if view.get("sort_direction", 1) > 0 else "↓"
     mode = "all" if view.get("show_ignored") else "filtered"
-    watched_lines: list[StyledLine] = []
     has_stack = any(pr.get("stack") for pr in prs)
-    watched_lines.append(_line("Pull request   State  CI  " + ("☰  " if has_stack else "") + "☺  Title", "accent_bold"))
-    if not prs:
-        watched_lines.append(_line("no watched pull requests", "bright"))
+    watched_header = _line("Pull request   State  CI  " + ("☰  " if has_stack else "") + "☺  Title", "accent_bold")
+    watched_blocks: list[list[StyledLine]] = []
     for index, pr in enumerate(prs):
         selected = index == view.get("pr_index", 0)
         key = _key(pr)
@@ -238,13 +282,31 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
         ignored_mark = " ⊘" if pr.get("key", "").casefold() in ignored else ""
         marker = "▶ " if selected else "  "
         row_role = "dim" if pr.get("key", "").casefold() in ignored else ("gold_bold" if selected else "bright")
-        watched_lines.append(_parts((marker, "gold_bold" if selected else "dim"), (f"{key}  {pr.get('state')}  CI {pr.get('ci')}{stack_text}{people}{ignored_mark}", row_role)))
+        block = [_parts((marker, "gold_bold" if selected else "dim"), (f"{key}  {pr.get('state')}  CI {pr.get('ci')}{stack_text}{people}{ignored_mark}", row_role))]
         if stack:
-            watched_lines.append(_line(f"    stack {stack.get('number')} base {stack.get('base')}", "dim"))
+            block.append(_line(f"    stack {stack.get('number')} base {stack.get('base')}", "dim"))
+        watched_blocks.append(block)
+    watched_detail: list[StyledLine] = []
     if prs:
         selected = prs[min(view.get("pr_index", 0), len(prs) - 1)]
-        watched_lines.append(_line(f"Pull request {selected.get('key')}", "bright"))
-        watched_lines.append(_line(f"Selected pull request: {selected.get('key')}", "dim"))
+        watched_detail = [
+            _line(f"Pull request {selected.get('key')}", "bright"),
+            _line(f"Selected pull request: {selected.get('key')}", "dim"),
+        ]
+    watched_body_rows = max(1, watched_height - 2)
+    budget = max(1, watched_body_rows - 2)
+    selected_index = min(view.get("pr_index", 0), len(watched_blocks) - 1) if watched_blocks else 0
+    entries = _window_blocks(watched_blocks, selected_index, budget)
+    if not prs:
+        entries = [_line("no watched pull requests", "bright")]
+    watched_lines = [watched_header] + entries
+    if watched_detail and len(watched_lines) + len(watched_detail) <= watched_body_rows:
+        watched_lines += watched_detail
+    elif watched_detail and len(watched_lines) + 1 <= watched_body_rows:
+        watched_lines.append(watched_detail[-1])
+    watched_lines = watched_lines[:watched_body_rows]
+    while len(watched_lines) < watched_body_rows:
+        watched_lines.append(_line("", "dim"))
     main.extend(_box(watched_lines, f"Watched pull requests · {mode} · sort: {view.get('sort', 'updated')} {direction}", watched_title, content_width, watched_border))
 
     activity_focus = focus != "prs"
@@ -255,47 +317,53 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
         title_suffix = f" · {str(view['filter'])}"
     elif view.get("unread_only"):
         title_suffix = " · unread"
-    activity_lines: list[StyledLine] = [_line("When        Event                                      Stack  Read", "accent_bold")]
-    if not activities:
-        activity_lines.append(_line("no activity yet", "bright"))
+    activity_header = _line("When        Event                                      Stack  Read", "accent_bold")
+    activity_blocks: list[list[StyledLine]] = []
     for index, record in enumerate(activities[:40]):
         selected = index == view.get("activity_index", 0)
         marker = "▶ " if selected else "  "
         role = "gold_bold" if selected else "bright"
         state_text = "read" if record.get("read") else "unread"
-        activity_lines.append(_parts((marker, "gold_bold" if selected else "dim"), (f"{_activity_type(record)}  {_when(record)}  {state_text}", role)))
+        block = [_parts((marker, "gold_bold" if selected else "dim"), (f"{_activity_type(record)}  {_when(record)}  {state_text}", role))]
         if record.get("kind") == "comment":
-            activity_lines.append(_line(f"    Comment by @{record.get('actor')}", "dim" if not selected else "gold_bold"))
+            block.append(_line(f"    Comment by @{record.get('actor')}", "dim" if not selected else "gold_bold"))
         excerpt = " ".join(str(record.get("body") or "").split())[:80]
         if excerpt:
-            activity_lines.append(_line(f"    {excerpt}", "body"))
+            block.append(_line(f"    {excerpt}", "body"))
         if record.get("summary") and record.get("summary") != _activity_type(record):
-            activity_lines.append(_line(f"    {record.get('summary')}", "dim"))
+            block.append(_line(f"    {record.get('summary')}", "dim"))
+        activity_blocks.append(block)
+    status_lines: list[StyledLine] = []
     if view.get("filter"):
         if view.get("filter_stack"):
             selected_pr = next((pr for pr in prs if pr.get("key") == view["filter"]), None)
             stack = (selected_pr or {}).get("stack") or {}
-            activity_lines.append(_line(f"Activity · {str(view['filter']).split('#')[0]} stack {stack.get('number')}", "dim"))
+            status_lines.append(_line(f"Activity · {str(view['filter']).split('#')[0]} stack {stack.get('number')}", "dim"))
         else:
-            activity_lines.append(_line(f"Activity · {view['filter']}", "dim"))
+            status_lines.append(_line(f"Activity · {view['filter']}", "dim"))
     elif view.get("unread_only"):
-        activity_lines.append(_line("Activity · unread", "dim"))
+        status_lines.append(_line("Activity · unread", "dim"))
     if activities:
         record = activities[min(view.get("activity_index", 0), len(activities) - 1)]
-        activity_lines.append(_line(f"Selected activity: {record.get('summary')}", "dim"))
+        status_lines.append(_line(f"Selected activity: {record.get('summary')}", "dim"))
+    activity_body_rows = max(1, activity_height - 2)
+    if not activities:
+        entries = [_line("no activity yet", "bright")]
+        status_lines = []
+    else:
+        if len(status_lines) + 2 > activity_body_rows:
+            status_lines = []
+        budget = max(1, activity_body_rows - 1 - len(status_lines))
+        selected_index = min(view.get("activity_index", 0), len(activity_blocks) - 1) if activity_blocks else 0
+        entries = _window_blocks(activity_blocks, selected_index, budget)
+    activity_lines = [activity_header] + entries + status_lines
+    activity_lines = activity_lines[:activity_body_rows]
+    while len(activity_lines) < activity_body_rows:
+        activity_lines.append(_line("", "dim"))
+    activity_start = len(main)
     main.extend(_box(activity_lines, "Activity" + title_suffix, activity_title, content_width, activity_border))
 
-    ignored_selected = False
-    if prs:
-        current = prs[min(view.get("pr_index", 0), len(prs) - 1)]
-        ignored_selected = current.get("key", "").casefold() in ignored
-    controls_lines = [
-        _line("mark visible read", "dim"),
-        _parts(("x", "accent_bold"), (" unignore" if ignored_selected else " ignore", "dim"), ("   ", "dim"), ("tab", "accent_bold"), (" switch", "dim"), ("   ", "dim"), ("h", "accent_bold"), (" help", "dim"), ("   ", "dim"), ("q", "accent_bold"), (" quit", "dim")),
-    ]
-    if view.get("status"):
-        controls_lines.append(_line(str(view["status"]), "gold"))
-    main.extend(_box(controls_lines, "Controls", "accent", content_width, "dim"))
+    main.extend(controls_box)
 
     overlay_box: list[StyledLine] | None = None
     overlay = view.get("overlay")
@@ -411,7 +479,15 @@ def render_styled(config: AppConfig, state: dict[str, Any], view: dict[str, Any]
         ]
         overlay_box = _box(prompt_lines, "Leave", "accent", overlay_width)
     if overlay_box is not None:
-        main = _composite(main, overlay_box, width)
+        if len(overlay_box) > inner_height:
+            overlay_box = overlay_box[:inner_height]
+        start = max(1, (len(main) - len(overlay_box)) // 2)
+        if start <= activity_start < start + len(overlay_box) and len(overlay_box) <= activity_height - 2:
+            start = activity_start + 1
+        main = _composite(main, overlay_box, width, start)
+    main = main[:inner_height]
+    while len(main) < inner_height:
+        main.append(_line("", "dim"))
 
     top = _parts(("┌─ ", "dim"), ("passuff ", "bright_bold"), ("— Inbox ", "dim"), ("─" * max(1, width - 20), "dim"), ("┐", "dim"))
     body_lines: list[StyledLine] = []
