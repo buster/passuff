@@ -8,9 +8,9 @@ from typing import Any
 import httpx
 
 VIEWER_QUERY = "query ViewerLogin { viewer { login } rateLimit { remaining resetAt } }"
-PROBE_QUERY = "query Probe { search(first: 100, type: ISSUE, query: \"is:pr\") { nodes { id number title state isDraft createdAt updatedAt headRefOid repository { name owner { login } } author { login } commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } stack { number size position baseRef } } } viewer { login } rateLimit { remaining resetAt } }"
-OBSERVE_QUERY = "query Observe($ids: [ID!]!, $includeStack: Boolean!) { nodes(ids: $ids) { id number title body state isDraft createdAt updatedAt headRefOid repository { name owner { login } } author { login } assignees(first: 20) { nodes { login } } comments(first: 100) { nodes { id author { login } body createdAt } } reviews(first: 100) { nodes { id author { login } state body submittedAt } } reviewThreads(first: 100) { nodes { comments(first: 100) { nodes { id author { login } body createdAt } } } } commits(last: 1) { nodes { commit { oid statusCheckRollup { state } } } } stack @include(if: $includeStack) { number size position baseRef } } rateLimit { remaining resetAt } }"
-DISCOVER_QUERY = "query Discover { search(first: 100, type: ISSUE, query: \"is:pr is:open\") { nodes { id number title state isDraft createdAt updatedAt headRefOid repository { name owner { login } } author { login } assignees(first: 20) { nodes { login } } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } ... on Team { slug } } } } commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } stack { number size position baseRef } } } viewer { login } rateLimit { remaining resetAt } }"
+PROBE_QUERY = "query Probe { viewer { login pullRequests(first: 100, states: [OPEN, MERGED, CLOSED], orderBy: {field: UPDATED_AT, direction: DESC}) { nodes { ... on PullRequest { id number title state isDraft createdAt updatedAt headRefOid repository { name owner { login } } author { login } commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } stack { number size baseRefName } stackEntry { position } } } } } rateLimit { remaining resetAt } }"
+OBSERVE_QUERY = "query Observe($ids: [ID!]!, $includeStack: Boolean!) { nodes(ids: $ids) { ... on PullRequest { id number title body state isDraft createdAt updatedAt headRefOid repository { name owner { login } } author { login } assignees(first: 20) { nodes { login } } comments(first: 100) { nodes { id author { login } body createdAt } } reviews(first: 100) { nodes { id author { login } state body submittedAt } } reviewThreads(first: 100) { nodes { comments(first: 100) { nodes { id author { login } body createdAt } } } } commits(last: 1) { nodes { commit { oid statusCheckRollup { state } } } } stack @include(if: $includeStack) { number size baseRefName } stackEntry @include(if: $includeStack) { position } } } rateLimit { remaining resetAt } }"
+DISCOVER_QUERY = "query Discover { search(first: 100, type: ISSUE, query: \"is:pr is:open\") { nodes { ... on PullRequest { id number title state isDraft createdAt updatedAt headRefOid repository { name owner { login } } author { login } assignees(first: 20) { nodes { login } } reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } ... on Team { slug } } } } commits(last: 1) { nodes { commit { statusCheckRollup { state } } } } stack { number size baseRefName } stackEntry { position } } } } viewer { login } rateLimit { remaining resetAt } }"
 
 
 class GitHubError(Exception):
@@ -101,11 +101,12 @@ def _stack(node: dict[str, Any]) -> dict[str, Any] | None:
     stack = node.get("stack")
     if not stack:
         return None
+    entry = node.get("stackEntry") or {}
     return {
         "number": stack.get("number"),
         "size": stack.get("size"),
-        "position": stack.get("position"),
-        "base": stack.get("baseRef"),
+        "position": entry.get("position"),
+        "base": stack.get("baseRefName"),
     }
 
 
@@ -181,7 +182,7 @@ def _full(node: dict[str, Any]) -> PullRequest:
 
 
 class GitHubApiAdapter:
-    def __init__(self, base_url: str, token: str, timeout: float = 10.0) -> None:
+    def __init__(self, base_url: str, token: str, timeout: float = 60.0) -> None:
         self.base_url = base_url
         self.token = token
         self.client = httpx.Client(timeout=timeout)
@@ -228,10 +229,11 @@ class GitHubApiAdapter:
 
     def probe(self) -> tuple[list[dict[str, Any]], RateLimit]:
         data = self._post("Probe", PROBE_QUERY)
-        search = data.get("search")
-        if not isinstance(search, dict) or not isinstance(search.get("nodes"), list):
-            raise GitHubResponseError("partial response: search is missing")
-        nodes = search.get("nodes") or []
+        viewer = data.get("viewer")
+        connection = viewer.get("pullRequests") if isinstance(viewer, dict) else None
+        if not isinstance(connection, dict) or not isinstance(connection.get("nodes"), list):
+            raise GitHubResponseError("partial response: viewer pull requests are missing")
+        nodes = connection.get("nodes") or []
         rate = data.get("rateLimit") or {}
         return [_summary(node) for node in nodes if node], RateLimit(int(rate.get("remaining", 5000)), str(rate.get("resetAt", "")))
 

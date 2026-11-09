@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import threading
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -15,6 +16,27 @@ def _state_gql(value: str) -> str:
 
 def _ci_gql(value: str) -> str:
     return {"passing": "SUCCESS", "failing": "FAILURE", "pending": "PENDING", "error": "ERROR"}.get(value, "PENDING")
+
+
+def _valid_pr_selection(operation: str, query: str) -> bool:
+    if operation == "Probe":
+        match = re.search(r"pullRequests\([^)]*\)\s*\{\s*nodes\s*\{\s*(\.\.\.\s*on\s+PullRequest\b)?", query)
+    elif operation == "Discover":
+        match = re.search(r"search\([^)]*\)\s*\{\s*nodes\s*\{\s*(\.\.\.\s*on\s+PullRequest\b)?", query)
+    elif operation == "Observe":
+        match = re.search(r"nodes\(ids:\s*\$ids\)\s*\{\s*(\.\.\.\s*on\s+PullRequest\b)?", query)
+    else:
+        return True
+    return bool(match and match.group(1))
+
+
+def _invalid_stack_fields(operation: str, query: str) -> list[str]:
+    if operation not in {"Probe", "Discover", "Observe"}:
+        return []
+    match = re.search(r"stack(?:\s*@include\([^)]*\))?\s*\{([^}]*)\}", query)
+    if not match:
+        return []
+    return [field for field in ("position", "baseRef") if re.search(rf"\b{field}\b", match.group(1))]
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -154,9 +176,9 @@ class FakeGitHub:
             node["stack"] = {
                 "number": stack.get("number"),
                 "size": stack.get("size"),
-                "position": stack.get("position"),
-                "baseRef": stack.get("base"),
+                "baseRefName": stack.get("base"),
             }
+            node["stackEntry"] = {"position": stack.get("position")}
         if full:
             node["comments"] = {
                 "nodes": [
@@ -219,10 +241,16 @@ class FakeGitHub:
         if fault == "graphql":
             return 200, {"errors": [{"message": "boom"}]}, False
         data: dict[str, Any] = {"viewer": {"login": login}, "rateLimit": self._rate()}
+        query = str(body.get("query") or "")
+        if not _valid_pr_selection(operation, query):
+            return 200, {"errors": [{"message": "Selections can't be made directly on unions (see selections on SearchResultItem)", "extensions": {"code": "selectionMismatch", "nodeName": "SearchResultItem"}}]}, False
+        stack_fields = _invalid_stack_fields(operation, query)
+        if stack_fields:
+            return 200, {"errors": [{"message": f"Field '{field}' doesn't exist on type 'PullRequestStack'", "path": [f"query {operation}", "search", "nodes", "... on PullRequest", "stack", field], "extensions": {"code": "undefinedField", "typeName": "PullRequestStack", "fieldName": field}} for field in stack_fields]}, False
         if operation == "ViewerLogin":
             return 200, {"data": data}, False
         if operation == "Probe":
-            data["search"] = {"nodes": [self._pr_node(pr, False, False) for pr in self.prs]}
+            data["viewer"] = {"login": login, "pullRequests": {"nodes": [self._pr_node(pr, False, False) for pr in self.prs]}}
             self.world.on_probe()
             return 200, {"data": data}, False
         if operation == "Discover":
