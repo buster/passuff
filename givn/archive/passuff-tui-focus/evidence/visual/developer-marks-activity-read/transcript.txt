@@ -1,2 +1,0 @@
-passuff: no unread activity
-exit status: 0
