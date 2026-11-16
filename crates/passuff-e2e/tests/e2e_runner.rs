@@ -19,20 +19,12 @@ async fn main() {
     }
 
     let features = format!("{}/features", env!("CARGO_MANIFEST_DIR"));
-    let filter = |_: &cucumber::gherkin::Feature,
-                  _: Option<&cucumber::gherkin::Rule>,
-                  scenario: &cucumber::gherkin::Scenario| {
-        !scenario
-            .tags
-            .iter()
-            .any(|tag| tag.trim_start_matches('@') == "skip")
-    };
 
     let writer = World::cucumber()
         .max_concurrent_scenarios(1)
         .fail_on_skipped()
         .with_writer(cucumber::writer::Basic::stdout().summarized())
-        .filter_run(&features, filter)
+        .run(&features)
         .await;
 
     let stats = writer.scenarios_stats();
