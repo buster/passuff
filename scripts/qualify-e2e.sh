@@ -16,6 +16,18 @@ defect_names=(
   observe-empty-payload
   server-error-success
   transport-failure-skipped
+  setup-drops-accounts
+  credentials-token-file-mode
+  read-argument-guard
+  migration-not-persisted
+  quarantine-not-moved
+  ci-recovery-unseen
+  own-comment-not-read
+  dedupe-replays-comment
+  scope-filter-dropped
+  narrow-size-threshold
+  tab-does-not-switch
+  watch-interval-capped
 )
 
 hash_dir() {

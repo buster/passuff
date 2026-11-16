@@ -1,10 +1,13 @@
+diff --git a/crates/passuff-e2e/tests/harness/github.rs b/crates/passuff-e2e/tests/harness/github.rs
+index fd4d569..3ea30f3 100644
 --- a/crates/passuff-e2e/tests/harness/github.rs
 +++ b/crates/passuff-e2e/tests/harness/github.rs
-@@ -122,6 +122,6 @@
-     } else if query.contains("PassuffObserve") {
-         json!({
--            "data": {"nodes": [full_node(state, true)]},
-+            "data": {"nodes": []},
-             "rateLimit": rate_limit(),
-         })
-     } else {
+@@ -285,7 +285,7 @@ fn payload(query: &str, variables: &Value, token: &str, state: &MockState) -> Va
+             })
+             .unwrap_or_default();
+         let nodes = if wanted.iter().any(|id| *id == fixture.node_id()) {
+-            json!([full_node(fixture, true)])
++            json!([])
+         } else {
+             json!([])
+         };

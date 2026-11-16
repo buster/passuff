@@ -1,0 +1,18 @@
+diff --git a/crates/passuff-cli/src/tui/app.rs b/crates/passuff-cli/src/tui/app.rs
+index 11a2d96..68354f6 100644
+--- a/crates/passuff-cli/src/tui/app.rs
++++ b/crates/passuff-cli/src/tui/app.rs
+@@ -329,12 +329,7 @@ impl TuiApp {
+             return;
+         }
+         match key {
+-            Key::Tab => {
+-                self.focus = match self.focus {
+-                    Pane::Activity => Pane::Watched,
+-                    Pane::Watched => Pane::Activity,
+-                };
+-            }
++            Key::Tab => {}
+             Key::BackTab => {
+                 self.focus = match self.focus {
+                     Pane::Activity => Pane::Watched,

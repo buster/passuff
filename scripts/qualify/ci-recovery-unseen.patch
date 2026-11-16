@@ -1,0 +1,14 @@
+diff --git a/crates/passuff-core/src/classifier.rs b/crates/passuff-core/src/classifier.rs
+index 3029681..2a4ed4d 100644
+--- a/crates/passuff-core/src/classifier.rs
++++ b/crates/passuff-core/src/classifier.rs
+@@ -71,9 +71,6 @@ pub fn classify(
+     updated.relations = relations.clone();
+     updated.state = snapshot.state;
+     updated.ci = snapshot.ci;
+-    if snapshot.ci.is_failing() {
+-        updated.ci_failure_seen = true;
+-    }
+ 
+     for comment in &snapshot.comments {
+         updated.seen_comments.insert(comment.id.clone());

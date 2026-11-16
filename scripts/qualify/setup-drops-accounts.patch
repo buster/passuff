@@ -1,0 +1,13 @@
+diff --git a/crates/passuff-cli/src/setup.rs b/crates/passuff-cli/src/setup.rs
+index 0de504e..cbfcb9b 100644
+--- a/crates/passuff-cli/src/setup.rs
++++ b/crates/passuff-cli/src/setup.rs
+@@ -273,7 +273,7 @@ fn setup_inner<W: Write>(
+     }
+ 
+     let answers = SetupAnswers {
+-        accounts,
++        accounts: Vec::new(),
+         watch: WatchConfig {
+             mode: Some(mode),
+             repositories,

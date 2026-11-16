@@ -1,0 +1,18 @@
+diff --git a/crates/passuff-core/src/state.rs b/crates/passuff-core/src/state.rs
+index 6228da4..33c4cdb 100644
+--- a/crates/passuff-core/src/state.rs
++++ b/crates/passuff-core/src/state.rs
+@@ -407,13 +407,6 @@ impl SnapshotStore for JsonStateStore {
+ 
+ impl JsonStateStore {
+     fn quarantine(&self) -> Result<LoadOutcome, StateError> {
+-        let quarantine = self
+-            .path
+-            .with_extension(format!("corrupt.{}.json", Utc::now().timestamp_millis()));
+-        fs::rename(&self.path, &quarantine).map_err(|source| StateError::Quarantine {
+-            path: self.path.clone(),
+-            source,
+-        })?;
+         Ok(LoadOutcome {
+             state: WatcherState::new(),
+             migrated: false,

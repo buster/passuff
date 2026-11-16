@@ -1,0 +1,13 @@
+diff --git a/crates/passuff-cli/src/tui/mod.rs b/crates/passuff-cli/src/tui/mod.rs
+index c09469e..dee5129 100644
+--- a/crates/passuff-cli/src/tui/mod.rs
++++ b/crates/passuff-cli/src/tui/mod.rs
+@@ -335,7 +335,7 @@ pub fn snapshot_with_size(app: &TuiApp, width: u16, height: u16) -> String {
+ }
+ 
+ fn draw(app: &TuiApp, frame: &mut ratatui::Frame<'_>) {
+-    if frame.area().width < 40 || frame.area().height < 12 {
++    if frame.area().width < 20 || frame.area().height < 6 {
+         frame.render_widget(
+             Paragraph::new("Terminal too small. Resize to at least 40x12."),
+             frame.area(),
