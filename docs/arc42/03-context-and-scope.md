@@ -26,8 +26,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    passuff["passuff"] -->|GraphQL over HTTPS| github["GitHub GraphQL API"]
+    passuff -->|GraphQL over HTTPS| github["GitHub GraphQL API"]
     passuff -->|D-Bus org.freedesktop.Notifications| desktop["Desktop notification service"]
+    passuff -->|JSON lines when PASSUFF_NOTIFICATION_LOG is set| log["Notification log file"]
     passuff -->|process invocation| player["afplay / paplay / pw-play / aplay"]
     passuff -->|read and write| files["Config and state files"]
     passuff -->|read| credentials["Environment variables, helper commands, and token files"]
@@ -36,10 +37,12 @@ flowchart LR
 
 | Interface | Technology / Protocol | Direction |
 |---|---|---|
-| GitHub observation | GraphQL over HTTPS | Outbound |
+| GitHub observation | GraphQL over HTTPS, one `POST` per named operation: `PassuffViewer`, `PassuffProbe`, `PassuffAuthored`, `PassuffDiscovery`, `PassuffObserve` | Outbound |
 | Desktop notification on Linux | D-Bus `org.freedesktop.Notifications` | Outbound |
 | Desktop notification on macOS | macOS notification surface through `notify-rust` | Outbound |
-| Sound playback | Child process: `afplay`, `paplay`, `pw-play`, or `aplay` | Outbound |
+| Notification log | JSON lines appended to the path in `PASSUFF_NOTIFICATION_LOG`, replacing the platform notification surface | Write |
+| Environment seams | `PASSUFF_NOTIFICATION_LOG`, `PASSUFF_SOUND_PLAYER`, `PASSUFF_GRAPHQL_URL` | Read |
+| Sound playback | Child process: `afplay`, `paplay`, `pw-play`, or `aplay`; `PASSUFF_SOUND_PLAYER` replaces detection | Outbound |
 | Configuration | TOML file | Read and write |
 | Persisted observation | Versioned JSON file plus atomic replacement | Read and write |
 | Credentials | Environment variable, `/bin/sh -c` command output, permission-checked token file, or gh OAuth session | Read |
