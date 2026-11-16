@@ -1,0 +1,13 @@
+--- a/crates/passuff-cli/src/runtime.rs
++++ b/crates/passuff-cli/src/runtime.rs
+@@ -481,9 +481,9 @@
+     ) -> CommandOutcome {
+         let rendered = render_refresh(&report, &config.notifications);
+         let mut outcome = CommandOutcome {
+-            exit_code: if report.failed() { 1 } else { 0 },
++            exit_code: 0,
+             stdout: rendered.stdout,
+             stderr: rendered.stderr,
+             report: Some(report),
+             allowance: None,
+         };

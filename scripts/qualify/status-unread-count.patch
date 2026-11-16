@@ -1,0 +1,14 @@
+--- a/crates/passuff-cli/src/render.rs
++++ b/crates/passuff-cli/src/render.rs
+@@ -168,10 +168,7 @@
+             ));
+         }
+     }
+-    output.push_str(&format!(
+-        "passuff: {} unread of {}\n",
+-        view.unread, view.total
+-    ));
++    output.push_str(&format!("passuff: {} activity records\n", view.total));
+     output
+ }
+ 

@@ -1,0 +1,10 @@
+--- a/crates/passuff-e2e/tests/harness/github.rs
++++ b/crates/passuff-e2e/tests/harness/github.rs
+@@ -122,6 +122,6 @@
+     } else if query.contains("PassuffObserve") {
+         json!({
+-            "data": {"nodes": [full_node(state, true)]},
++            "data": {"nodes": []},
+             "rateLimit": rate_limit(),
+         })
+     } else {
