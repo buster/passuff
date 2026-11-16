@@ -1,8 +1,8 @@
 # passuff
 
 <!-- givn:begin:coverage-badge -->
-[![Line Coverage: 88%](https://img.shields.io/badge/line%20coverage-88%25-brightgreen)](coverage/cobertura-coverage.xml)
-[![Branch Coverage: 47%](https://img.shields.io/badge/branch%20coverage-47%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Line Coverage: 67%](https://img.shields.io/badge/line%20coverage-67%25-brightgreen)](coverage/cobertura-coverage.xml)
+[![Branch Coverage: 31%](https://img.shields.io/badge/branch%20coverage-31%25-brightgreen)](coverage/cobertura-coverage.xml)
 <!-- givn:end:coverage-badge -->
 
 [![crates.io](https://img.shields.io/crates/v/passuff?logo=rust)](https://crates.io/crates/passuff)
@@ -152,15 +152,14 @@ cargo run --release -p passuff -- --help
 
 ```sh
 ./scripts/verify.sh          # formatting, clippy, library tests, regular Gherkin suite
-./scripts/verify.sh --e2e    # @e2e smoke suite against a fake GitHub and D-Bus
+./scripts/verify.sh --e2e    # @e2e smoke suite with the in-process fake GitHub surface
 ./measure-coverage.sh        # non-E2E and E2E Cobertura reports
 ./merge-coverages.sh         # merged report
 ```
 
 Coverage requires `cargo-llvm-cov` and the `llvm-tools` component. The Gherkin
 runner is `crates/passuff-cli/tests/features_runner.rs`; feature files live under
-`givn/specs/`, and step definitions are split per capability under
-`crates/passuff-cli/tests/steps/`.
+`givn/specs/`, and step definitions live under `crates/passuff-cli/tests/steps/`.
 
 Project workflow: `givn status` shows the next step; keep the `.feature` file as
 the executable source of behaviour; run both verify scopes before review; create
@@ -175,8 +174,8 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 Merged report: [coverage/cobertura-coverage.xml](coverage/cobertura-coverage.xml)
 
-Line coverage: 88% (6584/7443)
-Branch coverage: 47% (1118/2362)
+Line coverage: 67% (2877/4293)
+Branch coverage: 31% (580/1858)
 
 Reproduce the result:
 

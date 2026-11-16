@@ -1,0 +1,13 @@
+[package]
+name = "passuff-config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Configuration schema and validation for passuff"
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+toml_edit.workspace = true
