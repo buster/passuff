@@ -25,6 +25,7 @@ hash_dir() {
       find . -type f \
         -not -path './.git/*' \
         -not -path './target/*' \
+        -not -path './crates/passuff-e2e/target/*' \
         -not -path './coverage/*' \
         -print0 |
       LC_ALL=C sort -z |
@@ -55,6 +56,7 @@ trap cleanup EXIT
 tar -C "$root" \
   --exclude=./.git \
   --exclude=./target \
+  --exclude=./crates/passuff-e2e/target \
   --exclude=./coverage \
   -cf - . | tar -C "$scratch" -xf -
 scratch_before="$(hash_dir "$scratch")"
@@ -63,7 +65,8 @@ build_suite() {
   (
     cd "$scratch" &&
       cargo build --locked -p passuff --bins &&
-      cargo test --locked -p passuff-e2e --test e2e_runner --no-run
+      cargo test --locked --manifest-path crates/passuff-e2e/Cargo.toml \
+        --test e2e_runner --no-run
   )
 }
 
@@ -72,7 +75,8 @@ run_suite() {
     cd "$scratch" &&
       cargo build --locked -p passuff --bins &&
       PASSUFF_BIN_DIR="$scratch/target/debug" \
-        cargo test --locked -p passuff-e2e --test e2e_runner
+        cargo test --locked --manifest-path crates/passuff-e2e/Cargo.toml \
+          --test e2e_runner
   )
 }
 

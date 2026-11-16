@@ -33,17 +33,21 @@ export GIVN_RESULT_FILE="$result_file"
 
 if [[ "$scope" == "e2e" ]]; then
   cargo build --locked -p passuff --bins
+  # The frozen package declares its own workspace so its tree runs without the
+  # repository root, so it is addressed by manifest path, not as a member.
   # The harness refuses to run without its binary directory; there is no
   # in-process fallback because the package declares no product dependency.
   PASSUFF_BIN_DIR="${PASSUFF_BIN_DIR:-$root/target/debug}" \
-    cargo test --locked -p passuff-e2e --test e2e_runner
+    cargo test --locked --manifest-path "$root/crates/passuff-e2e/Cargo.toml" \
+      --test e2e_runner
   exit 0
 fi
 
 # The black-box package must not reach the product as a library. The pattern
 # matches the production crates only; the root line `passuff-e2e v...` does not
 # match because a space must follow the crate name.
-tree="$(cargo tree -p passuff-e2e -e normal,build,dev --prefix none)"
+tree="$(cargo tree --manifest-path "$root/crates/passuff-e2e/Cargo.toml" \
+  -e normal,build,dev --prefix none)"
 if grep -Eq '^passuff(-config|-core)? v' <<<"$tree"; then
   echo "passuff-e2e must not depend on production crates" >&2
   exit 1
@@ -64,7 +68,10 @@ esac
 export GIVN_FEATURES="$features"
 
 cargo fmt --all -- --check
+cargo fmt --manifest-path "$root/crates/passuff-e2e/Cargo.toml" -- --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo clippy --locked --manifest-path "$root/crates/passuff-e2e/Cargo.toml" \
+  --all-targets -- -D warnings
 cargo clippy --locked -p passuff --all-targets --features test-support -- -D warnings
 cargo test --locked --workspace --lib
 

@@ -3,8 +3,10 @@ members = [
     "crates/passuff-config",
     "crates/passuff-core",
     "crates/passuff-cli",
-    "crates/passuff-e2e",
 ]
+# The frozen e2e package declares its own workspace so its tree runs without the
+# repository root. Keep it out of the production workspace.
+exclude = ["crates/passuff-e2e"]
 resolver = "2"
 
 [workspace.package]
