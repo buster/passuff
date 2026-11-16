@@ -1,7 +1,7 @@
 @stacked-inbox
 Feature: Stacked inbox
 
-  @e2e @stacked-inbox
+  @component @stacked-inbox
   Scenario: Developer reviews a stacked inbox
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

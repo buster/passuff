@@ -3,6 +3,7 @@ members = [
     "crates/passuff-config",
     "crates/passuff-core",
     "crates/passuff-cli",
+    "crates/passuff-e2e",
 ]
 resolver = "2"
 

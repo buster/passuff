@@ -1,7 +1,7 @@
 @inbox-navigation
 Feature: Inbox navigation
 
-  @e2e @inbox-navigation
+  @component @inbox-navigation
   Scenario: Developer navigates the inbox panes
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -340,7 +340,7 @@ Feature: Inbox navigation
     Then  the selected pull request is "acme/api#43"
     And  the TUI shows "acme/api#44"
 
-  @e2e @inbox-navigation
+  @component @inbox-navigation
   Scenario: The inbox shows activity observed while it is open
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

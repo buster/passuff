@@ -1,7 +1,7 @@
 @watch-scope
 Feature: Watch scope editing
 
-  @e2e @watch-scope
+  @component @watch-scope
   Scenario: Developer toggles a repository in the watch scope
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -60,7 +60,7 @@ Feature: Watch scope editing
     And  the watcher runs another cycle
     Then  the activity "New comment from @bob" is unread
 
-  @e2e @watch-scope
+  @component @watch-scope
   Scenario: Developer switches the watch scope mode
     Given  a configured account "personal" with login "octo-personal"
     And  the watch scope mode is "selected"
@@ -223,7 +223,7 @@ Feature: Watch scope editing
     When  the developer narrows the focus to "authored,assigned"
     Then  the focus relations are "authored,assigned"
 
-  @e2e @watch-scope
+  @component @watch-scope
   Scenario: Developer narrows the focus in the watch scope
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

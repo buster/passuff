@@ -167,7 +167,7 @@ Feature: Activity inbox
     When  the developer asks for status
     Then  the transcript reports "acme/api#42 open CI passing"
 
-  @e2e @activity-inbox
+  @component @activity-inbox
   Scenario: Developer lists unread activity
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -179,7 +179,7 @@ Feature: Activity inbox
     And  the transcript reports "acme/api#42"
     And  the exit status is 0
 
-  @e2e @activity-inbox
+  @component @activity-inbox
   Scenario: Developer marks activity read
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -311,7 +311,7 @@ Feature: Activity inbox
     Then  the TUI reports "requires a terminal"
     And  the exit status is 3
 
-  @e2e @activity-inbox
+  @component @activity-inbox
   Scenario: Developer opens the inbox TUI
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -322,7 +322,7 @@ Feature: Activity inbox
     And  the TUI shows "comment by @alice"
     And  the exit status is 0
 
-  @e2e @activity-inbox
+  @component @activity-inbox
   Scenario: Developer opens an activity's details
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -338,7 +338,7 @@ Feature: Activity inbox
     And  the TUI shows "Enter open in browser"
     And  the exit status is 0
 
-  @e2e @activity-inbox
+  @component @activity-inbox
   Scenario: Developer opens the pull request from an activity
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

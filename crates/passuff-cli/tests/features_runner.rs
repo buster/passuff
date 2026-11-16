@@ -12,20 +12,21 @@ use support::world::World;
 async fn main() {
     let features = std::env::var("GIVN_FEATURES").unwrap_or_else(|_| "givn/specs".to_string());
     let scope = std::env::var("GIVN_RESULT_SCOPE").unwrap_or_else(|_| "regular".to_string());
-    let e2e_only = scope == "e2e";
+    // `e2e` selects black-box scenarios. No such scenario lives here: the
+    // black-box tier is the frozen `passuff-e2e` package. Every other scope is
+    // the in-process tier, selected as "not black-box" so permanent untagged
+    // scenarios keep running alongside the `@component` scenarios.
     let filter = move |_feature: &cucumber::gherkin::Feature,
                        _rule: Option<&cucumber::gherkin::Rule>,
                        scenario: &cucumber::gherkin::Scenario| {
-        let is_e2e = scenario
+        let black_box = scenario
             .tags
             .iter()
             .any(|tag| tag.trim_start_matches('@') == "e2e");
-        if e2e_only {
-            is_e2e
-        } else if scope == "change" || scope == "regular" {
-            e2e_only || !is_e2e
+        if scope == "e2e" {
+            black_box
         } else {
-            !is_e2e
+            !black_box
         }
     };
 

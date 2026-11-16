@@ -76,7 +76,7 @@ flowchart TB
 | `ObservationSession` | Decide when to probe, when to run a targeted pass, and when the reconciliation interval has elapsed; deliver the cycle's notifications, keep the last view on failure, and hand updates to the terminal loop. |
 | `TranscriptRenderer` | Render notifications, the per-pass digest, status, inbox, account failures, fresh baselines, and empty cycles as terminal text. |
 | `DesktopDelivery` | Real `notify-rust` delivery of one digest per check pass; production path on Linux E2E and macOS. |
-| `RecordingDelivery` | Diagnostic and macOS E2E test double. Not a production component. |
+| `RecordingDelivery` | Diagnostic and in-process component test double. Not a production component. |
 
 ## Level 2 — Key building blocks
 

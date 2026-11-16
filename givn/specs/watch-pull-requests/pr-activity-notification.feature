@@ -1,7 +1,7 @@
 @pr-activity-notification
 Feature: Pull request activity notification
 
-  @e2e @pr-activity-notification
+  @component @pr-activity-notification
   Scenario: Developer starts watching and is notified of a new comment
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -30,7 +30,7 @@ Feature: Pull request activity notification
     Then  the transcript reports a notification for "acme/api#42"
     And  the transcript reports "New pull request by @octo-personal"
 
-  @e2e @pr-activity-notification
+  @component @pr-activity-notification
   Scenario: Developer runs a single check and sees the current activity
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"
@@ -42,13 +42,13 @@ Feature: Pull request activity notification
     And  the configured sound is played once
     And  the exit status is 0
 
-  @e2e @pr-activity-notification
+  @component @pr-activity-notification
   Scenario: Developer asks for usage
     When  the developer runs passuff with "--help"
     Then  the transcript shows the available commands
     And  the exit status is 0
 
-  @e2e @pr-activity-notification
+  @component @pr-activity-notification
   Scenario: Developer asks for the version
     When  the developer runs passuff with "--version"
     Then  the transcript shows the version
@@ -64,7 +64,7 @@ Feature: Pull request activity notification
     And  the configured sound is played once
     And  the exit status is 0
 
-  @e2e @pr-activity-notification
+  @component @pr-activity-notification
   Scenario: The developer tests notifications on the command line
     Given  a configured account "personal" with login "octo-personal"
     When  the developer runs the notification test

@@ -151,15 +151,23 @@ cargo run --release -p passuff -- --help
 ## Development
 
 ```sh
-./scripts/verify.sh          # formatting, clippy, library tests, regular Gherkin suite
-./scripts/verify.sh --e2e    # @e2e smoke suite with the in-process fake GitHub surface
+./scripts/verify.sh          # formatting, clippy, library tests, component Gherkin tier
+./scripts/verify.sh --e2e    # frozen black-box suite against the built binaries
 ./measure-coverage.sh        # non-E2E and E2E Cobertura reports
 ./merge-coverages.sh         # merged report
 ```
 
-Coverage requires `cargo-llvm-cov` and the `llvm-tools` component. The Gherkin
+Coverage requires `cargo-llvm-cov` and the `llvm-tools` component. The component
 runner is `crates/passuff-cli/tests/features_runner.rs`; feature files live under
 `givn/specs/`, and step definitions live under `crates/passuff-cli/tests/steps/`.
+Scenarios marked `@component` run in process with fakes.
+
+The black-box acceptance package is `crates/passuff-e2e`. It declares no
+dependency on `passuff`, `passuff-core`, or `passuff-config`, reads
+`PASSUFF_BIN_DIR`, and executes the built `passuff` and `passuff-tui` binaries in
+child processes. `scripts/verify.sh --e2e` builds the binaries and runs the
+frozen package; `scripts/qualify-e2e.sh` proves the package fails for every
+seeded defect.
 
 Project workflow: `givn status` shows the next step; keep the `.feature` file as
 the executable source of behaviour; run both verify scopes before review; create

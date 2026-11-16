@@ -1,7 +1,7 @@
 @initial-setup
 Feature: Initial setup
 
-  @e2e @initial-setup
+  @component @initial-setup
   Scenario: Developer sets up passuff on first run
     Given  no configuration file exists
     When  the developer runs setup with:

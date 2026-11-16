@@ -93,7 +93,7 @@ Feature: Watch status
     And  the transcript reports "0 unread of 0"
     And  the exit status is 0
 
-  @e2e @watch-status
+  @component @watch-status
   Scenario: Developer sees the watch state
     Given  a configured account "personal" with login "octo-personal"
     And  an authored pull request "acme/api#42" by "octo-personal"

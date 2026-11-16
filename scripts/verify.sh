@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Gherkin runner for the givn verify contract.
 #
-#   scripts/verify.sh          formatting, clippy, library tests, regular scope
-#   scripts/verify.sh --e2e    only @e2e scenarios
+#   scripts/verify.sh          formatting, clippy, library tests, component tier
+#   scripts/verify.sh --e2e    frozen black-box package against the built binaries
 #
-# givn passes GIVN_FEATURES and GIVN_RESULT_SCOPE; both are honoured. The
-# feature path is made absolute because cargo runs the test binary from the
-# crate directory. The static gates run in the regular scope only, so the e2e
-# invocation stays a single test pass.
+# givn passes GIVN_FEATURES and GIVN_RESULT_SCOPE; both are honoured in the
+# component scope. The e2e scope always runs the frozen `passuff-e2e` package:
+# it is the acceptance authority and must not be narrowed to a change's feature
+# files. The component runner is the in-process tier; its feature path is made
+# absolute because cargo runs the test binary from the crate directory. Static
+# gates run in the component scope only, so the e2e invocation stays a single
+# test pass.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,11 +26,32 @@ if [[ "${1:-}" == "--e2e" ]]; then
 fi
 export GIVN_RESULT_SCOPE="$scope"
 
+result_file="${GIVN_RESULT_FILE:-$root/target/givn-verify-result.json}"
+mkdir -p "$(dirname "$result_file")"
+rm -f "$result_file"
+export GIVN_RESULT_FILE="$result_file"
+
+if [[ "$scope" == "e2e" ]]; then
+  cargo build --locked -p passuff --bins
+  # The harness refuses to run without its binary directory; there is no
+  # in-process fallback because the package declares no product dependency.
+  PASSUFF_BIN_DIR="${PASSUFF_BIN_DIR:-$root/target/debug}" \
+    cargo test --locked -p passuff-e2e --test e2e_runner
+  exit 0
+fi
+
+# The black-box package must not reach the product as a library. The pattern
+# matches the production crates only; the root line `passuff-e2e v...` does not
+# match because a space must follow the crate name.
+tree="$(cargo tree -p passuff-e2e -e normal,build,dev --prefix none)"
+if grep -Eq '^passuff(-config|-core)? v' <<<"$tree"; then
+  echo "passuff-e2e must not depend on production crates" >&2
+  exit 1
+fi
+
 features="${GIVN_FEATURES:-}"
 if [[ -z "$features" ]]; then
-  if [[ "$scope" == "e2e" ]]; then
-    features="$root/givn/specs"
-  elif compgen -G "$root/givn/changes/*/specs" >/dev/null; then
+  if compgen -G "$root/givn/changes/*/specs" >/dev/null; then
     features="$root/givn/changes"
   else
     features="$root/givn/specs"
@@ -37,21 +61,11 @@ case "$features" in
   /*) ;;
   *) features="$root/$features" ;;
 esac
-if [[ "$scope" == "e2e" ]] && ! grep -Rqs --include='*.feature' '@e2e' "$features"; then
-  features="$root/givn/specs"
-fi
 export GIVN_FEATURES="$features"
 
-result_file="${GIVN_RESULT_FILE:-$root/target/givn-verify-result.json}"
-mkdir -p "$(dirname "$result_file")"
-rm -f "$result_file"
-export GIVN_RESULT_FILE="$result_file"
+cargo fmt --all -- --check
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo clippy --locked -p passuff --all-targets --features test-support -- -D warnings
+cargo test --locked --workspace --lib
 
-if [[ "$scope" != "e2e" ]]; then
-  cargo fmt --all -- --check
-  cargo clippy --locked --all-targets -- -D warnings
-  cargo clippy --locked -p passuff --all-targets --features test-support -- -D warnings
-  cargo test --locked --workspace --lib
-fi
-
-cargo test -p passuff --features test-support --test features_runner
+cargo test --locked -p passuff --features test-support --test features_runner
