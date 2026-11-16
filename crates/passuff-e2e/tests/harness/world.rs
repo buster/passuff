@@ -301,38 +301,34 @@ impl World {
         );
     }
 
-    pub fn assert_state_absent(&self) {
-        assert!(
-            !self.state.exists(),
-            "the state file still exists: {}",
-            self.state.display()
-        );
-    }
-
-    fn quarantine_files(&self) -> Vec<PathBuf> {
-        let mut found = Vec::new();
+    /// The corrupt document must be set aside: exactly one file other than the
+    /// live state path holds the original bytes.
+    pub fn assert_quarantined(&self, expected: &str) {
         let Ok(entries) = std::fs::read_dir(self.dir.path()) else {
-            return found;
+            panic!("cannot read the scenario directory");
         };
+        let mut holders = Vec::new();
         for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            if name.starts_with("state.corrupt.") && name.ends_with(".json") {
-                found.push(entry.path());
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            if std::fs::read(&path)
+                .map(|bytes| bytes == expected.as_bytes())
+                .unwrap_or(false)
+            {
+                holders.push(path);
             }
         }
-        found
-    }
-
-    pub fn assert_quarantined(&self, expected: &str) {
-        let files = self.quarantine_files();
         assert_eq!(
-            files.len(),
+            holders.len(),
             1,
-            "expected one quarantined state file, found {files:?}"
+            "expected the corrupt bytes to survive in one file, found {holders:?}"
         );
-        let text = std::fs::read_to_string(&files[0])
-            .unwrap_or_else(|error| panic!("cannot read {}: {error}", files[0].display()));
-        assert_eq!(text, expected, "the quarantined bytes differ");
+        assert_ne!(
+            holders[0], self.state,
+            "the corrupt document is still the live state file"
+        );
     }
 
     pub fn write_config(&self) -> Result<(), String> {

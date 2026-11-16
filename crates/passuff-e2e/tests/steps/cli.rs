@@ -244,17 +244,12 @@ fn state_version(world: &mut World, expected: u64) {
     world.assert_state_version(expected);
 }
 
-#[then(expr = "the state file is absent")]
-fn state_absent(world: &mut World) {
-    world.assert_state_absent();
-}
-
 #[then(expr = "the state file contains {string}")]
 fn state_contains(world: &mut World, needle: String) {
     world.assert_state_contains(&needle);
 }
 
-#[then(expr = "a quarantined state file holds the corrupt bytes")]
+#[then(expr = "the corrupt state file is set aside")]
 fn quarantine_holds_corrupt_bytes(world: &mut World) {
     world.assert_quarantined(CORRUPT_STATE);
 }

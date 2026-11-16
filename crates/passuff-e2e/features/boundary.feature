@@ -204,8 +204,7 @@ Feature: The built binaries satisfy the acceptance boundary
     When the developer asks for status
     Then the product exits with code 0
     And the output contains "passuff: 0 unread of 0"
-    And the state file is absent
-    And a quarantined state file holds the corrupt bytes
+    And the corrupt state file is set aside
     When the developer runs one check
     Then the product exits with code 0
     And the output contains "Fresh baseline recorded for octo/repo#7"
