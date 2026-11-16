@@ -10,6 +10,8 @@ use portable_pty::CommandBuilder;
 
 pub const TOKEN_ENV: &str = "PASSUFF_E2E_TOKEN";
 pub const TOKEN: &str = "e2e-token";
+pub const PERSONAL_TOKEN_ENV: &str = "PASSUFF_E2E_PERSONAL_TOKEN";
+pub const PERSONAL_TOKEN: &str = "e2e-personal-token";
 const PATH: &str = "/usr/local/bin:/usr/bin:/bin";
 const BINARIES: [&str; 2] = ["passuff", "passuff-tui"];
 
@@ -82,6 +84,7 @@ pub fn product_command(name: &str, env: &ChildEnv) -> Result<Command, String> {
     command.env("HOME", &env.home);
     command.env("PATH", PATH);
     command.env(TOKEN_ENV, TOKEN);
+    command.env(PERSONAL_TOKEN_ENV, PERSONAL_TOKEN);
     for (key, value) in &env.hooks {
         command.env(key, value);
     }
@@ -94,6 +97,7 @@ pub fn pty_command(name: &str, env: &ChildEnv) -> Result<CommandBuilder, String>
     command.env("HOME", &env.home);
     command.env("PATH", PATH);
     command.env(TOKEN_ENV, TOKEN);
+    command.env(PERSONAL_TOKEN_ENV, PERSONAL_TOKEN);
     for (key, value) in &env.hooks {
         command.env(key, value);
     }
