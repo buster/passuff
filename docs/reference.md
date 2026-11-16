@@ -16,6 +16,12 @@ observation rules. First-run use lives in [README.md](../README.md).
 | `passuff setup` | Create the configuration interactively |
 | `passuff notify-test` | Send one test notification and play the configured sound |
 
+### Watch loop
+
+`passuff` with no subcommand records a baseline pass, then runs one pass every
+`poll_interval_secs`. SIGINT (`Ctrl-C`) is handled between passes: the pass in
+flight runs to completion, then the process exits 0.
+
 ### Global options
 
 | Option | Effect |
@@ -425,8 +431,30 @@ passuff: 0 unread of 0
   ` - <title>` when the title is non-empty.
 - **Last line:** `passuff: <unread> unread of <total>`.
 
+A version-1 state file carries accounts and their pull-request observations
+only. The first command that opens it upgrades the file to version 2 and keeps
+every watched pull request; `status` prints the stored state and CI result:
+
+```json
+{
+  "version": 1,
+  "accounts": {
+    "work": {
+      "login": "tester",
+      "last_check": "2026-11-01T09:00:00Z",
+      "pull_requests": {
+        "octo/repo#7": {"state": "open", "ci": "passing", "title": "Add retry loop"}
+      }
+    }
+  }
+}
+```
+
+prints `  octo/repo#7 open CI passing  Pull request octo/repo#7 - Add retry loop`
+and exits 0, and the file is written back with `"version": 2`.
+
 Asserted: `passuff: 0 unread of 0`, `watched pull requests`,
-`octo/repo#7 open CI passing`.
+`octo/repo#7 open CI passing`, `version` 2 in the state file.
 
 ### `passuff check`
 
@@ -487,10 +515,12 @@ Asserted: `Fresh baseline recorded for octo/repo#7`, `New comment from
 - **Time:** the event time as RFC 3339 UTC with second precision, or
   `~<observed time>` when the event carries no time of its own.
 - **Ids:** `a<number>` allocated from a persisted counter, starting at `a1`.
-- **Empty:** `passuff: no unread activity`, or `passuff: no activity` with
-  `--all` when every record is read.
+- **Empty:** `passuff: no unread activity` without `--all` when no record is
+  unread, and `passuff: no activity` with `--all` when no record is visible: a
+  state file with no activity records, every record read, or every record
+  ignored.
 
-Asserted: `New comment from @reviewer`, `unread`.
+Asserted: `New comment from @reviewer`, `unread`, `passuff: no activity`.
 
 ### `passuff read`
 
@@ -553,6 +583,10 @@ the key hints for the focused pane; then the last status or error line.
 `q` exits 0. With unsaved view or notification changes, `q` opens the overlay
 titled `Save` whose first line is `Save view and notification settings?`; `y`
 saves and exits, `n` discards and exits, `esc` or `q` returns to the inbox.
+
+The acceptance package drives the TUI through a real pty, not only
+`--snapshot`, and reads the screen as a terminal would: a frame must start each
+line at column 0.
 
 Asserted at 80x24: `1 unread of 1`, `octo/repo#7`.
 
@@ -687,16 +721,21 @@ shape, the `rateLimit` placement, the `{"data": {}}` fallthrough, and the HTTP
 strings and exit codes come from `crates/passuff-e2e/features/boundary.feature`.
 The written configuration and the `PASSUFF_NOTIFICATION_LOG` hook come from
 `crates/passuff-e2e/tests/harness/world.rs`; the cleared child environment from
-`crates/passuff-e2e/tests/harness/bin.rs`.
+`crates/passuff-e2e/tests/harness/bin.rs`. The version-1 state seed is
+`VERSION_ONE_STATE` in `crates/passuff-e2e/tests/harness/world.rs`; the watch
+interrupt sends SIGINT and waits for the exit code from
+`crates/passuff-e2e/tests/steps/cli.rs`.
 
 Reference wordings for lines the suite does not assert come from the reference
 implementation used to qualify the suite, on branch `ise/trial`:
 `crates/passuff-core/src/github.rs` (queries, error texts),
+`crates/passuff-core/src/state.rs` (the state version and the version-1
+upgrade),
 `crates/passuff-core/src/core.rs` (the `account <label> failed` wrapper),
 `crates/passuff-cli/src/render.rs` (status, check, and inbox transcripts),
 `crates/passuff-cli/src/runtime.rs` (read output, exit codes),
 `crates/passuff-cli/src/delivery.rs` and `crates/passuff-cli/src/main.rs` (the
-log seam), `crates/passuff-cli/src/tui/render.rs` and
+log seam and the SIGINT exit), `crates/passuff-cli/src/tui/render.rs` and
 `crates/passuff-cli/src/tui/mod.rs` (layout, overlay, detail lines), and
 `crates/passuff-core/src/model.rs` plus
 `crates/passuff-core/src/classifier.rs` (activity summaries and display text).
