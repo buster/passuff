@@ -248,6 +248,7 @@ skills:
   targets: [maki, opencode, agents, claude, omp]
 rules: local-only
 addons:
+  ise: true
   outline: true
   architecture_principles: true
   challenge: true

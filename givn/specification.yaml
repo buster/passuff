@@ -1,0 +1,32 @@
+# The project's declared Specification: what a rebuild keeps, and which
+# source roots may be replaced. Every entry is a project-relative path.
+#
+# behavior  — the executable Gherkin corpus. The component scenarios stay; the
+#             rebuild rewrites only their step definitions and fakes.
+# structure — the vocabulary authority and the structural domain model.
+# contracts — the documents the product's external surface is specified in.
+# limits    — the recorded stack, platform, and API-budget constraints.
+# e2e       — the frozen black-box acceptance package.
+# source    — the roots a rebuild replaces.
+
+behavior:
+  - givn/specs/**
+
+structure:
+  - docs/glossary.md
+  - docs/domain-model.md
+
+contracts:
+  - docs/reference.md
+  - README.md
+  - docs/arc42/03-context-and-scope.md
+
+limits:
+  - docs/arc42/02-architecture-constraints.md
+
+e2e:
+  - crates/passuff-e2e
+
+source:
+  - crates/**
+  - scripts/**
