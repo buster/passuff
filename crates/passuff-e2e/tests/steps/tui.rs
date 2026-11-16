@@ -17,6 +17,16 @@ fn presses_enter(world: &mut World) {
     world.press_enter().expect("press enter");
 }
 
+#[when(expr = "the developer presses tab")]
+fn presses_tab(world: &mut World) {
+    world.press_tab().expect("press tab");
+}
+
+#[when(expr = "the developer presses backtab")]
+fn presses_backtab(world: &mut World) {
+    world.press_backtab().expect("press backtab");
+}
+
 #[when(expr = "the developer quits the inbox")]
 fn quits_inbox(world: &mut World) {
     world.quit_inbox().expect("quit the inbox");
