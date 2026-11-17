@@ -1,0 +1,12 @@
+diff --git a/crates/passuff-cli/src/tui/mod.rs b/crates/passuff-cli/src/tui/mod.rs
+--- a/crates/passuff-cli/src/tui/mod.rs
++++ b/crates/passuff-cli/src/tui/mod.rs
+@@ -657,7 +657,7 @@
+         KeyCode::Char(character) => Some(match character {
+             'j' => Key::Down,
+             'k' => Key::Up,
+-            'q' => Key::Quit,
++            'q' => Key::Char('q'),
+             'r' => Key::MarkRead,
+             'a' => Key::MarkAllRead,
+             'u' => Key::ToggleUnread,

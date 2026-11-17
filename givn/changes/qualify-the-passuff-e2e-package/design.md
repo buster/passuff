@@ -145,6 +145,12 @@ mismatch occurred. The exit code, the clean-tree hash check, the revert check,
 and the `N/M defects detected; clean tree green` line stay. Bash 5.2 is
 available; the map uses no feature newer than associative arrays.
 
+The clean-tree hash covers the repository files and excludes `.git`, `target`,
+`crates/passuff-e2e/target`, `coverage`, and `givn/history`. The last is the
+ignored local record store that Givn writes on every command; hashing it would
+turn a concurrent `givn status` into a false "tree changed" failure. The source
+files, the change artifacts, and the evidence stay covered.
+
 Expected scenarios for the existing eighteen:
 
 | Defect | Scenario that must fail |

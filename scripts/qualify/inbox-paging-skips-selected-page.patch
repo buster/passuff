@@ -1,0 +1,15 @@
+diff --git a/crates/passuff-cli/src/tui/render.rs b/crates/passuff-cli/src/tui/render.rs
+--- a/crates/passuff-cli/src/tui/render.rs
++++ b/crates/passuff-cli/src/tui/render.rs
+@@ -210,10 +210,7 @@
+         lines.push("  no activity yet - Tab to watched PRs".to_string());
+         return lines;
+     }
+-    let start = app
+-        .activity_selection
+-        .saturating_add(1)
+-        .saturating_sub(rows_available);
++    let start = app.activity_selection.saturating_add(rows_available);
+     for (index, record) in activity.iter().enumerate().skip(start).take(rows_available) {
+         let marker = if index == app.activity_selection {
+             "▶ "

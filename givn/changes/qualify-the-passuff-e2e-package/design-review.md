@@ -41,6 +41,7 @@ not requested for a documents-and-test-assets change
 | F2 | A wrong expected scenario would make the qualification fail after a long run. | Hardened: the script continues after a mismatch and reports every wrong expectation in one run; the final status is non-zero. |
 | F3 | The design did not name a single-scenario command. | Hardened: the design records that the frozen runner has none, and how a defect's named scenario is extracted. |
 | F4 | The defect transcripts could be mistaken for new evidence paths. | Hardened: the evidence table names the producing command for every file and confines the PTY capture to a throwaway copy outside the repository. |
+| F5 | The clean-tree hash included `givn/history`, which Givn writes on every command, so a concurrent `givn status` would fail a twenty-minute run. | Hardened during implementation: the hash excludes `givn/history` as an ignored local record store; everything under version control and the change artifacts stay covered. Recorded in the design's qualification section. |
 
 ## Verdict
 
