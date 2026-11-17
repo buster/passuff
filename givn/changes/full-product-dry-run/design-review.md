@@ -65,6 +65,28 @@ design and design-review instructions. The counts in the Architecture Impact
 table come from `git ls-files` at the reviewed revision and are re-checked by
 the prepare report. The verdict stands.
 
+## Post-trial re-confirmation
+
+Two design edits followed the trial, both recorded here rather than left as
+silent drift:
+
+1. **`§4 Build and grade` gains the observed component selection.** The rebuilt
+   runner selected 0 scenarios for an absolute `GIVN_FEATURES` directory; the
+   copy's declared `./scripts/verify.sh` selected 215 and passed. The edit names
+   both evidence files and points at gap G2.
+2. **`Interaction Coverage Matrix` is completed.** It now maps all 29 inventory
+   entries to the 29 frozen `@e2e` titles with a driving mechanism each; the
+   earlier single-row placeholder would have failed review item 11b. The matrix
+   was derived from the six `usecase.md` `## Interactions` tables and
+   cross-checked against the 29 frozen titles.
+
+Re-reading the design against the trial evidence: the revision and file counts
+(21 Specification, 62 removed, 12 frozen) match `prepare.txt`; the build and
+frozen commands match the recorded logs; D1 to D8 still hold, and D4's
+compiling constraint is what produced a runnable binary despite the missing
+scripts. The arc42 assessment is unchanged (all 12 rows No). DESIGN-REVIEW: PASS
+stands.
+
 ## Verdict
 
 Every branch is walked, the seven findings are resolved or explicitly accepted,

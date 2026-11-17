@@ -410,16 +410,47 @@ authority.
 
 ## Interaction Coverage Matrix
 
-No inventory entry is added, changed, or removed by this change; the existing
-rows stay as the owning use-case documents record them. The trial grades them
-through the frozen suite unchanged.
+No inventory entry is added, changed, or removed by this change; every existing
+entry keeps its recorded row and is graded through the frozen suite unchanged.
+The matrix is the cross-reference the review checks; the owning use-case
+documents are the inventory source.
 
-| Inventory entry | @e2e scenario title | Real interface | Driving mechanism |
+| Inventory entry (capability: consumer action) | @e2e scenario title | Real interface | Driving mechanism |
 |---|---|---|---|
-| No entry changes | The 29 frozen `@e2e` scenarios, titles unchanged | CLI / terminal pty | cucumber-rs steps invoke the rebuilt binary; the pty harness feeds keys and parses the frame |
+| watch-scope: report only the watched scope across two accounts | Two accounts report only the watched scope | CLI | cucumber-rs step spawns the rebuilt `passuff`; mock GitHub per `Authorization` token |
+| watch-status: show the watch state | A first check baselines the account and status reports the scope | CLI | Spawns the rebuilt `passuff check` then `status`; asserts stdout |
+| activity-inbox: list unread activity | New activity reaches the inbox and reading all clears the unread count | CLI | Spawns `check`, `inbox`, `read --all`; asserts stdout and state file |
+| activity-inbox: open the inbox in the terminal UI at the narrow budget | The inbox row is visible at the narrow terminal size | Terminal pty | pty at 80x24 through `portable-pty`; `vt100` parses the frame |
+| activity-inbox: open an activity's detail at the wide budget | The activity detail opens at the wide terminal size and quits cleanly | Terminal pty | pty at 120x40; `Enter` opens the overlay; `vt100` reads the frame |
+| activity-inbox: mark one activity record read | Reading one id marks that record and reports it | CLI | Spawns `read <id>`; asserts stdout and the state file |
+| activity-inbox: reject a read with no id or with an id and `--all` | Read with no id and with an id and --all exits 2 | CLI | Spawns `read` with the conflicting arguments; asserts exit 2 |
+| activity-inbox: reject an unknown activity id | Reading an unknown id exits 2 | CLI | Spawns `read <unknown>`; asserts exit 2 and stderr |
+| activity-inbox: load a version-1 state file | A version-1 state file migrates on the next status | CLI | Writes a version-1 state; spawns `status`; asserts output and the rewritten file |
+| activity-inbox: record a repeated activity delivery once | The same activity delivered twice produces one record | CLI | Two `check` passes over the same mock activity; asserts one record |
+| activity-inbox: report a terminal below the minimum size | A terminal too short prints the minimum size | Terminal pty | pty below 40x12; `vt100` reads the size warning |
+| inbox-navigation: navigate the watched pull requests and activity | Tab and back-tab switch the active pane | Terminal pty | pty; sends `Tab` and `BackTab`; `vt100` reads the focus line |
+| initial-setup: set up passuff on first run | Setup writes a usable configuration | CLI | Spawns `setup` with scripted stdin; asserts exit 0 and the written TOML |
+| initial-setup: keep an existing configuration without confirmation | Setup leaves an existing configuration alone without confirmation | CLI | Spawns `setup`, answers `n`; asserts the file is unchanged |
+| initial-setup: reject an invalid watch repository and ask again | Setup rejects an invalid watch repository and asks again | CLI | Spawns `setup` with an invalid repository then a valid one; asserts the re-ask |
+| pr-activity-notification: show the available commands | The CLI lists its commands | CLI | Spawns `passuff --help`; asserts the command list |
+| pr-activity-notification: deliver one notification as a JSON line | A notification is delivered as one JSON line | CLI | Spawns `check` with `PASSUFF_NOTIFICATION_LOG`; reads the JSON line |
+| pr-activity-notification: fail the check on a server error | A server error fails the check | CLI | mock GitHub returns 500; spawns `check`; asserts exit 1 and stderr |
+| pr-activity-notification: fail the check when the endpoint is unreachable | An unreachable endpoint fails with a diagnostic | CLI | Points `graphql_url` at a closed port; asserts exit 1 and the diagnostic |
+| pr-activity-notification: authenticate an account with an environment token | An environment token authenticates the account | CLI | Spawns `check` with `token_env` set; asserts the account resolves |
+| pr-activity-notification: accept a token file readable only by its owner | A token file readable only by its owner is accepted | CLI | Writes a `0600` token file; spawns `check`; asserts success |
+| pr-activity-notification: refuse a token file readable by other users | A token file readable by other users is refused | CLI | Writes a `0644` token file; asserts exit 2 and the refusal |
+| pr-activity-notification: fail an account whose token belongs to another login | A token for another login fails the account | CLI | mock GitHub returns a different viewer; asserts exit 1 naming both logins |
+| pr-activity-notification: quarantine a corrupt state file | A corrupt state file is quarantined and replaced | CLI | Writes invalid JSON; spawns `check`; asserts the quarantine and the new state |
+| pr-activity-notification: notify a CI failure and its recovery | A failing check notifies and a recovery notifies | CLI | mock GitHub changes the rollup state; two `check` passes; asserts both transcripts |
+| pr-activity-notification: record the viewer's own comment read without notifying | The viewer's own comment is recorded read and does not notify | CLI | mock GitHub returns the viewer's own comment; asserts the inbox and no notification |
+| pr-activity-notification: ignore bot comments by default | A bot comment is ignored by default | CLI | mock GitHub returns a bot comment; asserts no notification |
+| pr-activity-notification: record bot comments when they are enabled | A bot comment is recorded when bot comments are enabled | CLI | Enables `bot_comments`; asserts the summary and the unread count |
+| pr-activity-notification: watch continuously and deliver one notification | The default command watches and delivers one notification | CLI | Spawns the watch loop; waits for the baseline, adds a comment, intercepts SIGINT; asserts one log line and exit 0 |
 
-The eight declared actions without an acceptance scenario remain recorded in
-TD-009; the trial does not invent scenarios for them.
+Every row has a non-empty driving mechanism. The review re-reads each `.feature`
+title and each step body against this table. The 29 rows match the 29 frozen
+`@e2e` scenario titles exactly; the counts reconcile with
+`evidence/ise/e2e-run.txt`.
 
 ## External boundary cases
 

@@ -85,16 +85,16 @@ Specification.
 - [x] The registry scans before and after the run are both empty; `S12` made no
       registry change, so the environment needs no restore, and `sandbox.txt`
       records that.
-- [x] COMMIT: `<trial>` -- Batch: trial
+- [x] COMMIT: `525bb7a` -- Batch: trial
 
 ## Closeout
 
-- [ ] `givn check tasks --change full-product-dry-run` passes; the change
+- [x] `givn check tasks --change full-product-dry-run` passes; the change
       verification is not applicable.
-- [ ] `./scripts/verify.sh` and `./scripts/verify.sh --e2e --package
+- [x] `./scripts/verify.sh` and `./scripts/verify.sh --e2e --package
       crates/passuff-e2e` are green at the reviewed tree; `./measure-coverage.sh`
       and `./merge-coverages.sh` write the regular and E2E reports.
-- [ ] `review.md` records the change strategy, the gap table with each wrong
+- [x] `review.md` records the change strategy, the gap table with each wrong
       artifact, the neighbour table, the rebuilt binary hashes, the frozen
       result, the rebuilt component result, and the environment restore.
 - [ ] `givn check review --change full-product-dry-run` passes.
