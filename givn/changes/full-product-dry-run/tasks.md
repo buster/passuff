@@ -23,10 +23,10 @@ neighbours are every added path outside the Specification (`Decides D5`).
 - [x] No delta specs: the proposal records `Behavior change: none`, `.givn-skip`
       lists `specs`, and `givn check design-review --change
       full-product-dry-run` passes.
-- [ ] Pre-trial artifacts committed: proposal, design, `arc42.md`, design
+- [x] Pre-trial artifacts committed: proposal, design, `arc42.md`, design
       review, this task list, and `.givn-skip`; the commit is the trial
       revision.
-- [ ] COMMIT: `<setup>` -- Batch: setup
+- [x] COMMIT: `6c5d223` -- Batch: setup
 
 ## Batch: trial
 
