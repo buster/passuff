@@ -218,16 +218,20 @@ response reports the reset time and skips only that account for the cycle.
 
 ## Testing and coverage
 
-The Gherkin `.feature` files are the executable specification. A custom
-cucumber-rs runner in `crates/passuff-cli/tests` honors the Givn
-`GIVN_FEATURES`, `GIVN_RESULT_SCOPE`, and `GIVN_RESULT_FILE` contract and fails
-on skipped or undefined steps. On Linux, E2E scenarios spawn the real CLI binary
-against a local wiremock GitHub and a private `dbus-daemon` session with a mock
-`org.freedesktop.Notifications` service, so the real `notify-rust` path is
-exercised. On macOS, E2E uses `RecordingDelivery` and the manual desktop smoke
-covers the real surface. A fake sound player records playback. Regular scenarios
-drive `CliRuntime::run_check`, which in turn calls `PassuffCore::refresh`, with a
-`FakeGateway` in process. Coverage runs the regular and E2E scopes separately,
+The Gherkin `.feature` files are the executable specification. Both scopes use
+cucumber-rs, honor the Givn `GIVN_FEATURES`, `GIVN_RESULT_SCOPE`, and
+`GIVN_RESULT_FILE` contract, and fail on skipped or undefined steps. The
+component scope runs `crates/passuff-cli/tests/features_runner.rs` in process
+with fakes: scenarios drive `CliRuntime::run_check`, which calls
+`PassuffCore::refresh`, with a `FakeGateway`, and a fake sound player records
+playback. The frozen acceptance scope runs the `crates/passuff-e2e` package
+against the built `passuff` and `passuff-tui` binaries: the CLI runs as a child
+process, the TUI runs on a real pty at 80x24 and 120x40, and a local wiremock
+server answers the GitHub boundary. Desktop delivery is observed through
+`PASSUFF_NOTIFICATION_LOG`, so no desktop session is required.
+`scripts/qualify-e2e.sh` proves the acceptance suite is sensitive: twenty seeded
+defects must each fail a named scenario, and the clean scratch tree must pass
+after every revert. Coverage runs the regular and E2E scopes separately,
 instruments the `passuff-config` and `passuff-core` path dependencies, and
 produces two distinct Cobertura reports.
 

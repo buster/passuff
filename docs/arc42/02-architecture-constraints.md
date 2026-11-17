@@ -19,6 +19,22 @@
 | Gherkin `.feature` files are the executable specification | The project's Givn workflow requires a Cucumber runner, not a parallel test suite. |
 | Coverage gate produces separate non-E2E and E2E Cobertura reports | The project has the coverage addon enabled and archive gates on it. |
 
+## Declared limits
+
+`docs/limits.md` records the limits a rebuild must keep and the frozen suite
+enforces:
+
+| Limit | Value |
+|---|---|
+| Minimum terminal | 40x12; below it the TUI prints the resize line and keeps running. |
+| Narrow budget | 80x24: header, one watched row, the count line, activity rows, footer. |
+| Wide budget | 120x40: the same panes with more rows and a detail overlay of at most 100x30. |
+| Product exit codes | 0 success, 1 account failure, 2 configuration or usage, 3 state failure. |
+| Runner result | Fresh `GIVN_RESULT_FILE` with four reconciling counts, `total > 0`, and zero failed or skipped. |
+
+`givn/specification.yaml` declares `docs/limits.md` and this chapter under
+`limits`, so a rebuild retains both the budgets and the constraints above.
+
 ## Legal constraints
 
 | Constraint | Motivation |

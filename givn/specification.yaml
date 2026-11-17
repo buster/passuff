@@ -22,6 +22,7 @@ contracts:
   - docs/arc42/03-context-and-scope.md
 
 limits:
+  - docs/limits.md
   - docs/arc42/02-architecture-constraints.md
 
 e2e:
