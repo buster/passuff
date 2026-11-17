@@ -70,20 +70,38 @@ Design constraints: the evidence lives under
 from the package's own pty and `vt100` harness in a throwaway copy; the gate
 record names every command and observed value.
 
-- [ ] `evidence/cargo-tree-passuff-e2e.txt` shows the package graph and no
+- [x] `evidence/cargo-tree-passuff-e2e.txt` shows the package graph and no
       `passuff`, `passuff-core`, or `passuff-config` line.
-- [ ] `evidence/qualify-20-of-20.txt` holds the qualification output.
-- [ ] `evidence/verify-e2e-clean.txt` holds the 29/29, 240/240 pass and the
+- [x] `evidence/qualify-20-of-20.txt` holds the qualification output.
+- [x] `evidence/verify-e2e-clean.txt` holds the 29/29, 240/240 pass and the
       written result file; `evidence/verify-e2e-result.json` holds the four
       counts.
-- [ ] `evidence/defect-narrow-size.txt`, `evidence/defect-key-parser.txt`, and
+- [x] `evidence/defect-narrow-size.txt`, `evidence/defect-key-parser.txt`, and
       `evidence/defect-inbox-paging.txt` hold the failing scenario block for
       the 80x24 layout, key-parser, and inbox-paging defects.
-- [ ] `evidence/transcripts/80x24.txt` and `evidence/transcripts/120x40.txt`
+- [x] `evidence/transcripts/80x24.txt` and `evidence/transcripts/120x40.txt`
       hold one parsed screen each from a real pty.
-- [ ] `evidence/s10-gate.md` records each `G9` row with its command and
+- [x] `evidence/s10-gate.md` records each `G9` row with its command and
       observed value.
-- [ ] COMMIT: <pending> -- Batch: s10-evidence
+- [x] COMMIT: `40b37b4` -- Batch: s10-evidence
+
+## Batch: e2e-boundary
+
+Design constraints: `Decides D3`; `source` lists the three production crates
+and `scripts/**`; `e2e` keeps `crates/passuff-e2e`; `e2e_command` names the
+root through `--package`, and `scripts/verify.sh` reads that argument.
+
+- [ ] `givn/specification.yaml` `source` names `crates/passuff-cli`,
+      `crates/passuff-core`, `crates/passuff-config`, and `scripts/**`, so the
+      frozen package sits under no source root.
+- [ ] `givn/commands.yaml` sets
+      `e2e_command: "./scripts/verify.sh --e2e --package crates/passuff-e2e"`.
+- [ ] `scripts/verify.sh` parses `--e2e` and `--package <dir>`, uses the named
+      package manifest for the build, tree check, format, clippy, and test, and
+      rejects an unknown argument with exit 2.
+- [ ] `./scripts/verify.sh --e2e --package crates/passuff-e2e` exits 0 with 29
+      scenarios and writes `GIVN_RESULT_FILE`.
+- [ ] COMMIT: <pending> -- Batch: e2e-boundary
 
 ## Closeout
 

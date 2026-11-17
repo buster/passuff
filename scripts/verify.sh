@@ -21,10 +21,25 @@ export CARGO_PROFILE_DEV_DEBUG=0
 export CARGO_PROFILE_TEST_DEBUG=0
 
 scope="${GIVN_RESULT_SCOPE:-change}"
-if [[ "${1:-}" == "--e2e" ]]; then
-  scope="e2e"
-fi
+package_dir="crates/passuff-e2e"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --e2e)
+      scope="e2e"
+      ;;
+    --package)
+      package_dir="${2:?--package needs a project-relative package directory}"
+      shift
+      ;;
+    *)
+      echo "verify: unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 export GIVN_RESULT_SCOPE="$scope"
+package_manifest="$root/$package_dir/Cargo.toml"
 
 result_file="${GIVN_RESULT_FILE:-$root/target/givn-verify-result.json}"
 mkdir -p "$(dirname "$result_file")"
@@ -38,7 +53,7 @@ if [[ "$scope" == "e2e" ]]; then
   # The harness refuses to run without its binary directory; there is no
   # in-process fallback because the package declares no product dependency.
   PASSUFF_BIN_DIR="${PASSUFF_BIN_DIR:-$root/target/debug}" \
-    cargo test --locked --manifest-path "$root/crates/passuff-e2e/Cargo.toml" \
+    cargo test --locked --manifest-path "$package_manifest" \
       --test e2e_runner
   exit 0
 fi
@@ -46,7 +61,7 @@ fi
 # The black-box package must not reach the product as a library. The pattern
 # matches the production crates only; the root line `passuff-e2e v...` does not
 # match because a space must follow the crate name.
-tree="$(cargo tree --manifest-path "$root/crates/passuff-e2e/Cargo.toml" \
+tree="$(cargo tree --manifest-path "$package_manifest" \
   -e normal,build,dev --prefix none)"
 if grep -Eq '^passuff(-config|-core)? v' <<<"$tree"; then
   echo "passuff-e2e must not depend on production crates" >&2
@@ -68,9 +83,9 @@ esac
 export GIVN_FEATURES="$features"
 
 cargo fmt --all -- --check
-cargo fmt --manifest-path "$root/crates/passuff-e2e/Cargo.toml" -- --check
+cargo fmt --manifest-path "$package_manifest" -- --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
-cargo clippy --locked --manifest-path "$root/crates/passuff-e2e/Cargo.toml" \
+cargo clippy --locked --manifest-path "$package_manifest" \
   --all-targets -- -D warnings
 cargo clippy --locked -p passuff --all-targets --features test-support -- -D warnings
 cargo test --locked --workspace --lib

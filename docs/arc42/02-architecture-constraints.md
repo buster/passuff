@@ -33,7 +33,11 @@ enforces:
 | Runner result | Fresh `GIVN_RESULT_FILE` with four reconciling counts, `total > 0`, and zero failed or skipped. |
 
 `givn/specification.yaml` declares `docs/limits.md` and this chapter under
-`limits`, so a rebuild retains both the budgets and the constraints above.
+`limits`, so a rebuild retains both the budgets and the constraints above. Its
+`source` role names `crates/passuff-cli`, `crates/passuff-core`,
+`crates/passuff-config`, and `scripts/**`; the frozen package at
+`crates/passuff-e2e` is declared under `e2e` and stays outside every replaced
+root. The E2E command names that root through `--package`.
 
 ## Legal constraints
 

@@ -33,7 +33,7 @@ verify:
   # --- E2E test runner --------------------------------------------------------
   # Command to run @e2e-tagged scenarios. If unconfigured, the review gate and
   # archive gate will reject any change whose specs include @e2e scenarios.
-  e2e_command: "./scripts/verify.sh --e2e"
+  e2e_command: "./scripts/verify.sh --e2e --package crates/passuff-e2e"
 
 # --- Coverage gate (requires addons.coverage: true) ---------------------------
 # Commands that produce Cobertura XML coverage data. The measurement script

@@ -42,16 +42,19 @@ not requested for a documents-and-test-assets change
 | F3 | The design did not name a single-scenario command. | Hardened: the design records that the frozen runner has none, and how a defect's named scenario is extracted. |
 | F4 | The defect transcripts could be mistaken for new evidence paths. | Hardened: the evidence table names the producing command for every file and confines the PTY capture to a throwaway copy outside the repository. |
 | F5 | The clean-tree hash included `givn/history`, which Givn writes on every command, so a concurrent `givn status` would fail a twenty-minute run. | Hardened during implementation: the hash excludes `givn/history` as an ignored local record store; everything under version control and the change artifacts stay covered. Recorded in the design's qualification section. |
+| F6 | `givn check tasks` refused the declared boundary: `crates/passuff-e2e` sat under `source: crates/**`, and `./scripts/verify.sh --e2e` named no resolved root. | Hardened: `Decides D3` narrows `source` to the three production crates and `scripts/**`, and the E2E command names the root through `--package crates/passuff-e2e`, which `verify.sh` reads. The package stays where it is and the boundary gate resolves both conditions. |
 
 ## Re-confirmation
 
 After the implementation pass, `design.md` gained the `## Internal Primitives`
 and `## Strict Mode` sections the review checklist requires, the clean-tree hash
-exclusion for `givn/history` (F5), and the single-scenario note (F3). The same
-review context re-read those sections against the served design instruction:
-both new sections state the runner's actual mechanism, the hash exclusion names
-what stays covered, and no task or evidence row depends on the removed scope.
-The verdict stands.
+exclusion for `givn/history` (F5), the single-scenario note (F3), and `Decides
+D3`: the narrowed source roots and the E2E command that names the package root
+(F6). The same review context re-read those sections against the served design
+instruction and the boundary checker: both new sections state the runner's
+actual mechanism, the hash exclusion names what stays covered, and the
+declaration keeps the frozen package outside every replaced root while the
+command names it. The verdict stands.
 
 ## Verdict
 

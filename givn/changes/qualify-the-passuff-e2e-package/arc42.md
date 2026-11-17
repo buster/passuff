@@ -5,7 +5,7 @@
 | # | Chapter | Affected? | Reason | Summary of change (if Yes) |
 |---|---|---|---|---|
 | 1 | 01 introduction-and-goals | No | No goal, stakeholder, or quality attribute changes; the change records existing limits and qualifies an existing test asset. | |
-| 2 | 02 architecture-constraints | Yes | The terminal budgets and the exit-code and runner-result contract gain a declared home; the Specification must name it. | New `Declared limits` subsection naming `docs/limits.md` and the two declared `limits` entries. |
+| 2 | 02 architecture-constraints | Yes | The terminal budgets and the exit-code and runner-result contract gain a declared home; the e2e package must stay outside the replaceable source roots. | New `Declared limits` subsection naming `docs/limits.md`, the two `limits` entries, and the narrowed `source` roots that keep `crates/passuff-e2e` outside the replaced tree. |
 | 3 | 03 context-and-scope | No | No external system, interface, or user-facing surface is added or changed. | |
 | 4 | 04 solution-strategy | No | No technical strategy or approach changes; the package and runner stay as delivered. | |
 | 5 | 05 building-block-view | No | No module, component, or dependency changes. | |

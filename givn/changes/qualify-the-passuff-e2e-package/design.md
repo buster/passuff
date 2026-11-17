@@ -17,6 +17,16 @@ constraints from the Specification and let a rebuild choose, for example, an
 inbound webhook receiver without tripping a declared limit. Realized in
 `givn/specification.yaml`.
 
+**Decides D3: the e2e package stays outside every source root, and the runner
+command names it.** `source` lists the three production crates and
+`scripts/**`, not `crates/**`; `e2e` keeps `crates/passuff-e2e`. The E2E
+command becomes `./scripts/verify.sh --e2e --package crates/passuff-e2e`, and
+the script reads the package manifest from that argument. The Givn boundary
+check refuses a package under a source root and a command that names no
+resolved root; this declaration satisfies both while keeping the frozen package
+where it is. Realized in `givn/specification.yaml`, `givn/commands.yaml`, and
+`scripts/verify.sh`.
+
 **Decides D2: change strategy is `incremental modification`.** The change edits
 the existing declaration, one existing qualification script, and the existing
 documentation in place. No component is rebuilt, so no `Ise Test` mode is
@@ -70,7 +80,19 @@ limits:
   - docs/arc42/02-architecture-constraints.md
 ```
 
-`e2e`, `behavior`, `structure`, `contracts`, and `source` do not change.
+`source` becomes:
+
+```yaml
+source:
+  - crates/passuff-cli
+  - crates/passuff-core
+  - crates/passuff-config
+  - scripts/**
+```
+
+`e2e`, `behavior`, `structure`, and `contracts` do not change. The narrower
+source roots keep `crates/passuff-e2e` outside the replaced tree, and
+`e2e_command` names that root through `--package`.
 
 ## Deliverable 3: two seeded defects
 
@@ -205,7 +227,7 @@ transcript.
 | Concern | Decision | Existing artifact |
 |---|---|---|
 | Runner | `cucumber-rs`, custom `tests/e2e_runner.rs` with `.fail_on_skipped()` | `crates/passuff-e2e/tests/e2e_runner.rs` |
-| E2E command | `./scripts/verify.sh --e2e`; scope `e2e`; runs the frozen package only | `givn/commands.yaml`, `scripts/verify.sh` |
+| E2E command | `./scripts/verify.sh --e2e --package crates/passuff-e2e`; scope `e2e`; runs the frozen package only | `givn/commands.yaml`, `scripts/verify.sh` |
 | Component command | `./scripts/verify.sh`; scope `change`; honours `GIVN_FEATURES` | `givn/commands.yaml` |
 | Strict-mode proof | Undefined steps fail the run; skipped scenarios fail via `.fail_on_skipped()`; `GIVN_RESULT_FILE` counts a parse error as failed and a zero total as a failure | `crates/passuff-e2e/tests/e2e_runner.rs` |
 | Single-scenario run | Not available: the frozen runner executes the whole feature file. A seeded defect is observed by the whole suite, and its named scenario is extracted from the transcript. | `crates/passuff-e2e/tests/e2e_runner.rs` |

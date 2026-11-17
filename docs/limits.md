@@ -100,7 +100,7 @@ count, or counts that do not reconcile fails the scope.
 | Scope | Command | Behavior |
 |---|---|---|
 | `change` | `./scripts/verify.sh` | Honours `GIVN_FEATURES`; runs the component corpus in process with fakes. |
-| `e2e` | `./scripts/verify.sh --e2e` | Ignores `GIVN_FEATURES`; builds the product and runs the frozen `crates/passuff-e2e` package against the binaries. |
+| `e2e` | `./scripts/verify.sh --e2e --package crates/passuff-e2e` | Ignores `GIVN_FEATURES`; builds the product and runs the frozen package at the named root against the binaries. |
 
 The frozen runner exits 2 when `PASSUFF_BIN_DIR` does not hold both binaries,
 and 1 when a scenario fails, a step is undefined or skipped, a parse error

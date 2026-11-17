@@ -29,5 +29,7 @@ e2e:
   - crates/passuff-e2e
 
 source:
-  - crates/**
+  - crates/passuff-cli
+  - crates/passuff-core
+  - crates/passuff-config
   - scripts/**
