@@ -214,6 +214,21 @@ transcript.
 | Terminal boundary | Real pty through `portable-pty`, parsed by `vt100` | `crates/passuff-e2e/tests/harness/pty.rs` |
 | Coverage | `./measure-coverage.sh`, `./merge-coverages.sh`; two scopes, two reports | `givn/commands.yaml` |
 
+## Internal Primitives
+
+| Primitive | Type | Purpose |
+|---|---|---|
+| none | none | The change adds no step definition, world slot, or test helper. |
+
+## Strict Mode
+
+`crates/passuff-e2e/tests/e2e_runner.rs` calls `.fail_on_skipped()` on the
+cucumber builder. cucumber-rs fails an undefined step by default, the runner
+counts parsing errors as failed, and a zero total exits 1. The component runner
+`crates/passuff-cli/tests/features_runner.rs` uses the same mechanism. No new
+step body is written; the qualification script runs both scopes with those
+builders unchanged.
+
 ## Contracts and components
 
 No contract is added or changed. The product's contracts stay as declared in

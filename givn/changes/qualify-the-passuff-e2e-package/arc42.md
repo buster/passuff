@@ -14,7 +14,7 @@
 | 8 | 08 crosscutting-concepts | Yes | The testing subsection described the in-process CLI E2E and the D-Bus fake; the frozen package now drives the built binaries and the qualification script is the sensitivity check. | The `Testing and coverage` subsection names both scopes, the binary-and-pty acceptance package, the notification-log seam, and the twenty seeded defects. |
 | 9 | 09 architecture-decisions | No | Searched ADR-0001 to ADR-0007 and the register; no lasting component, contract, storage, or compatibility boundary is created. A declaration entry and a test-asset qualification are documentation and tests, not a new ADR. | |
 | 10 | 10 quality-requirements | No | No new quality scenario; the existing testability rows (QS-009, QS-012) still describe the suite. | |
-| 11 | 11 risks-and-technical-debt | Yes | R-019's mitigation claimed no PTY coverage; the frozen package now drives the TUI through a real pty at both budgets. The 29-scenario acceptance limit is unrecorded debt. | R-019 mitigation updated; TD-007 records the suite-versus-product limit and its plan. |
+| 11 | 11 risks-and-technical-debt | Yes | R-019's mitigation claimed no PTY coverage; the frozen package now drives the TUI through a real pty at both budgets. The 29-scenario acceptance limit and the empty E2E coverage scope are unrecorded debt. | R-019 mitigation updated; TD-007 records the suite-versus-product limit; TD-008 records that the E2E coverage scope measures no production code. |
 | 12 | 12 glossary | No | No product domain term is added; "seeded defect", "qualification", and "budget" belong to the test tooling, and the glossary owns product vocabulary. | |
 
 ## Notes

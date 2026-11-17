@@ -43,6 +43,16 @@ not requested for a documents-and-test-assets change
 | F4 | The defect transcripts could be mistaken for new evidence paths. | Hardened: the evidence table names the producing command for every file and confines the PTY capture to a throwaway copy outside the repository. |
 | F5 | The clean-tree hash included `givn/history`, which Givn writes on every command, so a concurrent `givn status` would fail a twenty-minute run. | Hardened during implementation: the hash excludes `givn/history` as an ignored local record store; everything under version control and the change artifacts stay covered. Recorded in the design's qualification section. |
 
+## Re-confirmation
+
+After the implementation pass, `design.md` gained the `## Internal Primitives`
+and `## Strict Mode` sections the review checklist requires, the clean-tree hash
+exclusion for `givn/history` (F5), and the single-scenario note (F3). The same
+review context re-read those sections against the served design instruction:
+both new sections state the runner's actual mechanism, the hash exclusion names
+what stays covered, and no task or evidence row depends on the removed scope.
+The verdict stands.
+
 ## Verdict
 
 Every branch is walked, the four findings are resolved or explicitly accepted,

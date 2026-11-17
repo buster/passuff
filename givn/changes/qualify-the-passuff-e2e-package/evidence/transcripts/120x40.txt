@@ -1,0 +1,44 @@
+# passuff-tui at 120x40
+# binary: target/debug/passuff-tui (passuff 0.1.3)
+# fixture: one account (work @tester), two watched pull requests, two unread activity records
+# capture: portable-pty at 120x40, vt100 parsed screen after the count line appeared
+
+Accounts: work @tester
+watch scope: all authored pull requests
+2 unread of 2    sort: updated ↑
+┌Watched pull requests─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  Key               Pos  State    CI          ☺                                                                       │
+│  ▶ octo/repo#7            open     CI passing     ☺ @tester → @reviewer  Add retry loop                              │
+│    octo/repo#9            open     CI failing     ☺ @tester  Cover the pagination window                             │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌Activity · all────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│2 unread of 2                                                                                                         │
+│  ▶ a2  11-17 09:01  Pull request octo/repo#9  CI failing: build                                                      │
+│    a1  11-17 08:55  Pull request octo/repo#7  comment by @reviewer                                                   │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Focus: activity    Tab switch pane
+j/k move  enter  r read  a read visible  f filter  u unread  h help  q quit

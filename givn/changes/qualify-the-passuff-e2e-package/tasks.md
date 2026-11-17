@@ -27,19 +27,19 @@ exit codes, and the runner result-file contract; `givn/specification.yaml`
 declares it and keeps `docs/arc42/02-architecture-constraints.md` (design
 `Decides D1`); chapters 2, 8, and 11 are the only affected arc42 chapters.
 
-- [ ] `docs/limits.md` states the 40x12 minimum, the 80x24 and 120x40 budgets
+- [x] `docs/limits.md` states the 40x12 minimum, the 80x24 and 120x40 budgets
       with what fits at each, the clipping and paging rule, the four product
       exit codes with their surfaces, and the runner result-file contract
       (fresh file, four reconciling counts, `total > 0`, zero failed, zero
       skipped, optional scope).
-- [ ] `givn/specification.yaml` `limits` lists `docs/limits.md` and
+- [x] `givn/specification.yaml` `limits` lists `docs/limits.md` and
       `docs/arc42/02-architecture-constraints.md`; every other role is
       unchanged.
-- [ ] `docs/arc42/02-architecture-constraints.md` gains `Declared limits`;
+- [x] `docs/arc42/02-architecture-constraints.md` gains `Declared limits`;
       `docs/arc42/08-crosscutting-concepts.md` names both scopes and the
       twenty-defect qualification; `docs/arc42/11-risks-and-technical-debt.md`
       updates R-019 and adds TD-007.
-- [ ] COMMIT: <pending> -- Batch: declared-limits
+- [x] COMMIT: `96d2be0` -- Batch: declared-limits
 
 ## Batch: seeded-defects
 
@@ -50,18 +50,18 @@ patches `crates/passuff-cli/src/tui/render.rs` and must fail `The activity
 detail opens at the wide terminal size and quits cleanly`. The script pins the
 named scenario for all twenty defects and continues after a mismatch.
 
-- [ ] The key-parser patch maps `'q'` to `Key::Char('q')` instead of
+- [x] The key-parser patch maps `'q'` to `Key::Char('q')` instead of
       `Key::Quit`, so the pty session never exits; the rest of the key map is
       unchanged.
-- [ ] The paging patch replaces the selected-row window start with
+- [x] The paging patch replaces the selected-row window start with
       `activity_selection + rows_available`, so the only activity row is
       skipped at 120x40.
-- [ ] `scripts/qualify-e2e.sh` lists twenty defects, pins one named scenario
+- [x] `scripts/qualify-e2e.sh` lists twenty defects, pins one named scenario
       per defect, checks containment in the failing scenario set, and keeps the
       clean-tree hash check, the revert check, and the summary line.
-- [ ] `./scripts/qualify-e2e.sh` reports `20/20 defects detected; clean tree
+- [x] `./scripts/qualify-e2e.sh` reports `20/20 defects detected; clean tree
       green` and every named scenario matches.
-- [ ] COMMIT: <pending> -- Batch: seeded-defects
+- [x] COMMIT: `38b09ce` -- Batch: seeded-defects
 
 ## Batch: s10-evidence
 

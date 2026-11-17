@@ -1,0 +1,55 @@
+# inbox-paging-skips-selected-page.patch
+# command: apply the patch to a scratch tree, then ./scripts/verify.sh --e2e
+# expected scenario: The activity detail opens at the wide terminal size and quits cleanly
+
+  Scenario: The activity detail opens at the wide terminal size and quits cleanly
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer hides new activity from the authored query
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer opens the inbox at 120x40
+   ✘  Then the screen shows "comment by @reviewer"
+      Step failed:
+      Defined: features/boundary.feature:54:5
+      Matched: tests/steps/tui.rs:35:1
+      Step panicked. Captured output: the screen never showed "comment by @reviewer"
+      --- screen at "comment by @reviewer" deadline ---
+      Accounts: work @tester
+      watch scope: all authored pull requests
+      1 unread of 1    sort: updated ↑
+      ┌Watched pull requests─────────────────────────────────────────────────────────────────────────────────────────────────┐
+      │  Key               Pos  State    CI          ☺                                                                       │
+      │  ▶ octo/repo#7            open     CI passing     ☺ @tester  Add retry loop                                          │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+      ┌Activity · all────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+      │1 unread of 1                                                                                                         │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      │                                                                                                                      │
+      └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+      Focus: activity    Tab switch pane                                         
+      j/k move  enter  r read  a read visible  f filter  u unread  h help  q quit

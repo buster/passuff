@@ -75,9 +75,9 @@ the top candidates tie and no ranked list is printed. No capability is touched
 because no scenario is added, changed, or removed; `.givn-skip` carries
 `specs`.
 
-| Proposed capability | Decision | Rationale |
-|---|---|---|
-| none, no behavior change | `EXTEND` none; no delta spec authored | The change records a limit, qualifies the frozen package, and retains evidence. The acceptance suite and every use case stay unchanged, so there is no capability to route. |
+| Proposed capability | Route's recommendation | Decision | Rationale |
+|---|---|---|---|
+| none (no behavior change) | no signal | `EXTEND` none; no delta spec authored | The change records a limit, qualifies the frozen package, and retains evidence. The acceptance suite and every use case stay unchanged, so there is no capability to route. |
 
 ## Out of Scope
 

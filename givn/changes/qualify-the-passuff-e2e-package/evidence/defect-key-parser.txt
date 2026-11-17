@@ -1,0 +1,42 @@
+# key-parser-unbinds-quit.patch
+# command: apply the patch to a scratch tree, then ./scripts/verify.sh --e2e
+# expected scenario: The inbox row is visible at the narrow terminal size
+
+  Scenario: The inbox row is visible at the narrow terminal size
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  And the developer opens the inbox at 80x24
+   ✔  Then the screen shows "1 unread of 1"
+   ✔  And the screen shows "octo/repo#7"
+   ✔  When the developer quits the inbox
+   ✘  Then the TUI exits with code 0
+      Step failed:
+      Defined: features/boundary.feature:46:5
+      Matched: tests/steps/tui.rs:40:1
+      Step panicked. Captured output: the inbox did not exit
+      --- screen ---
+      Accounts: work @tester
+      watch scope: all authored pull requests
+      1 unread of 1    sort: updated ↑
+      ┌Watched pull requests─────────────────────────────────────────────────────────┐
+      │  Key               Pos  State    CI          ☺                               │
+      │  ▶ octo/repo#7            open     CI passing     ☺ @tester  Add retry loop  │
+      │                                                                              │
+      │                                                                              │
+      │                                                                              │
+      │                                                                              │
+      │                                                                              │
+      └──────────────────────────────────────────────────────────────────────────────┘
+      ┌Activity · all────────────────────────────────────────────────────────────────┐
+      │1 unread of 1                                                                 │
+      │  ▶ a1  11-01 11:00  Pull request octo/repo#7  comment by @reviewer           │
+      │                                                                              │
+      │                                                                              │
+      │                                                                              │
+      │                                                                              │
+      │                                                                              │
+      └──────────────────────────────────────────────────────────────────────────────┘
+      Focus: activity    Tab switch pane
+      j/k move  enter  r read  a read visible  f filter  u unread  h help  q quit

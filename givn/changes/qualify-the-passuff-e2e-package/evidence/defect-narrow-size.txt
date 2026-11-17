@@ -1,0 +1,17 @@
+# narrow-size-blind.patch
+# command: apply the patch to a scratch tree, then ./scripts/verify.sh --e2e
+# expected scenario: The inbox row is visible at the narrow terminal size
+
+  Scenario: The inbox row is visible at the narrow terminal size
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  And the developer opens the inbox at 80x24
+   ✘  Then the screen shows "1 unread of 1"
+      Step failed:
+      Defined: features/boundary.feature:43:5
+      Matched: tests/steps/tui.rs:35:1
+      Step panicked. Captured output: the screen never showed "1 unread of 1"
+      --- screen at "1 unread of 1" deadline ---
+      Terminal too small. Resize to at least 40x12.

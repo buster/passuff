@@ -1,0 +1,23 @@
+qualify: building the clean scratch tree
+detected: narrow-size-blind ["The inbox row is visible at the narrow terminal size"]
+detected: status-unread-count ["A first check baselines the account and status reports the scope"]
+detected: delivery-silent-ok ["A notification is delivered as one JSON line"]
+detected: observe-empty-payload ["The activity detail opens at the wide terminal size and quits cleanly"]
+detected: server-error-success ["A server error fails the check"]
+detected: transport-failure-skipped ["An unreachable endpoint fails with a diagnostic"]
+detected: setup-drops-accounts ["Setup writes a usable configuration"]
+detected: credentials-token-file-mode ["A token file readable by other users is refused"]
+detected: read-argument-guard ["Read with no id and with an id and --all exits 2"]
+detected: migration-not-persisted ["A version-1 state file migrates on the next status"]
+detected: quarantine-not-moved ["A corrupt state file is quarantined and replaced"]
+detected: ci-recovery-unseen ["A failing check notifies and a recovery notifies"]
+detected: own-comment-not-read ["The viewer's own comment is recorded read and does not notify"]
+detected: dedupe-replays-comment ["The same activity delivered twice produces one record"]
+detected: scope-filter-dropped ["Two accounts report only the watched scope"]
+detected: narrow-size-threshold ["A terminal too short prints the minimum size"]
+detected: tab-does-not-switch ["Tab and back-tab switch the active pane"]
+detected: watch-interval-capped ["The default command watches and delivers one notification"]
+detected: key-parser-unbinds-quit ["The inbox row is visible at the narrow terminal size"]
+detected: inbox-paging-skips-selected-page ["The activity detail opens at the wide terminal size and quits cleanly"]
+qualification: 20/20 defects detected; clean tree green
+exit=0
