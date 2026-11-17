@@ -91,25 +91,25 @@ Design constraints: `Decides D3`; `source` lists the three production crates
 and `scripts/**`; `e2e` keeps `crates/passuff-e2e`; `e2e_command` names the
 root through `--package`, and `scripts/verify.sh` reads that argument.
 
-- [ ] `givn/specification.yaml` `source` names `crates/passuff-cli`,
+- [x] `givn/specification.yaml` `source` names `crates/passuff-cli`,
       `crates/passuff-core`, `crates/passuff-config`, and `scripts/**`, so the
       frozen package sits under no source root.
-- [ ] `givn/commands.yaml` sets
+- [x] `givn/commands.yaml` sets
       `e2e_command: "./scripts/verify.sh --e2e --package crates/passuff-e2e"`.
-- [ ] `scripts/verify.sh` parses `--e2e` and `--package <dir>`, uses the named
+- [x] `scripts/verify.sh` parses `--e2e` and `--package <dir>`, uses the named
       package manifest for the build, tree check, format, clippy, and test, and
       rejects an unknown argument with exit 2.
-- [ ] `./scripts/verify.sh --e2e --package crates/passuff-e2e` exits 0 with 29
+- [x] `./scripts/verify.sh --e2e --package crates/passuff-e2e` exits 0 with 29
       scenarios and writes `GIVN_RESULT_FILE`.
-- [ ] COMMIT: <pending> -- Batch: e2e-boundary
+- [x] COMMIT: `9b5c8ad` -- Batch: e2e-boundary
 
 ## Closeout
 
-- [ ] `./scripts/verify.sh` exits 0 for the component scope.
-- [ ] `./scripts/verify.sh --e2e` exits 0 with 29 scenarios and writes
+- [x] `./scripts/verify.sh` exits 0 for the component scope.
+- [x] `./scripts/verify.sh --e2e` exits 0 with 29 scenarios and writes
       `GIVN_RESULT_FILE`.
-- [ ] `cargo fmt --all -- --check` and the package format check are clean.
-- [ ] `givn check tasks --change qualify-the-passuff-e2e-package` reports the
+- [x] `cargo fmt --all -- --check` and the package format check are clean.
+- [x] `givn check tasks --change qualify-the-passuff-e2e-package` reports the
       change verification as not applicable and leaves a clean tree.
 - [ ] `givn check review --change qualify-the-passuff-e2e-package` passes and
       the receipt is committed.
