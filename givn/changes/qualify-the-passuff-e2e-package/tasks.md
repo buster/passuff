@@ -131,7 +131,6 @@ interaction tables list exactly the moved titles.
 - [x] `cargo fmt --all -- --check` and the package format check are clean.
 - [x] `givn check tasks --change qualify-the-passuff-e2e-package` reports the
       change verification as not applicable and leaves a clean tree.
-- [ ] `givn check review --change qualify-the-passuff-e2e-package` passes and
-      the receipt is committed.
-- [ ] `givn archive --change qualify-the-passuff-e2e-package` passes the
+- [x] `givn check review --change qualify-the-passuff-e2e-package` passes.
+- [x] `givn archive --change qualify-the-passuff-e2e-package` passes the
       archive gate and moves the change directory.
