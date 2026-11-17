@@ -1,18 +1,67 @@
 {
   "schema": 1,
   "change": "qualify-the-passuff-e2e-package",
-  "status": "pending",
-  "candidate_revision": null,
-  "tested_revision": null,
-  "scopes": {},
-  "coverage": null,
-  "scope_evidence": {},
-  "coverage_inputs": null,
+  "status": "proven",
+  "candidate_revision": "5739a6f2c00fc4fe67256f6ca6319b876ad5fe1f",
+  "tested_revision": "5739a6f2c00fc4fe67256f6ca6319b876ad5fe1f",
+  "scopes": {
+    "e2e": {
+      "status": "passed",
+      "total": 29,
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 8.263006735
+    },
+    "regular": {
+      "status": "passed",
+      "total": 215,
+      "passed": 215,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 2.40960844
+    }
+  },
+  "coverage": {
+    "status": "passed",
+    "line_covered": 2877,
+    "line_valid": 4293,
+    "line_percent": 67
+  },
+  "scope_evidence": {
+    "e2e": {
+      "inputs": {
+        "revision": "5739a6f2c00fc4fe67256f6ca6319b876ad5fe1f",
+        "features_digest": "d89c31a1f6e00b33087f0eafa1662ebab4e87b477678eeeeb7604bd1895818bb",
+        "command_digest": "aa0a4a866ceba150d75a8c6503ebf9c5edbf3dde1f154dd5582088715555d7c6",
+        "content_digest": "154a9d8b5a51ecda88152fe98832fff725b73ea2b38d736c6858082150df76c0",
+        "scope": "e2e"
+      },
+      "result_digest": "0e8e789ba1be399d7dd6bd2f46ee1a3688e2067451ee2f08360feeab0a1a5971"
+    },
+    "regular": {
+      "inputs": {
+        "revision": "5739a6f2c00fc4fe67256f6ca6319b876ad5fe1f",
+        "features_digest": "d89c31a1f6e00b33087f0eafa1662ebab4e87b477678eeeeb7604bd1895818bb",
+        "command_digest": "724a626ac8ced85e6ca8bda57e45670a8c47c13dff9aee9424b1504faaf5be78",
+        "content_digest": "154a9d8b5a51ecda88152fe98832fff725b73ea2b38d736c6858082150df76c0",
+        "scope": "regular"
+      },
+      "result_digest": "5f455f753b9bcde41d5f2d48767ea0c3c49bfbb2ba879a437e0019c2375992d8"
+    }
+  },
+  "coverage_inputs": {
+    "revision": "5739a6f2c00fc4fe67256f6ca6319b876ad5fe1f",
+    "features_digest": "d89c31a1f6e00b33087f0eafa1662ebab4e87b477678eeeeb7604bd1895818bb",
+    "command_digest": "16b6296c6b3d3f329e8b035453b00bf9212254940aef50d3404ae7f509a74424",
+    "content_digest": "154a9d8b5a51ecda88152fe98832fff725b73ea2b38d736c6858082150df76c0",
+    "scope": "coverage"
+  },
   "merge_completed": true,
   "merged_deltas": [],
   "merge_in_progress": null,
   "merge_plan": [],
   "merge_targets": {},
   "started_at_unix": 1794935625,
-  "finished_at_unix": null
+  "finished_at_unix": 1794935646
 }
