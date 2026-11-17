@@ -5,12 +5,12 @@
 #   scripts/verify.sh --e2e    frozen black-box package against the built binaries
 #
 # givn passes GIVN_FEATURES and GIVN_RESULT_SCOPE; both are honoured in the
-# component scope. The e2e scope always runs the frozen `passuff-e2e` package:
-# it is the acceptance authority and must not be narrowed to a change's feature
-# files. The component runner is the in-process tier; its feature path is made
-# absolute because cargo runs the test binary from the crate directory. Static
-# gates run in the component scope only, so the e2e invocation stays a single
-# test pass.
+# component scope. The e2e scope always runs every `@e2e` scenario in
+# `givn/specs` through the frozen `passuff-e2e` package: it is the acceptance
+# authority and must not be narrowed to a change's feature files. The component
+# runner is the in-process tier; its feature path is made absolute because cargo
+# runs the test binary from the crate directory. Static gates run in the
+# component scope only, so the e2e invocation stays a single test pass.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -48,10 +48,11 @@ export GIVN_RESULT_FILE="$result_file"
 
 if [[ "$scope" == "e2e" ]]; then
   cargo build --locked -p passuff --bins
-  # The frozen package declares its own workspace so its tree runs without the
-  # repository root, so it is addressed by manifest path, not as a member.
-  # The harness refuses to run without its binary directory; there is no
-  # in-process fallback because the package declares no product dependency.
+  # The frozen package declares its own workspace so its tree builds without
+  # the production crates; it reads the scenarios from the Specification corpus.
+  # It is addressed by manifest path, not as a workspace member. The harness
+  # refuses to run without its binary directory; there is no in-process
+  # fallback because the package declares no product dependency.
   PASSUFF_BIN_DIR="${PASSUFF_BIN_DIR:-$root/target/debug}" \
     cargo test --locked --manifest-path "$package_manifest" \
       --test e2e_runner

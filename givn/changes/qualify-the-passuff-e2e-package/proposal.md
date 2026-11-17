@@ -26,9 +26,10 @@ retains the S10 evidence. It adds no product behavior and changes no scenario.
 
 - Review kind: self-review
 - Reason: the change adds one contract document, one declaration entry, two
-  test-asset patches, and four evidence files. It changes no production
-  behavior, no scenario, and no interface, so an independent review context
-  adds a second reader for the same mechanically checked facts.
+  test-asset patches, and four evidence files, and moves 29 scenarios into the
+  Specification corpus. It changes no production behavior and no scenario
+  text, so an independent review context adds a second reader for the same
+  mechanically checked facts.
 
 ## Problem / Opportunity
 
@@ -67,22 +68,30 @@ sensitive to the key parser and paging surfaces, and `S14` has no recorded
   file, and one parsed-screen transcript per viewport size.
 - **Recorded gate.** The `S10` gate condition (`G9`) is recorded with the
   command and the observed value for each row.
+- **Corpus alignment.** The 29 acceptance scenarios move from the package's
+  own feature file into the capability feature files under `givn/specs`, and
+  the frozen package selects `@e2e` from that corpus. The seven interaction
+  tables list the moved titles. Eight declared actions have no acceptance
+  scenario; their rows are removed and recorded as TD-009.
 
 ## Capability Routing
 
 `givn spec route --change qualify-the-passuff-e2e-package` reported no signal:
-the top candidates tie and no ranked list is printed. No capability is touched
-because no scenario is added, changed, or removed; `.givn-skip` carries
-`specs`.
+the top candidates tie and no ranked list is printed. `.givn-skip` carries
+`specs`, so no delta scenario is authored. The permanent capability files gain
+the moved `@e2e` scenarios with unchanged text, and the interaction tables are
+rewritten to the moved titles.
 
 | Proposed capability | Route's recommendation | Decision | Rationale |
 |---|---|---|---|
-| none (no behavior change) | no signal | `EXTEND` none; no delta spec authored | The change records a limit, qualifies the frozen package, and retains evidence. The acceptance suite and every use case stay unchanged, so there is no capability to route. |
+| the seven existing capabilities' `@e2e` inventory | no signal | `EXTEND` the seven existing capability files and their interaction tables; no new capability and no delta spec | The 29 scenarios move with unchanged text, so the behavior is already specified. The move makes the inventory visible to `givn lint`; TD-009 records the actions with no acceptance scenario. |
 
 ## Out of Scope
 
 - Product behavior, CLI output, TUI rendering, and the 40x12 minimum.
-- The 29 frozen scenarios, their tags, and their step definitions.
+- The text of the 29 scenarios, their step definitions, and their step
+  helpers. The scenarios move into `givn/specs` with their titles, steps, and
+  docstrings unchanged; the feature-level `@e2e` tag becomes a scenario tag.
 - The component tier and its fakes.
 - The viewport sizes: 80x24 and 120x40 are recorded, not changed.
 - The observation, delivery, and persistence code.

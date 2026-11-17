@@ -71,7 +71,7 @@ The developer can see the watched accounts, scope, pull requests, and unread cou
 
 | Capability | Consumer action | E2E scenario |
 |---|---|---|
-| watch-status | show the watch state | Developer sees the watch state |
+| watch-status | show the watch state | A first check baselines the account and status reports the scope |
 
 ## Includes
 

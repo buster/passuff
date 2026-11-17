@@ -1,9 +1,10 @@
 # Tasks: qualify-the-passuff-e2e-package
 
-Behavior change: none. `specs` is skipped via `.givn-skip`; the frozen
-acceptance suite and every scenario stay unchanged. The deliverables are one
-declared limit document, one declaration edit, two seeded-defect patches with
-their expectation table, and the `S10` evidence.
+Behavior change: none. `specs` is skipped via `.givn-skip`; the 29 acceptance
+scenarios move into the Specification corpus with unchanged text. The
+deliverables are one declared limit document, one declaration edit, two
+seeded-defect patches with their expectation table, the `S10` evidence, and the
+corpus alignment.
 
 ## Setup
 
@@ -102,6 +103,24 @@ root through `--package`, and `scripts/verify.sh` reads that argument.
 - [x] `./scripts/verify.sh --e2e --package crates/passuff-e2e` exits 0 with 29
       scenarios and writes `GIVN_RESULT_FILE`.
 - [x] COMMIT: `9b5c8ad` -- Batch: e2e-boundary
+
+## Batch: corpus-alignment
+
+Design constraints: `Decides D4`; the 29 acceptance scenarios move into the
+seven capability feature files under `givn/specs` with unchanged titles, steps,
+and docstrings; the package runner selects `@e2e` from that corpus; the seven
+interaction tables list exactly the moved titles.
+
+- [x] The 29 `@e2e` scenarios live under
+      `givn/specs/<usecase>/<capability>.feature`;
+      `crates/passuff-e2e/features/boundary.feature` is gone.
+- [x] `crates/passuff-e2e/tests/e2e_runner.rs` reads `givn/specs` and filters
+      `@e2e`; the step definitions and harness stay in the package.
+- [x] `givn lint` reports 7 files checked and no blocking finding.
+- [x] The seven interaction tables list 29 titles; TD-009 records the eight
+      actions with no acceptance scenario.
+- [x] `./scripts/qualify-e2e.sh` reports `20/20 defects detected; clean tree
+      green` after the move.
 
 ## Closeout
 

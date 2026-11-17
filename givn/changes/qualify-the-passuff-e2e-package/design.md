@@ -4,7 +4,9 @@
 
 `S10` of `givn/ideation/ise-rebuildability/plan.md` needs a declared limit
 document, two more seeded defects, retained evidence, and a recorded gate
-result. No product behavior, scenario, tag, or step definition changes.
+result. No product behavior changes. The 29 acceptance scenarios move into the
+Specification corpus without changing their text; their feature-level `@e2e` tag
+becomes a scenario-level tag, and the step definitions stay in the package.
 
 ## Decisions
 
@@ -33,6 +35,22 @@ documentation in place. No component is rebuilt, so no `Ise Test` mode is
 recorded. Affected consumers: none; the product's CLI, TUI, and configuration
 are untouched. Persisted state: unchanged; `state.json` and `config.toml` keep
 the version and keys they have. Rebuild boundary: none.
+
+**Decides D4: the acceptance scenarios live in the Specification corpus, and
+the package keeps the step definitions and harness.** `givn check review`
+refused the change because `givn lint` reads only
+`givn/specs/<usecase>/<capability>.feature` and requires exact scenario-title
+equality with each interaction table; the 29 scenarios lived in
+`crates/passuff-e2e/features/boundary.feature`, so every table row was missing.
+The 29 scenarios move into the capability feature files with their steps and
+docstrings, and the package runner selects `@e2e` from `givn/specs/**`. The
+seven interaction tables list exactly the moved titles. Eight declared actions
+have no acceptance scenario; their rows are removed and recorded as TD-009
+rather than mapped to a scenario that does not exercise them. The package
+remains outside every `source` root and keeps the no-production-dependency
+check, the pty and wiremock harness, and the step definitions. Realized in
+`givn/specs/**`, `crates/passuff-e2e/tests/e2e_runner.rs`, the seven
+`usecase.md` files, and `docs/arc42/11-risks-and-technical-debt.md`.
 
 ## Deliverable 1: `docs/limits.md`
 
@@ -227,7 +245,7 @@ transcript.
 | Concern | Decision | Existing artifact |
 |---|---|---|
 | Runner | `cucumber-rs`, custom `tests/e2e_runner.rs` with `.fail_on_skipped()` | `crates/passuff-e2e/tests/e2e_runner.rs` |
-| E2E command | `./scripts/verify.sh --e2e --package crates/passuff-e2e`; scope `e2e`; runs the frozen package only | `givn/commands.yaml`, `scripts/verify.sh` |
+| E2E command | `./scripts/verify.sh --e2e --package crates/passuff-e2e`; scope `e2e`; runs every `@e2e` scenario in `givn/specs` through the frozen package | `givn/commands.yaml`, `scripts/verify.sh`, `crates/passuff-e2e/tests/e2e_runner.rs` |
 | Component command | `./scripts/verify.sh`; scope `change`; honours `GIVN_FEATURES` | `givn/commands.yaml` |
 | Strict-mode proof | Undefined steps fail the run; skipped scenarios fail via `.fail_on_skipped()`; `GIVN_RESULT_FILE` counts a parse error as failed and a zero total as a failure | `crates/passuff-e2e/tests/e2e_runner.rs` |
 | Single-scenario run | Not available: the frozen runner executes the whole feature file. A seeded defect is observed by the whole suite, and its named scenario is extracted from the transcript. | `crates/passuff-e2e/tests/e2e_runner.rs` |
@@ -266,10 +284,17 @@ interaction or visible string changes.
 
 ## Interaction coverage
 
-No capability, inventory entry, scenario, or step definition is added or
-changed. The 29 frozen scenarios and the use-case interaction tables stay as
-they are, and `verify.e2e_command` still selects the package. The design does
-not re-map the permanent inventory because this change touches none of it.
+`Decides D4` changes the inventory location, not the behavior. The 29
+acceptance scenarios move from `crates/passuff-e2e/features/boundary.feature`
+into the seven capability feature files under `givn/specs`; their titles,
+steps, and docstrings are unchanged. The package runner selects `@e2e` from the
+corpus, and `verify.e2e_command` is unchanged. Each interaction table lists
+exactly the moved titles for its capability. Eight declared actions have no
+acceptance scenario: toggling a repository in the watch scope, switching the
+watch scope mode, narrowing the focus, opening a pull request from an activity,
+live inbox observation, the stacked inbox, `--version`, and the command-line
+notification test. Their declaration rows are removed and TD-009 records each
+action with the scenario it would need. No scenario is invented.
 
 ## External boundary cases
 
@@ -286,7 +311,7 @@ boundary, not new boundary cases.
 ```sh
 cargo build --locked -p passuff --bins
 ./scripts/verify.sh          # component scope
-./scripts/verify.sh --e2e    # frozen package against the built binaries
+./scripts/verify.sh --e2e    # @e2e scenarios through the frozen package
 ./scripts/qualify-e2e.sh     # twenty seeded defects
 ```
 
@@ -305,6 +330,13 @@ No process changes; the rows stay as measured before this change.
 Measured: application source under `crates/`, excluding the frozen `e2e`
 package. Excluded: tests, fakes, and the package. The populations do not change
 with this change.
+
+The E2E scope cannot run the package's `@e2e` steps through the component
+runner: those phrases are bound only in `crates/passuff-e2e/tests/steps`. After
+the corpus move, `measure-coverage.sh` selects no scenario for the E2E scope
+(a placeholder feature file is parsed and filtered out), so the report stays
+0/4293 lines. `GIVN_COVERAGE_E2E_FEATURES` still names a component-tier corpus
+explicitly when one exists. TD-008 records the measurement gap.
 
 ## Version freshness
 

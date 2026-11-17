@@ -84,9 +84,7 @@ The watch scope has the chosen mode, selected set, and focus and is persisted; t
 
 | Capability | Consumer action | E2E scenario |
 |---|---|---|
-| watch-scope | toggle a repository in the watch scope | Developer toggles a repository in the watch scope |
-| watch-scope | switch the watch scope mode | Developer switches the watch scope mode |
-| watch-scope | narrow the focus to a subset of involvement relations | Developer narrows the focus in the watch scope |
+| watch-scope | report only the watched scope across two accounts | Two accounts report only the watched scope |
 
 ## Includes
 

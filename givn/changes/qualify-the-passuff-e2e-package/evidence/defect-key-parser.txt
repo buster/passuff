@@ -13,7 +13,7 @@
    ✔  When the developer quits the inbox
    ✘  Then the TUI exits with code 0
       Step failed:
-      Defined: features/boundary.feature:46:5
+      Defined: givn/specs/review-activity-inbox/activity-inbox.feature:463:5
       Matched: tests/steps/tui.rs:40:1
       Step panicked. Captured output: the inbox did not exit
       --- screen ---

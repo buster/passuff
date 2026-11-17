@@ -224,16 +224,18 @@ cucumber-rs, honor the Givn `GIVN_FEATURES`, `GIVN_RESULT_SCOPE`, and
 component scope runs `crates/passuff-cli/tests/features_runner.rs` in process
 with fakes: scenarios drive `CliRuntime::run_check`, which calls
 `PassuffCore::refresh`, with a `FakeGateway`, and a fake sound player records
-playback. The frozen acceptance scope runs the `crates/passuff-e2e` package
-against the built `passuff` and `passuff-tui` binaries: the CLI runs as a child
-process, the TUI runs on a real pty at 80x24 and 120x40, and a local wiremock
+playback. The frozen acceptance scope selects the `@e2e` scenarios from
+`givn/specs` and runs them through the `crates/passuff-e2e` package against the
+built `passuff` and `passuff-tui` binaries: the CLI runs as a child process, the
+TUI runs on a real pty at 80x24 and 120x40, and a local wiremock
 server answers the GitHub boundary. Desktop delivery is observed through
 `PASSUFF_NOTIFICATION_LOG`, so no desktop session is required.
 `scripts/qualify-e2e.sh` proves the acceptance suite is sensitive: twenty seeded
 defects must each fail a named scenario, and the clean scratch tree must pass
 after every revert. Coverage runs the regular and E2E scopes separately,
 instruments the `passuff-config` and `passuff-core` path dependencies, and
-produces two distinct Cobertura reports.
+produces two distinct Cobertura reports. The E2E report is zero because the
+component runner cannot bind the package's `@e2e` steps (TD-008).
 
 ## Platform paths
 

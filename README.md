@@ -164,10 +164,10 @@ Scenarios marked `@component` run in process with fakes.
 
 The black-box acceptance package is `crates/passuff-e2e`. It declares no
 dependency on `passuff`, `passuff-core`, or `passuff-config`, reads
-`PASSUFF_BIN_DIR`, and executes the built `passuff` and `passuff-tui` binaries in
-child processes. `scripts/verify.sh --e2e` builds the binaries and runs the
-frozen package; `scripts/qualify-e2e.sh` proves the package fails for every
-seeded defect.
+`PASSUFF_BIN_DIR`, selects the `@e2e` scenarios from `givn/specs/`, and executes
+the built `passuff` and `passuff-tui` binaries in child processes.
+`scripts/verify.sh --e2e` builds the binaries and runs the frozen package;
+`scripts/qualify-e2e.sh` proves the package fails for every seeded defect.
 
 Project workflow: `givn status` shows the next step; keep the `.feature` file as
 the executable source of behaviour; run both verify scopes before review; create

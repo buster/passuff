@@ -126,11 +126,20 @@ The developer receives one delivered desktop notification with sound, when both 
 
 | Capability | Consumer action | E2E scenario |
 |---|---|---|
-| pr-activity-notification | start continuous watching | Developer starts watching and is notified of a new comment |
-| pr-activity-notification | run one observation pass | Developer runs a single check and sees the current activity |
-| pr-activity-notification | show usage | Developer asks for usage |
-| pr-activity-notification | show version | Developer asks for the version |
-| pr-activity-notification | test the notification surfaces on the command line | The developer tests notifications on the command line |
+| pr-activity-notification | show the available commands | The CLI lists its commands |
+| pr-activity-notification | deliver one notification as a JSON line | A notification is delivered as one JSON line |
+| pr-activity-notification | fail the check on a server error | A server error fails the check |
+| pr-activity-notification | fail the check when the endpoint is unreachable | An unreachable endpoint fails with a diagnostic |
+| pr-activity-notification | authenticate an account with an environment token | An environment token authenticates the account |
+| pr-activity-notification | accept a token file readable only by its owner | A token file readable only by its owner is accepted |
+| pr-activity-notification | refuse a token file readable by other users | A token file readable by other users is refused |
+| pr-activity-notification | fail an account whose token belongs to another login | A token for another login fails the account |
+| pr-activity-notification | quarantine a corrupt state file | A corrupt state file is quarantined and replaced |
+| pr-activity-notification | notify a CI failure and its recovery | A failing check notifies and a recovery notifies |
+| pr-activity-notification | record the viewer's own comment read without notifying | The viewer's own comment is recorded read and does not notify |
+| pr-activity-notification | ignore bot comments by default | A bot comment is ignored by default |
+| pr-activity-notification | record bot comments when they are enabled | A bot comment is recorded when bot comments are enabled |
+| pr-activity-notification | watch continuously and deliver one notification | The default command watches and delivers one notification |
 
 ## Includes
 

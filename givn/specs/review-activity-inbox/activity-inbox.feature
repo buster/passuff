@@ -434,3 +434,109 @@ Feature: Activity inbox
     And  the inbox shows "New comment from @alice" for "acme/api#42" as unread
     When  the developer asks for status
     Then  the transcript reports "1 unread of 1"
+
+  @e2e
+  Scenario: New activity reaches the inbox and reading all clears the unread count
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer adds a comment on the watched pull request
+    And the developer runs one check
+    Then the output contains "New comment from @reviewer"
+    When the developer lists the inbox
+    Then the output contains "New comment from @reviewer"
+    And the output contains "unread"
+    When the developer marks all activity read
+    Then the output contains "activity record read"
+    When the developer asks for status
+    Then the output contains "passuff: 0 unread of 1"
+
+  @e2e
+  Scenario: The inbox row is visible at the narrow terminal size
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer adds a comment on the watched pull request
+    And the developer runs one check
+    And the developer opens the inbox at 80x24
+    Then the screen shows "1 unread of 1"
+    And the screen shows "octo/repo#7"
+    When the developer quits the inbox
+    Then the TUI exits with code 0
+
+  @e2e
+  Scenario: The activity detail opens at the wide terminal size and quits cleanly
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer hides new activity from the authored query
+    And the developer adds a comment on the watched pull request
+    And the developer opens the inbox at 120x40
+    Then the screen shows "comment by @reviewer"
+    When the developer presses enter
+    Then the screen shows "Event: comment by @reviewer"
+    And the screen shows "Pull request octo/repo#7"
+    When the developer quits the inbox
+    Then the TUI exits with code 0
+
+  @e2e
+  Scenario: Reading one id marks that record and reports it
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer adds a comment on the watched pull request
+    And the developer runs one check
+    Then the output contains "New comment from @reviewer"
+    When the developer marks the first activity read
+    Then the product exits with code 0
+    And the output contains "1 activity record read"
+    When the developer lists the inbox
+    Then the output contains "passuff: no unread activity"
+    When the developer lists all activity
+    Then the output contains "New comment from @reviewer"
+    And the output contains "read"
+
+  @e2e
+  Scenario: Read with no id and with an id and --all exits 2
+    Given the built product and a mock GitHub account
+    When the developer runs read with no argument
+    Then the product exits with code 2
+    And the error output contains "passuff: read requires exactly one of <id> or --all"
+    When the developer runs read with an id and --all
+    Then the product exits with code 2
+    And the error output contains "passuff: read requires exactly one of <id> or --all"
+
+  @e2e
+  Scenario: Reading an unknown id exits 2
+    Given the built product and a mock GitHub account
+    When the developer reads the unknown activity "a99"
+    Then the product exits with code 2
+    And the error output contains "passuff: no activity with id a99"
+
+  @e2e
+  Scenario: A version-1 state file migrates on the next status
+    Given the built product and a mock GitHub account
+    And a version-1 state file with one watched pull request
+    When the developer asks for status
+    Then the product exits with code 0
+    And the output contains "passuff: 0 unread of 0"
+    And the output contains "octo/repo#7 open CI passing"
+    And the state file is version 2
+
+  @e2e
+  Scenario: The same activity delivered twice produces one record
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer adds a comment on the watched pull request
+    And the developer runs one check
+    Then the output contains "New comment from @reviewer"
+    When the developer runs one check
+    Then the output contains "passuff: no notifications"
+    When the developer asks for status
+    Then the output contains "passuff: 1 unread of 1"
+    When the developer lists the inbox
+    Then the output contains 1 lines matching "New comment from @reviewer"
+
+  @e2e
+  Scenario: A terminal too short prints the minimum size
+    Given the built product and a mock GitHub account
+    When the developer opens the inbox at 80x10
+    Then the screen shows "Terminal too small. Resize to at least 40x12."
+    When the developer quits the inbox
+    Then the TUI exits with code 0

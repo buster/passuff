@@ -90,3 +90,55 @@ Feature: Initial setup
     When  the developer opens the inbox TUI without a terminal
     Then  the TUI reports "passuff setup"
     And  the exit status is 2
+
+  @e2e
+  Scenario: Setup writes a usable configuration
+    Given the built product and a mock GitHub account
+    And no configuration file exists
+    When the developer runs setup with:
+      """
+      work
+      token_env
+      tester
+      PASSUFF_E2E_TOKEN
+      n
+      all
+      """
+    Then the product exits with code 0
+    And the configuration file is created
+    And the configuration file contains "[accounts.work]"
+    And the configuration file contains "github_user"
+    And the configuration file contains "PASSUFF_E2E_TOKEN"
+    When the developer asks for status
+    Then the product exits with code 0
+    And the output contains "  work not resolved"
+    And the output contains "all authored pull requests"
+
+  @e2e
+  Scenario: Setup leaves an existing configuration alone without confirmation
+    Given the built product and a mock GitHub account
+    And an existing configuration file
+    When the developer runs setup and declines replacement
+    Then the product exits with code 0
+    And the output contains "Configuration exists. Replace? [y/N]"
+    And the configuration file is unchanged
+
+  @e2e
+  Scenario: Setup rejects an invalid watch repository and asks again
+    Given the built product and a mock GitHub account
+    And no configuration file exists
+    When the developer runs setup with:
+      """
+      work
+      token_env
+      tester
+      PASSUFF_E2E_TOKEN
+      n
+      selected
+      acme
+      octo/repo
+      """
+    Then the product exits with code 0
+    And the output contains "must be owner/repo"
+    When the developer asks for status
+    Then the output contains "passuff: watch scope: octo/repo"

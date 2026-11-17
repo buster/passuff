@@ -1,5 +1,6 @@
-//! Frozen black-box runner. It executes the built `passuff` and `passuff-tui`
-//! binaries and fails when a scenario, a step, or a parse produces no result.
+//! Frozen black-box runner. It selects the `@e2e` scenarios from the
+//! Specification corpus, executes the built `passuff` and `passuff-tui`
+//! binaries, and fails when a scenario, a step, or a parse produces no result.
 
 mod harness;
 mod steps;
@@ -18,13 +19,21 @@ async fn main() {
         std::process::exit(2);
     }
 
-    let features = format!("{}/features", env!("CARGO_MANIFEST_DIR"));
+    // The acceptance scenarios live in the Specification corpus, not in the
+    // package: the capability feature files own the titles the interaction
+    // tables declare. The package owns the step definitions and the harness.
+    let features = format!("{}/../../givn/specs", env!("CARGO_MANIFEST_DIR"));
 
     let writer = World::cucumber()
         .max_concurrent_scenarios(1)
         .fail_on_skipped()
         .with_writer(cucumber::writer::Basic::stdout().summarized())
-        .run(&features)
+        .filter_run(features, |_feature, _rule, scenario| {
+            scenario
+                .tags
+                .iter()
+                .any(|tag| tag.trim_start_matches('@') == "e2e")
+        })
         .await;
 
     let stats = writer.scenarios_stats();

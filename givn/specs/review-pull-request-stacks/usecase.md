@@ -79,9 +79,7 @@ The developer sees each stack as one group with its base, size, watched members 
 
 ## Interactions
 
-| Capability | Consumer action | E2E scenario |
-|---|---|---|
-| stacked-inbox | review a stack and its activity | Developer reviews a stacked inbox |
+- none
 
 
 ## Includes

@@ -79,7 +79,9 @@ A validated configuration exists at the chosen path, contains no token value, an
 
 | Capability | Consumer action | E2E scenario |
 |---|---|---|
-| initial-setup | set up passuff on first run | Developer sets up passuff on first run |
+| initial-setup | set up passuff on first run | Setup writes a usable configuration |
+| initial-setup | keep an existing configuration without confirmation | Setup leaves an existing configuration alone without confirmation |
+| initial-setup | reject an invalid watch repository and ask again | Setup rejects an invalid watch repository and asks again |
 
 ## Includes
 

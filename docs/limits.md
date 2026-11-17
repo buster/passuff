@@ -1,8 +1,8 @@
 # passuff limits
 
 The recorded limits a rebuild must keep. `givn/specification.yaml` declares this
-file under `limits`; `crates/passuff-e2e/features/boundary.feature` enforces
-the parts a scenario can observe.
+file under `limits`; the `@e2e` scenarios under `givn/specs/**` enforce the
+parts a scenario can observe.
 
 ## Terminal budgets
 
@@ -100,7 +100,7 @@ count, or counts that do not reconcile fails the scope.
 | Scope | Command | Behavior |
 |---|---|---|
 | `change` | `./scripts/verify.sh` | Honours `GIVN_FEATURES`; runs the component corpus in process with fakes. |
-| `e2e` | `./scripts/verify.sh --e2e --package crates/passuff-e2e` | Ignores `GIVN_FEATURES`; builds the product and runs the frozen package at the named root against the binaries. |
+| `e2e` | `./scripts/verify.sh --e2e --package crates/passuff-e2e` | Ignores `GIVN_FEATURES`; builds the product and runs every `@e2e` scenario in `givn/specs` through the frozen package at the named root against the binaries. |
 
 The frozen runner exits 2 when `PASSUFF_BIN_DIR` does not hold both binaries,
 and 1 when a scenario fails, a step is undefined or skipped, a parse error
@@ -119,7 +119,7 @@ Platform, dependency, and legal constraints stay in
 |---|---|
 | Commands, exit codes, keymap | `docs/reference.md` |
 | Frame composition at each size | `crates/passuff-cli/src/tui/mod.rs`, `crates/passuff-cli/src/tui/render.rs` |
-| Asserted strings and sizes | `crates/passuff-e2e/features/boundary.feature` |
+| Asserted strings and sizes | The `@e2e` scenarios under `givn/specs/**` |
 | Runner counts and exit code | `crates/passuff-e2e/tests/e2e_runner.rs` |
 | Scope selection | `scripts/verify.sh`, `givn/commands.yaml` |
 | Result-file acceptance | `givn` 0.9.20, `src/proof.rs` (`RunnerResult::read`) |

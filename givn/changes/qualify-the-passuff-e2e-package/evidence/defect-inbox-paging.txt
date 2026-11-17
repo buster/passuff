@@ -10,7 +10,7 @@
    ✔  And the developer opens the inbox at 120x40
    ✘  Then the screen shows "comment by @reviewer"
       Step failed:
-      Defined: features/boundary.feature:54:5
+      Defined: givn/specs/review-activity-inbox/activity-inbox.feature:472:5
       Matched: tests/steps/tui.rs:35:1
       Step panicked. Captured output: the screen never showed "comment by @reviewer"
       --- screen at "comment by @reviewer" deadline ---
@@ -36,7 +36,6 @@
       └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
       ┌Activity · all────────────────────────────────────────────────────────────────────────────────────────────────────────┐
       │1 unread of 1                                                                                                         │
-      │                                                                                                                      │
       │                                                                                                                      │
       │                                                                                                                      │
       │                                                                                                                      │

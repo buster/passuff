@@ -1,14 +1,28 @@
-   Compiling passuff v0.1.3 (/home/buster/projects/gh-notify/crates/passuff-cli)
-    Finished `dev` profile [unoptimized] target(s) in 1.09s
-    Finished `test` profile [unoptimized] target(s) in 0.10s
+    Finished `dev` profile [unoptimized] target(s) in 0.13s
+    Finished `test` profile [unoptimized] target(s) in 0.11s
      Running tests/e2e_runner.rs (crates/passuff-e2e/target/debug/deps/e2e_runner-dfde038995f0f1f4)
-Feature: The built binaries satisfy the acceptance boundary
-  Scenario: The CLI lists its commands
+Feature: Watch scope editing
+  Scenario: Two accounts report only the watched scope
    ✔  Given the built product and a mock GitHub account
-   ✔  When the developer asks for help
-   ✔  Then the product exits with code 0
-   ✔  And the output contains "Commands:"
-   ✔  And the output contains "notify-test"
+   ✔  And a second configured account
+   ✔  When the developer runs one check
+   ✔  Then the output contains "Fresh baseline recorded for octo/repo#7"
+   ✔  And the output contains "Fresh baseline recorded for octo/other#9"
+   ✔  When the developer adds a comment on the watched pull request
+   ✔  And the developer adds a comment on the second account's pull request
+   ✔  And the developer runs one check
+   ✔  Then the output contains "2 activities in 2 pull requests"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 2 unread of 2"
+   ✔  When the developer switches the watch scope to "octo/repo"
+   ✔  And the developer runs one check
+   ✔  And the developer asks for status
+   ✔  Then the output contains "passuff: 1 unread of 1"
+   ✔  And the output does not contain "octo/other#9"
+   ✔  When the developer lists the inbox
+   ✔  Then the output does not contain "octo/other#9"
+   ✔  And the state file contains "octo/other#9"
+Feature: Watch status
   Scenario: A first check baselines the account and status reports the scope
    ✔  Given the built product and a mock GitHub account
    ✔  When the developer runs one check
@@ -18,6 +32,7 @@ Feature: The built binaries satisfy the acceptance boundary
    ✔  Then the output contains "passuff: 0 unread of 0"
    ✔  And the output contains "watched pull requests"
    ✔  And the output contains "octo/repo#7 open CI passing"
+Feature: Activity inbox
   Scenario: New activity reaches the inbox and reading all clears the unread count
    ✔  Given the built product and a mock GitHub account
    ✔  When the developer runs one check
@@ -53,79 +68,6 @@ Feature: The built binaries satisfy the acceptance boundary
    ✔  And the screen shows "Pull request octo/repo#7"
    ✔  When the developer quits the inbox
    ✔  Then the TUI exits with code 0
-  Scenario: A notification is delivered as one JSON line
-   ✔  Given a mock GitHub account with desktop notifications enabled
-   ✔  When the developer runs one check
-   ✔  And the developer adds a comment on the watched pull request
-   ✔  And the developer runs one check
-   ✔  Then the notification log holds one line titled "New activity on octo/repo#7"
-  Scenario: A server error fails the check
-   ✔  Given a mock GitHub account that answers every operation with a server error
-   ✔  When the developer runs one check
-   ✔  Then the product exits with code 1
-   ✔  And the error output contains "account work failed"
-   ✔  And the error output contains "GitHub returned a malformed response"
-  Scenario: An unreachable endpoint fails with a diagnostic
-   ✔  Given a mock GitHub account pointed at a closed port
-   ✔  When the developer runs one check
-   ✔  Then the product exits with code 1
-   ✔  And the error output contains "account work failed"
-   ✔  And the error output contains "GitHub is unavailable"
-  Scenario: Setup writes a usable configuration
-   ✔  Given the built product and a mock GitHub account
-   ✔  And no configuration file exists
-   ✔  When the developer runs setup with:
-   ✔  Then the product exits with code 0
-   ✔  And the configuration file is created
-   ✔  And the configuration file contains "[accounts.work]"
-   ✔  And the configuration file contains "github_user"
-   ✔  And the configuration file contains "PASSUFF_E2E_TOKEN"
-   ✔  When the developer asks for status
-   ✔  Then the product exits with code 0
-   ✔  And the output contains "  work not resolved"
-   ✔  And the output contains "all authored pull requests"
-  Scenario: Setup leaves an existing configuration alone without confirmation
-   ✔  Given the built product and a mock GitHub account
-   ✔  And an existing configuration file
-   ✔  When the developer runs setup and declines replacement
-   ✔  Then the product exits with code 0
-   ✔  And the output contains "Configuration exists. Replace? [y/N]"
-   ✔  And the configuration file is unchanged
-  Scenario: Setup rejects an invalid watch repository and asks again
-   ✔  Given the built product and a mock GitHub account
-   ✔  And no configuration file exists
-   ✔  When the developer runs setup with:
-   ✔  Then the product exits with code 0
-   ✔  And the output contains "must be owner/repo"
-   ✔  When the developer asks for status
-   ✔  Then the output contains "passuff: watch scope: octo/repo"
-  Scenario: An environment token authenticates the account
-   ✔  Given the built product and a mock GitHub account
-   ✔  When the developer runs one check
-   ✔  Then the product exits with code 0
-   ✔  And the output contains "Fresh baseline recorded for octo/repo#7"
-   ✔  When the developer asks for status
-   ✔  Then the output contains "  work @tester"
-  Scenario: A token file readable only by its owner is accepted
-   ✔  Given the built product and a mock GitHub account
-   ✔  And the account reads its token from a file with mode 600
-   ✔  When the developer runs one check
-   ✔  Then the product exits with code 0
-   ✔  And the output contains "Fresh baseline recorded for octo/repo#7"
-  Scenario: A token file readable by other users is refused
-   ✔  Given the built product and a mock GitHub account
-   ✔  And the account reads its token from a file with mode 644
-   ✔  When the developer runs one check
-   ✔  Then the product exits with code 2
-   ✔  And the error output contains "token_file is not private"
-  Scenario: A token for another login fails the account
-   ✔  Given the built product and a mock GitHub account
-   ✔  And the viewer login is "intruder"
-   ✔  When the developer runs one check
-   ✔  Then the product exits with code 1
-   ✔  And the error output contains "account work failed"
-   ✔  And the error output contains "intruder"
-   ✔  And the error output contains "tester"
   Scenario: Reading one id marks that record and reports it
    ✔  Given the built product and a mock GitHub account
    ✔  When the developer runs one check
@@ -161,6 +103,119 @@ Feature: The built binaries satisfy the acceptance boundary
    ✔  And the output contains "passuff: 0 unread of 0"
    ✔  And the output contains "octo/repo#7 open CI passing"
    ✔  And the state file is version 2
+  Scenario: The same activity delivered twice produces one record
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  Then the output contains "New comment from @reviewer"
+   ✔  When the developer runs one check
+   ✔  Then the output contains "passuff: no notifications"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 1 unread of 1"
+   ✔  When the developer lists the inbox
+   ✔  Then the output contains 1 lines matching "New comment from @reviewer"
+  Scenario: A terminal too short prints the minimum size
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer opens the inbox at 80x10
+   ✔  Then the screen shows "Terminal too small. Resize to at least 40x12."
+   ✔  When the developer quits the inbox
+   ✔  Then the TUI exits with code 0
+Feature: Inbox navigation
+  Scenario: Tab and back-tab switch the active pane
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  And the developer opens the inbox at 120x40
+   ✔  Then the screen shows "Focus: activity"
+   ✔  When the developer presses tab
+   ✔  Then the screen shows "Focus: PRs"
+   ✔  When the developer presses backtab
+   ✔  Then the screen shows "Focus: activity"
+   ✔  When the developer quits the inbox
+   ✔  Then the TUI exits with code 0
+Feature: Initial setup
+  Scenario: Setup writes a usable configuration
+   ✔  Given the built product and a mock GitHub account
+   ✔  And no configuration file exists
+   ✔  When the developer runs setup with:
+   ✔  Then the product exits with code 0
+   ✔  And the configuration file is created
+   ✔  And the configuration file contains "[accounts.work]"
+   ✔  And the configuration file contains "github_user"
+   ✔  And the configuration file contains "PASSUFF_E2E_TOKEN"
+   ✔  When the developer asks for status
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "  work not resolved"
+   ✔  And the output contains "all authored pull requests"
+  Scenario: Setup leaves an existing configuration alone without confirmation
+   ✔  Given the built product and a mock GitHub account
+   ✔  And an existing configuration file
+   ✔  When the developer runs setup and declines replacement
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Configuration exists. Replace? [y/N]"
+   ✔  And the configuration file is unchanged
+  Scenario: Setup rejects an invalid watch repository and asks again
+   ✔  Given the built product and a mock GitHub account
+   ✔  And no configuration file exists
+   ✔  When the developer runs setup with:
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "must be owner/repo"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: watch scope: octo/repo"
+Feature: Pull request activity notification
+  Scenario: The CLI lists its commands
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer asks for help
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Commands:"
+   ✔  And the output contains "notify-test"
+  Scenario: A notification is delivered as one JSON line
+   ✔  Given a mock GitHub account with desktop notifications enabled
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  Then the notification log holds one line titled "New activity on octo/repo#7"
+  Scenario: A server error fails the check
+   ✔  Given a mock GitHub account that answers every operation with a server error
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 1
+   ✔  And the error output contains "account work failed"
+   ✔  And the error output contains "GitHub returned a malformed response"
+  Scenario: An unreachable endpoint fails with a diagnostic
+   ✔  Given a mock GitHub account pointed at a closed port
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 1
+   ✔  And the error output contains "account work failed"
+   ✔  And the error output contains "GitHub is unavailable"
+  Scenario: An environment token authenticates the account
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Fresh baseline recorded for octo/repo#7"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "  work @tester"
+  Scenario: A token file readable only by its owner is accepted
+   ✔  Given the built product and a mock GitHub account
+   ✔  And the account reads its token from a file with mode 600
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Fresh baseline recorded for octo/repo#7"
+  Scenario: A token file readable by other users is refused
+   ✔  Given the built product and a mock GitHub account
+   ✔  And the account reads its token from a file with mode 644
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 2
+   ✔  And the error output contains "token_file is not private"
+  Scenario: A token for another login fails the account
+   ✔  Given the built product and a mock GitHub account
+   ✔  And the viewer login is "intruder"
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 1
+   ✔  And the error output contains "account work failed"
+   ✔  And the error output contains "intruder"
+   ✔  And the error output contains "tester"
   Scenario: A corrupt state file is quarantined and replaced
    ✔  Given the built product and a mock GitHub account
    ✔  And a corrupt state file
@@ -213,57 +268,6 @@ Feature: The built binaries satisfy the acceptance boundary
    ✔  Then the output contains "New comment from @dependabot[bot]"
    ✔  When the developer asks for status
    ✔  Then the output contains "passuff: 1 unread of 1"
-  Scenario: The same activity delivered twice produces one record
-   ✔  Given the built product and a mock GitHub account
-   ✔  When the developer runs one check
-   ✔  And the developer adds a comment on the watched pull request
-   ✔  And the developer runs one check
-   ✔  Then the output contains "New comment from @reviewer"
-   ✔  When the developer runs one check
-   ✔  Then the output contains "passuff: no notifications"
-   ✔  When the developer asks for status
-   ✔  Then the output contains "passuff: 1 unread of 1"
-   ✔  When the developer lists the inbox
-   ✔  Then the output contains 1 lines matching "New comment from @reviewer"
-  Scenario: Two accounts report only the watched scope
-   ✔  Given the built product and a mock GitHub account
-   ✔  And a second configured account
-   ✔  When the developer runs one check
-   ✔  Then the output contains "Fresh baseline recorded for octo/repo#7"
-   ✔  And the output contains "Fresh baseline recorded for octo/other#9"
-   ✔  When the developer adds a comment on the watched pull request
-   ✔  And the developer adds a comment on the second account's pull request
-   ✔  And the developer runs one check
-   ✔  Then the output contains "2 activities in 2 pull requests"
-   ✔  When the developer asks for status
-   ✔  Then the output contains "passuff: 2 unread of 2"
-   ✔  When the developer switches the watch scope to "octo/repo"
-   ✔  And the developer runs one check
-   ✔  And the developer asks for status
-   ✔  Then the output contains "passuff: 1 unread of 1"
-   ✔  And the output does not contain "octo/other#9"
-   ✔  When the developer lists the inbox
-   ✔  Then the output does not contain "octo/other#9"
-   ✔  And the state file contains "octo/other#9"
-  Scenario: A terminal too short prints the minimum size
-   ✔  Given the built product and a mock GitHub account
-   ✔  When the developer opens the inbox at 80x10
-   ✔  Then the screen shows "Terminal too small. Resize to at least 40x12."
-   ✔  When the developer quits the inbox
-   ✔  Then the TUI exits with code 0
-  Scenario: Tab and back-tab switch the active pane
-   ✔  Given the built product and a mock GitHub account
-   ✔  When the developer runs one check
-   ✔  And the developer adds a comment on the watched pull request
-   ✔  And the developer runs one check
-   ✔  And the developer opens the inbox at 120x40
-   ✔  Then the screen shows "Focus: activity"
-   ✔  When the developer presses tab
-   ✔  Then the screen shows "Focus: PRs"
-   ✔  When the developer presses backtab
-   ✔  Then the screen shows "Focus: activity"
-   ✔  When the developer quits the inbox
-   ✔  Then the TUI exits with code 0
   Scenario: The default command watches and delivers one notification
    ✔  Given a mock GitHub account with desktop notifications enabled
    ✔  When the developer starts watching
@@ -273,7 +277,7 @@ Feature: The built binaries satisfy the acceptance boundary
    ✔  When the developer interrupts the watch
    ✔  Then the watch exits with code 0
 [Summary]
-1 feature
+6 features
 29 scenarios (29 passed)
 240 steps (240 passed)
 givn result: total 29, passed 29, failed 0, skipped 0

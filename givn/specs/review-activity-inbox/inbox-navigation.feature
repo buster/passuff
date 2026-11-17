@@ -480,3 +480,18 @@ Feature: Inbox navigation
     And  the developer presses "esc" in the scope picker
     Then  the TUI does not show "acme/api#42"
     And  the TUI shows "acme/web#7"
+
+  @e2e
+  Scenario: Tab and back-tab switch the active pane
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer adds a comment on the watched pull request
+    And the developer runs one check
+    And the developer opens the inbox at 120x40
+    Then the screen shows "Focus: activity"
+    When the developer presses tab
+    Then the screen shows "Focus: PRs"
+    When the developer presses backtab
+    Then the screen shows "Focus: activity"
+    When the developer quits the inbox
+    Then the TUI exits with code 0

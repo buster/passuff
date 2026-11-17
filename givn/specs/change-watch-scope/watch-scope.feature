@@ -232,3 +232,25 @@ Feature: Watch scope editing
     Then  the focus relations are "authored,assigned"
     And  the picker shows "[x] authored"
     And  the picker shows "[ ] team review"
+
+  @e2e
+  Scenario: Two accounts report only the watched scope
+    Given the built product and a mock GitHub account
+    And a second configured account
+    When the developer runs one check
+    Then the output contains "Fresh baseline recorded for octo/repo#7"
+    And the output contains "Fresh baseline recorded for octo/other#9"
+    When the developer adds a comment on the watched pull request
+    And the developer adds a comment on the second account's pull request
+    And the developer runs one check
+    Then the output contains "2 activities in 2 pull requests"
+    When the developer asks for status
+    Then the output contains "passuff: 2 unread of 2"
+    When the developer switches the watch scope to "octo/repo"
+    And the developer runs one check
+    And the developer asks for status
+    Then the output contains "passuff: 1 unread of 1"
+    And the output does not contain "octo/other#9"
+    When the developer lists the inbox
+    Then the output does not contain "octo/other#9"
+    And the state file contains "octo/other#9"

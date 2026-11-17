@@ -772,3 +772,142 @@ Feature: Pull request activity notification
     When  the developer narrows the focus to "authored,team-review-requested"
     And  the developer lists all activity
     Then  the inbox shows "New comment from @alice" for "acme/web#7" as unread
+
+  @e2e
+  Scenario: The CLI lists its commands
+    Given the built product and a mock GitHub account
+    When the developer asks for help
+    Then the product exits with code 0
+    And the output contains "Commands:"
+    And the output contains "notify-test"
+
+  @e2e
+  Scenario: A notification is delivered as one JSON line
+    Given a mock GitHub account with desktop notifications enabled
+    When the developer runs one check
+    And the developer adds a comment on the watched pull request
+    And the developer runs one check
+    Then the notification log holds one line titled "New activity on octo/repo#7"
+
+  @e2e
+  Scenario: A server error fails the check
+    Given a mock GitHub account that answers every operation with a server error
+    When the developer runs one check
+    Then the product exits with code 1
+    And the error output contains "account work failed"
+    And the error output contains "GitHub returned a malformed response"
+
+  @e2e
+  Scenario: An unreachable endpoint fails with a diagnostic
+    Given a mock GitHub account pointed at a closed port
+    When the developer runs one check
+    Then the product exits with code 1
+    And the error output contains "account work failed"
+    And the error output contains "GitHub is unavailable"
+
+  @e2e
+  Scenario: An environment token authenticates the account
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    Then the product exits with code 0
+    And the output contains "Fresh baseline recorded for octo/repo#7"
+    When the developer asks for status
+    Then the output contains "  work @tester"
+
+  @e2e
+  Scenario: A token file readable only by its owner is accepted
+    Given the built product and a mock GitHub account
+    And the account reads its token from a file with mode 600
+    When the developer runs one check
+    Then the product exits with code 0
+    And the output contains "Fresh baseline recorded for octo/repo#7"
+
+  @e2e
+  Scenario: A token file readable by other users is refused
+    Given the built product and a mock GitHub account
+    And the account reads its token from a file with mode 644
+    When the developer runs one check
+    Then the product exits with code 2
+    And the error output contains "token_file is not private"
+
+  @e2e
+  Scenario: A token for another login fails the account
+    Given the built product and a mock GitHub account
+    And the viewer login is "intruder"
+    When the developer runs one check
+    Then the product exits with code 1
+    And the error output contains "account work failed"
+    And the error output contains "intruder"
+    And the error output contains "tester"
+
+  @e2e
+  Scenario: A corrupt state file is quarantined and replaced
+    Given the built product and a mock GitHub account
+    And a corrupt state file
+    When the developer asks for status
+    Then the product exits with code 0
+    And the output contains "passuff: 0 unread of 0"
+    And the corrupt state file is set aside
+    When the developer runs one check
+    Then the product exits with code 0
+    And the output contains "Fresh baseline recorded for octo/repo#7"
+
+  @e2e
+  Scenario: A failing check notifies and a recovery notifies
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer makes the pull request CI fail
+    And the developer runs one check
+    Then the output contains "CI failing: build"
+    When the developer makes the pull request CI pass
+    And the developer runs one check
+    Then the output contains "CI recovered"
+    When the developer lists the inbox
+    Then the output contains "CI failing: build"
+    And the output contains "CI recovered"
+    When the developer asks for status
+    Then the output contains "passuff: 2 unread of 2"
+
+  @e2e
+  Scenario: The viewer's own comment is recorded read and does not notify
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer adds a comment of their own
+    And the developer runs one check
+    Then the output contains "passuff: no notifications"
+    When the developer asks for status
+    Then the output contains "passuff: 0 unread of 1"
+    When the developer lists all activity
+    Then the output contains "New comment from @tester"
+    And the output contains "read"
+
+  @e2e
+  Scenario: A bot comment is ignored by default
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    And the developer adds a bot comment
+    And the developer runs one check
+    Then the output contains "passuff: no notifications"
+    When the developer lists all activity
+    Then the output contains "passuff: no activity"
+
+  @e2e
+  Scenario: A bot comment is recorded when bot comments are enabled
+    Given the built product and a mock GitHub account
+    And bot comments are enabled
+    When the developer runs one check
+    And the developer adds a bot comment
+    And the developer runs one check
+    Then the output contains "New comment from @dependabot[bot]"
+    When the developer asks for status
+    Then the output contains "passuff: 1 unread of 1"
+
+  @e2e
+  Scenario: The default command watches and delivers one notification
+    Given a mock GitHub account with desktop notifications enabled
+    When the developer starts watching
+    And the developer waits for the baseline
+    And the developer adds a comment on the watched pull request
+    Then the notification log holds one line titled "New activity on octo/repo#7"
+    When the developer interrupts the watch
+    Then the watch exits with code 0

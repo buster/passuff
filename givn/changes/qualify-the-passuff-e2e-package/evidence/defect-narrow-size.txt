@@ -10,7 +10,7 @@
    ✔  And the developer opens the inbox at 80x24
    ✘  Then the screen shows "1 unread of 1"
       Step failed:
-      Defined: features/boundary.feature:43:5
+      Defined: givn/specs/review-activity-inbox/activity-inbox.feature:460:5
       Matched: tests/steps/tui.rs:35:1
       Step panicked. Captured output: the screen never showed "1 unread of 1"
       --- screen at "1 unread of 1" deadline ---

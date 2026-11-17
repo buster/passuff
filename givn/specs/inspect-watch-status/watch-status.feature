@@ -103,3 +103,14 @@ Feature: Watch status
     Then  the transcript reports "personal @octo-personal"
     And  the transcript reports "acme/api#42 open CI passing"
     And  the exit status is 0
+
+  @e2e
+  Scenario: A first check baselines the account and status reports the scope
+    Given the built product and a mock GitHub account
+    When the developer runs one check
+    Then the product exits with code 0
+    And the output contains "Fresh baseline recorded for octo/repo#7"
+    When the developer asks for status
+    Then the output contains "passuff: 0 unread of 0"
+    And the output contains "watched pull requests"
+    And the output contains "octo/repo#7 open CI passing"

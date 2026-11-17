@@ -51,5 +51,18 @@
 | TD-005 | Coverage merging uses a small project-owned Cobertura merger. | Extra code to maintain when the report format changes. | Replace with a maintained merger if the project grows or the format changes. |
 | TD-006 | The core has no public PR-list or activity-history query API yet. | Resolved by `InboxService` (`view`, `mark_read`, `mark_all_read`); the TUI is the remaining consumer. | Done in `passuff-activity-inbox`; the TUI change consumes the contract. |
 | TD-007 | The frozen acceptance suite covers 29 scenarios, not the whole product; a green run qualifies the boundary, not full-spec conformance. | Requirements outside the 29 scenarios are protected only by the component corpus, and a rebuild can pass the suite while leaving them unstated. | Add a scenario when a component requirement is not represented and the boundary must enforce it; keep the component corpus as the full-spec check until the suite widens. |
-| TD-008 | The E2E coverage scope still runs the component tier; the frozen package's production coverage is not measured. | The E2E Cobertura report shows 0/4293 lines, so an archive receipt claims a distinct E2E report that exercises no product code. | Instrument the product binaries and run `crates/passuff-e2e` under the coverage toolchain, then replace the component-tier E2E scope; until then, read the E2E report as empty and use the frozen suite's pass for the E2E check. |
-| TD-009 | The use-case interaction inventories name `@e2e` scenarios that now live in the frozen package; `givn lint` scans only `givn/specs` and reports seven blocking inventory warnings. | The lint signal cannot distinguish a missing `@e2e` scenario from one held by the declared package, so a future reader may add duplicate scenarios or distrust the inventory. | Teach the inventory check to read the declared `e2e` package features, or record the package mapping in the use-case document; until then, the design's interaction matrix and `verify.e2e_command` are the authority. |
+| TD-008 | The E2E coverage scope measures no production code: the component runner cannot execute the package's `@e2e` steps, so `measure-coverage.sh` selects no scenario and records a zero-line E2E report. | The E2E Cobertura report shows 0/4293 lines, so an archive receipt claims a distinct E2E report that exercises no product code. | Instrument the product binaries and run `crates/passuff-e2e` under the coverage toolchain, then replace the zero-line E2E scope; until then, read the E2E report as empty and use the frozen suite's pass for the E2E check. |
+| TD-009 | Eight declared consumer actions have no `@e2e` scenario, so their rows were removed from the interaction inventories when the 29 acceptance scenarios moved into `givn/specs`: the watch-scope toggle, scope-mode switch, and focus narrowing; opening a pull request from an activity; live inbox observation; the stacked inbox; `--version`; and the command-line notification test. | The inventory no longer claims coverage the frozen suite does not provide; a regression in any of these actions is caught only by the component corpus, and a rebuild can pass the boundary suite without them. | Add one `@e2e` scenario per action under the owning capability, add its row back to the interaction table, and delete the entry from the detail table below. |
+
+### TD-009 detail
+
+| Consumer action | Missing scenario |
+|---|---|
+| toggle a repository in the watch scope | Developer toggles a repository in the watch scope |
+| switch the watch scope mode | Developer switches the watch scope mode |
+| narrow the focus to a subset of involvement relations | Developer narrows the focus in the watch scope |
+| open the pull request from an activity | Developer opens the pull request from an activity |
+| leave the inbox open while activity arrives | The inbox shows activity observed while it is open |
+| review a stack and its activity | Developer reviews a stacked inbox |
+| show version | Developer asks for the version |
+| test the notification surfaces on the command line | The developer tests notifications on the command line |

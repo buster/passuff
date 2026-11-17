@@ -101,13 +101,16 @@ The developer can review the retained activity and mark it read; the history and
 
 | Capability | Consumer action | E2E scenario |
 |---|---|---|
-| activity-inbox | list unread activity | Developer lists unread activity |
-| activity-inbox | mark activity read | Developer marks activity read |
-| activity-inbox | open the inbox in the terminal UI | Developer opens the inbox TUI |
-| activity-inbox | open an activity's detail | Developer opens an activity's details |
-| activity-inbox | open the pull request from an activity | Developer opens the pull request from an activity |
-| inbox-navigation | navigate the watched pull requests and activity, with automatic refresh | Developer navigates the inbox panes |
-| inbox-navigation | leave the inbox open while activity arrives | The inbox shows activity observed while it is open |
+| activity-inbox | list unread activity | New activity reaches the inbox and reading all clears the unread count |
+| activity-inbox | open the inbox in the terminal UI at the narrow budget | The inbox row is visible at the narrow terminal size |
+| activity-inbox | open an activity's detail at the wide budget | The activity detail opens at the wide terminal size and quits cleanly |
+| activity-inbox | mark one activity record read | Reading one id marks that record and reports it |
+| activity-inbox | reject a read with no id or with an id and `--all` | Read with no id and with an id and --all exits 2 |
+| activity-inbox | reject an unknown activity id | Reading an unknown id exits 2 |
+| activity-inbox | load a version-1 state file | A version-1 state file migrates on the next status |
+| activity-inbox | record a repeated activity delivery once | The same activity delivered twice produces one record |
+| activity-inbox | report a terminal below the minimum size | A terminal too short prints the minimum size |
+| inbox-navigation | navigate the watched pull requests and activity | Tab and back-tab switch the active pane |
 
 ## Includes
 

@@ -718,7 +718,7 @@ acceptance package and are not what `main` at v0.1.3 sends or prints.
 Operation names, payload shapes, the `repository { name owner { login } }`
 shape, the `rateLimit` placement, the `{"data": {}}` fallthrough, and the HTTP
 500 path come from `crates/passuff-e2e/tests/harness/github.rs`. Asserted
-strings and exit codes come from `crates/passuff-e2e/features/boundary.feature`.
+strings and exit codes come from the `@e2e` scenarios under `givn/specs/**`.
 The written configuration and the `PASSUFF_NOTIFICATION_LOG` hook come from
 `crates/passuff-e2e/tests/harness/world.rs`; the cleared child environment from
 `crates/passuff-e2e/tests/harness/bin.rs`. The version-1 state seed is
