@@ -121,6 +121,7 @@ interaction tables list exactly the moved titles.
       actions with no acceptance scenario.
 - [x] `./scripts/qualify-e2e.sh` reports `20/20 defects detected; clean tree
       green` after the move.
+- [x] COMMIT: `b283973` -- Batch: corpus-alignment
 
 ## Closeout
 

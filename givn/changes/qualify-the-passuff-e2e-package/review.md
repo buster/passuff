@@ -31,8 +31,8 @@ Reviewer context: deepseek/deepseek-flash via omp, 2026-11-17
   excludes `@e2e`. The package runner selects `@e2e` from the corpus.
 - **Task evidence:** every batch records a revision: `96d2be0` (declared
   limits), `38b09ce` (seeded defects), `40b37b4` (S10 evidence), `9b5c8ad`
-  (e2e boundary), and the corpus-alignment commit that contains the move. Each
-  commit contains the files its batch names.
+  (e2e boundary), and `b283973` (corpus alignment). Each commit contains the
+  files its batch names.
 - **Design promises:** `docs/limits.md`, the `limits` declaration, the two
   patch files, the expected-scenario map, the evidence paths, and the seven
   interaction tables exist at the paths `design.md` names. `Decides D4` is
