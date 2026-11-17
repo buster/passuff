@@ -97,6 +97,6 @@ Specification.
 - [x] `review.md` records the change strategy, the gap table with each wrong
       artifact, the neighbour table, the rebuilt binary hashes, the frozen
       result, the rebuilt component result, and the environment restore.
-- [ ] `givn check review --change full-product-dry-run` passes.
+- [x] `givn check review --change full-product-dry-run` passes.
 - [ ] `givn archive --change full-product-dry-run` passes the archive gate and
       moves the change directory.
