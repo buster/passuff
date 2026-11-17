@@ -76,13 +76,13 @@ every changed path outside `keys.rs`.
 
 ## Closeout
 
-- [ ] `givn check tasks --change constant-ise-key-parser` passes; the change
+- [x] `givn check tasks --change constant-ise-key-parser` passes; the change
       verification is not applicable.
-- [ ] `./scripts/verify.sh` and `./scripts/verify.sh --e2e --package
+- [x] `./scripts/verify.sh` and `./scripts/verify.sh --e2e --package
       crates/passuff-e2e` are green at the reviewed tree; `./measure-coverage.sh`
       and `./merge-coverages.sh` write the regular and E2E reports.
-- [ ] `review.md` records the neighbour table, the frozen result, the component
+- [x] `review.md` records the neighbour table, the frozen result, the component
       result, the `Spec gap` outcome (none), and the change strategy.
-- [ ] `givn check review --change constant-ise-key-parser` passes.
-- [ ] `givn archive --change constant-ise-key-parser` passes the archive gate
+- [x] `givn check review --change constant-ise-key-parser` passes.
+- [x] `givn archive --change constant-ise-key-parser` passes the archive gate
       and moves the change directory.
