@@ -1,0 +1,40 @@
+== cargo build --offline -p passuff --bins
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+
+== cargo build --offline --locked -p passuff --bins
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+
+== sha256sum
+9818ef6d494777a456d7fb331e3d0a6df3379f50eddedc382c3d642152db142d  target/debug/passuff
+7ff117fd2bfd9ef03a101e62139af83577c05d38908acf354017cd8c4437e89c  target/debug/passuff-tui
+
+== passuff --version
+passuff 0.2.0
+exit=0
+
+== passuff --help (first 20)
+Watches the GitHub pull requests you authored, are assigned to, or must review, and notifies you about other people's comments, reviews, CI failures and recoveries, and merged or closed pull requests.
+
+Usage: passuff [OPTIONS] [COMMAND]
+
+Commands:
+  check        Run one observation pass and print notifications
+  status       Show accounts, watch scope, watched pull requests, and unread count
+  inbox        List unread activity; --all includes read activity
+  read         Mark one activity record read
+  setup        Create the configuration interactively
+  notify-test  Send one test notification and play the configured sound
+  help         Print this message or the help of the given subcommand(s)
+
+Options:
+      --config <PATH>
+          Use a specific configuration file
+
+      --state <PATH>
+          Use a specific state file
+
+exit=0
+
+== passuff-tui without a terminal
+passuff-tui: requires a terminal; use --snapshot to print one frame
+exit=3

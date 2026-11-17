@@ -1,0 +1,328 @@
+    Finished `dev` profile [unoptimized] target(s) in 0.15s
+    Finished `test` profile [unoptimized] target(s) in 0.11s
+     Running tests/e2e_runner.rs (crates/passuff-e2e/target/debug/deps/e2e_runner-dfde038995f0f1f4)
+Feature: Watch scope editing
+  Scenario: Two accounts report only the watched scope
+   ✔  Given the built product and a mock GitHub account
+   ✔  And a second configured account
+   ✔  When the developer runs one check
+   ✔  Then the output contains "Fresh baseline recorded for octo/repo#7"
+   ✔  And the output contains "Fresh baseline recorded for octo/other#9"
+   ✔  When the developer adds a comment on the watched pull request
+   ✔  And the developer adds a comment on the second account's pull request
+   ✔  And the developer runs one check
+   ✔  Then the output contains "2 activities in 2 pull requests"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 2 unread of 2"
+   ✔  When the developer switches the watch scope to "octo/repo"
+   ✔  And the developer runs one check
+   ✔  And the developer asks for status
+   ✔  Then the output contains "passuff: 1 unread of 1"
+   ✔  And the output does not contain "octo/other#9"
+   ✔  When the developer lists the inbox
+   ✔  Then the output does not contain "octo/other#9"
+   ✔  And the state file contains "octo/other#9"
+Feature: Watch status
+  Scenario: A first check baselines the account and status reports the scope
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Fresh baseline recorded for octo/repo#7"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 0 unread of 0"
+   ✔  And the output contains "watched pull requests"
+   ✔  And the output contains "octo/repo#7 open CI passing"
+Feature: Activity inbox
+  Scenario: New activity reaches the inbox and reading all clears the unread count
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  Then the output contains "New comment from @reviewer"
+   ✔  When the developer lists the inbox
+   ✔  Then the output contains "New comment from @reviewer"
+   ✔  And the output contains "unread"
+   ✔  When the developer marks all activity read
+   ✔  Then the output contains "activity record read"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 0 unread of 1"
+  Scenario: The inbox row is visible at the narrow terminal size
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  And the developer opens the inbox at 80x24
+   ✔  Then the screen shows "1 unread of 1"
+   ✔  And the screen shows "octo/repo#7"
+   ✔  When the developer quits the inbox
+   ✔  Then the TUI exits with code 0
+  Scenario: The activity detail opens at the wide terminal size and quits cleanly
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer hides new activity from the authored query
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer opens the inbox at 120x40
+   ✔  Then the screen shows "comment by @reviewer"
+   ✔  When the developer presses enter
+   ✘  Then the screen shows "Event: comment by @reviewer"
+      Step failed:
+      Defined: home/buster/projects/gh-notify/givn/specs/review-activity-inbox/activity-inbox.feature:474:5
+      Matched: tests/steps/tui.rs:35:1
+      Step panicked. Captured output: the screen never showed "Event: comment by @reviewer"
+      --- screen at "Event: comment by @reviewer" deadline ---
+      ┌─ Activit│                                                                                                  │─────────┐
+      
+      │1 unread │                                                                                                  │         │
+      
+      │  ▶ a1  1│                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         │                                                                                                  │         │
+      
+      │         └──────────────────────────────────────────────────────────────────────────────────────────────────┘         │
+      
+      │                                                                                                                      │
+      
+      └──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+      
+      Focus: activity  Tab switch pane                                                                                        
+      
+      j/k move  Enter detail  r read  a mark visible read  u unread  c clear  h keys  , settings  q quit                      
+      
+                                                                                                                              
+  Scenario: Reading one id marks that record and reports it
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  Then the output contains "New comment from @reviewer"
+   ✔  When the developer marks the first activity read
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "1 activity record read"
+   ✔  When the developer lists the inbox
+   ✔  Then the output contains "passuff: no unread activity"
+   ✔  When the developer lists all activity
+   ✔  Then the output contains "New comment from @reviewer"
+   ✔  And the output contains "read"
+  Scenario: Read with no id and with an id and --all exits 2
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs read with no argument
+   ✔  Then the product exits with code 2
+   ✔  And the error output contains "passuff: read requires exactly one of <id> or --all"
+   ✔  When the developer runs read with an id and --all
+   ✔  Then the product exits with code 2
+   ✔  And the error output contains "passuff: read requires exactly one of <id> or --all"
+  Scenario: Reading an unknown id exits 2
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer reads the unknown activity "a99"
+   ✔  Then the product exits with code 2
+   ✔  And the error output contains "passuff: no activity with id a99"
+  Scenario: A version-1 state file migrates on the next status
+   ✔  Given the built product and a mock GitHub account
+   ✔  And a version-1 state file with one watched pull request
+   ✔  When the developer asks for status
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "passuff: 0 unread of 0"
+   ✔  And the output contains "octo/repo#7 open CI passing"
+   ✔  And the state file is version 2
+  Scenario: The same activity delivered twice produces one record
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  Then the output contains "New comment from @reviewer"
+   ✔  When the developer runs one check
+   ✔  Then the output contains "passuff: no notifications"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 1 unread of 1"
+   ✔  When the developer lists the inbox
+   ✔  Then the output contains 1 lines matching "New comment from @reviewer"
+  Scenario: A terminal too short prints the minimum size
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer opens the inbox at 80x10
+   ✔  Then the screen shows "Terminal too small. Resize to at least 40x12."
+   ✔  When the developer quits the inbox
+   ✔  Then the TUI exits with code 0
+Feature: Inbox navigation
+  Scenario: Tab and back-tab switch the active pane
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  And the developer opens the inbox at 120x40
+   ✔  Then the screen shows "Focus: activity"
+   ✔  When the developer presses tab
+   ✔  Then the screen shows "Focus: PRs"
+   ✔  When the developer presses backtab
+   ✔  Then the screen shows "Focus: activity"
+   ✔  When the developer quits the inbox
+   ✔  Then the TUI exits with code 0
+Feature: Initial setup
+  Scenario: Setup writes a usable configuration
+   ✔  Given the built product and a mock GitHub account
+   ✔  And no configuration file exists
+   ✔  When the developer runs setup with:
+   ✔  Then the product exits with code 0
+   ✔  And the configuration file is created
+   ✔  And the configuration file contains "[accounts.work]"
+   ✔  And the configuration file contains "github_user"
+   ✔  And the configuration file contains "PASSUFF_E2E_TOKEN"
+   ✔  When the developer asks for status
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "  work not resolved"
+   ✔  And the output contains "all authored pull requests"
+  Scenario: Setup leaves an existing configuration alone without confirmation
+   ✔  Given the built product and a mock GitHub account
+   ✔  And an existing configuration file
+   ✔  When the developer runs setup and declines replacement
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Configuration exists. Replace? [y/N]"
+   ✔  And the configuration file is unchanged
+  Scenario: Setup rejects an invalid watch repository and asks again
+   ✔  Given the built product and a mock GitHub account
+   ✔  And no configuration file exists
+   ✔  When the developer runs setup with:
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "must be owner/repo"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: watch scope: octo/repo"
+Feature: Pull request activity notification
+  Scenario: The CLI lists its commands
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer asks for help
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Commands:"
+   ✔  And the output contains "notify-test"
+  Scenario: A notification is delivered as one JSON line
+   ✔  Given a mock GitHub account with desktop notifications enabled
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  And the developer runs one check
+   ✔  Then the notification log holds one line titled "New activity on octo/repo#7"
+  Scenario: A server error fails the check
+   ✔  Given a mock GitHub account that answers every operation with a server error
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 1
+   ✔  And the error output contains "account work failed"
+   ✔  And the error output contains "GitHub returned a malformed response"
+  Scenario: An unreachable endpoint fails with a diagnostic
+   ✔  Given a mock GitHub account pointed at a closed port
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 1
+   ✔  And the error output contains "account work failed"
+   ✔  And the error output contains "GitHub is unavailable"
+  Scenario: An environment token authenticates the account
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Fresh baseline recorded for octo/repo#7"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "  work @tester"
+  Scenario: A token file readable only by its owner is accepted
+   ✔  Given the built product and a mock GitHub account
+   ✔  And the account reads its token from a file with mode 600
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Fresh baseline recorded for octo/repo#7"
+  Scenario: A token file readable by other users is refused
+   ✔  Given the built product and a mock GitHub account
+   ✔  And the account reads its token from a file with mode 644
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 2
+   ✔  And the error output contains "token_file is not private"
+  Scenario: A token for another login fails the account
+   ✔  Given the built product and a mock GitHub account
+   ✔  And the viewer login is "intruder"
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 1
+   ✔  And the error output contains "account work failed"
+   ✔  And the error output contains "intruder"
+   ✔  And the error output contains "tester"
+  Scenario: A corrupt state file is quarantined and replaced
+   ✔  Given the built product and a mock GitHub account
+   ✔  And a corrupt state file
+   ✔  When the developer asks for status
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "passuff: 0 unread of 0"
+   ✔  And the corrupt state file is set aside
+   ✔  When the developer runs one check
+   ✔  Then the product exits with code 0
+   ✔  And the output contains "Fresh baseline recorded for octo/repo#7"
+  Scenario: A failing check notifies and a recovery notifies
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer makes the pull request CI fail
+   ✔  And the developer runs one check
+   ✔  Then the output contains "CI failing: build"
+   ✔  When the developer makes the pull request CI pass
+   ✔  And the developer runs one check
+   ✔  Then the output contains "CI recovered"
+   ✔  When the developer lists the inbox
+   ✔  Then the output contains "CI failing: build"
+   ✔  And the output contains "CI recovered"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 2 unread of 2"
+  Scenario: The viewer's own comment is recorded read and does not notify
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a comment of their own
+   ✔  And the developer runs one check
+   ✔  Then the output contains "passuff: no notifications"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 0 unread of 1"
+   ✔  When the developer lists all activity
+   ✔  Then the output contains "New comment from @tester"
+   ✔  And the output contains "read"
+  Scenario: A bot comment is ignored by default
+   ✔  Given the built product and a mock GitHub account
+   ✔  When the developer runs one check
+   ✔  And the developer adds a bot comment
+   ✔  And the developer runs one check
+   ✔  Then the output contains "passuff: no notifications"
+   ✔  When the developer lists all activity
+   ✔  Then the output contains "passuff: no activity"
+  Scenario: A bot comment is recorded when bot comments are enabled
+   ✔  Given the built product and a mock GitHub account
+   ✔  And bot comments are enabled
+   ✔  When the developer runs one check
+   ✔  And the developer adds a bot comment
+   ✔  And the developer runs one check
+   ✔  Then the output contains "New comment from @dependabot[bot]"
+   ✔  When the developer asks for status
+   ✔  Then the output contains "passuff: 1 unread of 1"
+  Scenario: The default command watches and delivers one notification
+   ✔  Given a mock GitHub account with desktop notifications enabled
+   ✔  When the developer starts watching
+   ✔  And the developer waits for the baseline
+   ✔  And the developer adds a comment on the watched pull request
+   ✔  Then the notification log holds one line titled "New activity on octo/repo#7"
+   ✔  When the developer interrupts the watch
+   ✔  Then the watch exits with code 0
+[Summary]
+6 features
+29 scenarios (28 passed, 1 failed)
+237 steps (236 passed, 1 failed)
+givn result: total 29, passed 28, failed 1, skipped 0
+error: test failed, to rerun pass `--test e2e_runner`
+
+Caused by:
+  process didn't exit successfully: `/home/buster/projects/gh-notify/crates/passuff-e2e/target/debug/deps/e2e_runner-dfde038995f0f1f4` (exit status: 1)

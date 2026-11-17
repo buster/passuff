@@ -1,0 +1,15 @@
+# S12 environment
+
+Trial revision: `d63cdc84d89ac729d4460b63da181d180e209d0b`
+Copy: `/tmp/passuff-s12-full`
+Manifest: `/tmp/passuff-s12-full.yaml`
+
+```text
+givn 0.9.20
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+cargo 1.99.1 (5f94df478 2026-08-27)
+Linux morbo 6.12.107+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.107-1 (2026-08-29) x86_64 GNU/Linux
+```
+
+The rebuilt workspace pinned `channel = "stable"` in its own
+`rust-toolchain.toml`; the commands above are the toolchain that built it.

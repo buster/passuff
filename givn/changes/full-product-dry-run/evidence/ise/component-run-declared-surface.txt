@@ -1,0 +1,92 @@
+warning: unused import: `passuff_cli::delivery::Delivery`
+ --> crates/passuff-cli/tests/steps/dispatch.rs:8:5
+  |
+8 | use passuff_cli::delivery::Delivery;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `passuff_cli::runtime::Browser`
+  --> crates/passuff-cli/tests/steps/dispatch.rs:10:5
+   |
+10 | use passuff_cli::runtime::Browser;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `urgency` is never read
+  --> crates/passuff-cli/tests/steps/world.rs:52:9
+   |
+46 | pub struct DeliveryCall {
+   |            ------------ field in this struct
+...
+52 |     pub urgency: String,
+   |         ^^^^^^^
+   |
+   = note: `DeliveryCall` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `last` is never used
+  --> crates/passuff-cli/tests/steps/world.rs:83:12
+   |
+67 | impl FakeDelivery {
+   | ----------------- method in this implementation
+...
+83 |     pub fn last(&self) -> Option<DeliveryCall> {
+   |            ^^^^
+
+warning: field `counter` is never read
+   --> crates/passuff-cli/tests/steps/world.rs:621:9
+    |
+604 | pub struct World {
+    |            ----- field in this struct
+...
+621 |     pub counter: usize,
+    |         ^^^^^^^
+
+warning: methods `unique`, `gh_token_count`, `now`, `set_now`, `write_config_and_edit_watch`, and `write_config_and_edit_focus` are never used
+    --> crates/passuff-cli/tests/steps/world.rs:748:12
+     |
+ 672 | impl World {
+     | ---------- methods in this implementation
+...
+ 748 |     pub fn unique(&mut self, prefix: &str) -> String {
+     |            ^^^^^^
+...
+1002 |     pub fn gh_token_count(&self, login: &str) -> usize {
+     |            ^^^^^^^^^^^^^^
+...
+1009 |     pub fn now(&mut self) -> String {
+     |            ^^^
+...
+1013 |     pub fn set_now(&mut self, value: &str) {
+     |            ^^^^^^^
+...
+1021 |     pub fn write_config_and_edit_watch<F>(&mut self, edit: F)
+     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1034 |     pub fn write_config_and_edit_focus<F>(&mut self, edit: F)
+     |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: static `WORLD_COUNT` is never used
+    --> crates/passuff-cli/tests/steps/world.rs:1155:8
+     |
+1155 | static WORLD_COUNT: AtomicUsize = AtomicUsize::new(0);
+     |        ^^^^^^^^^^^
+
+warning: function `next_world` is never used
+    --> crates/passuff-cli/tests/steps/world.rs:1157:8
+     |
+1157 | pub fn next_world() -> World {
+     |        ^^^^^^^^^^
+
+warning: `passuff` (test "features_runner") generated 8 warnings (run `cargo fix --test "features_runner" -p passuff` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/features_runner.rs (target/debug/deps/features_runner-32579f00836cad15)
+
+running 1 test
+login failed
+login failed
+login failed
+test component_corpus ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.14s
+

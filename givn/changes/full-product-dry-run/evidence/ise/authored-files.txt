@@ -1,0 +1,55 @@
+# Files authored in the copy, grouped by declared source root
+
+Copy: /tmp/passuff-s12-full
+Trial revision: d63cdc84d89ac729d4460b63da181d180e209d0b
+
+## Build root (outside every declared role)
+```
+Cargo.toml
+Cargo.lock
+rust-toolchain.toml
+builder-notes.md
+```
+
+## crates/passuff-cli
+```
+crates/passuff-cli/Cargo.toml
+crates/passuff-cli/assets/notification.wav
+crates/passuff-cli/src/bin/passuff-tui.rs
+crates/passuff-cli/src/cli.rs
+crates/passuff-cli/src/delivery.rs
+crates/passuff-cli/src/lib.rs
+crates/passuff-cli/src/main.rs
+crates/passuff-cli/src/render.rs
+crates/passuff-cli/src/runtime.rs
+crates/passuff-cli/src/tui/mod.rs
+crates/passuff-cli/src/tui/render.rs
+crates/passuff-cli/tests/features_runner.rs
+crates/passuff-cli/tests/steps/dispatch.rs
+crates/passuff-cli/tests/steps/mod.rs
+crates/passuff-cli/tests/steps/specs.rs
+crates/passuff-cli/tests/steps/world.rs
+```
+
+## crates/passuff-core
+```
+crates/passuff-core/Cargo.toml
+crates/passuff-core/src/classifier.rs
+crates/passuff-core/src/core.rs
+crates/passuff-core/src/credential.rs
+crates/passuff-core/src/github.rs
+crates/passuff-core/src/lib.rs
+crates/passuff-core/src/model.rs
+crates/passuff-core/src/state.rs
+```
+
+## crates/passuff-config
+```
+crates/passuff-config/Cargo.toml
+crates/passuff-config/src/lib.rs
+```
+
+## scripts
+```
+scripts/verify.sh
+```

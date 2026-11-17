@@ -1,0 +1,40 @@
+# S12 sandbox
+
+Copy: `/tmp/passuff-s12-full`
+Manifest: `/tmp/passuff-s12-full.yaml`
+Trial revision: `d63cdc84d89ac729d4460b63da181d180e209d0b`
+
+## Environment
+
+```text
+givn 0.9.20
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+cargo 1.99.1 (5f94df478 2026-08-27)
+Linux morbo 6.12.107+deb13-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.107-1 (2026-08-29) x86_64 GNU/Linux
+```
+
+## Registry scan before the builder
+
+```text
+$ find "$HOME/.cargo/registry/src" "$HOME/.cargo/registry/cache" -maxdepth 2 -name 'passuff*' -print
+(no output)
+```
+
+The scan is empty. The published `passuff` 0.1.0 to 0.1.2 crate sources are not
+in the registry: the `S11` trial moved them to
+`/tmp/passuff-s11-registry-quarantine` and they were not restored. That
+directory still holds the `cache/` and `src/` entries. `S12` moved nothing; its
+own `/tmp/passuff-s12-registry-quarantine` is empty.
+
+The builder is instructed not to read `/tmp/passuff-s11-registry-quarantine`,
+the checkout, or any published `passuff` source, and every cargo command runs
+with `--offline`.
+
+## Registry scan after the frozen run
+
+```text
+$ find "$HOME/.cargo/registry/src" "$HOME/.cargo/registry/cache" -maxdepth 2 -name 'passuff*' -print
+(no output)
+```
+
+No registry change was made by S12; the S11 quarantine at /tmp/passuff-s11-registry-quarantine still holds the published sources and /tmp/passuff-s12-registry-quarantine is empty. The environment needs no restore.

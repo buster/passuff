@@ -322,6 +322,13 @@ difference, not a reason to copy the package. Save the full log as
 `evidence/ise/e2e-run.txt` and the four counts as
 `evidence/ise/e2e-result.json`.
 
+**Post-trial correction.** The rebuilt runner selected 0 scenarios when
+`GIVN_FEATURES` was this absolute directory (`component-result.json` reports
+`total: 0`). The copy's declared `./scripts/verify.sh` selected 215 and passed
+them; that run is `component-run-declared-surface.txt`. The gap table records
+the difference as G2 (`acceptable undocumented change`: `docs/limits.md` does
+not state the accepted `GIVN_FEATURES` forms).
+
 ### 5. Triage
 
 Classify every difference between the rebuilt product and the retained

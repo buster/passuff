@@ -1,0 +1,166 @@
+scope: ise-manifest/v1
+revision: d63cdc84d89ac729d4460b63da181d180e209d0b
+removed_paths:
+- crates/passuff-cli/Cargo.toml
+- crates/passuff-cli/assets/notification.wav
+- crates/passuff-cli/src/args.rs
+- crates/passuff-cli/src/bin/passuff-tui.rs
+- crates/passuff-cli/src/delivery.rs
+- crates/passuff-cli/src/lib.rs
+- crates/passuff-cli/src/main.rs
+- crates/passuff-cli/src/paths.rs
+- crates/passuff-cli/src/render.rs
+- crates/passuff-cli/src/runtime.rs
+- crates/passuff-cli/src/setup.rs
+- crates/passuff-cli/src/sound.rs
+- crates/passuff-cli/src/tui/app.rs
+- crates/passuff-cli/src/tui/keys.rs
+- crates/passuff-cli/src/tui/markdown.rs
+- crates/passuff-cli/src/tui/mod.rs
+- crates/passuff-cli/src/tui/render.rs
+- crates/passuff-cli/tests/features_runner.rs
+- crates/passuff-cli/tests/steps/commands.rs
+- crates/passuff-cli/tests/steps/mod.rs
+- crates/passuff-cli/tests/steps/setup.rs
+- crates/passuff-cli/tests/steps/tui.rs
+- crates/passuff-cli/tests/support/clock.rs
+- crates/passuff-cli/tests/support/fake.rs
+- crates/passuff-cli/tests/support/mod.rs
+- crates/passuff-cli/tests/support/world.rs
+- crates/passuff-config/Cargo.toml
+- crates/passuff-config/src/lib.rs
+- crates/passuff-core/Cargo.toml
+- crates/passuff-core/src/classifier.rs
+- crates/passuff-core/src/core.rs
+- crates/passuff-core/src/credentials.rs
+- crates/passuff-core/src/github.rs
+- crates/passuff-core/src/inbox.rs
+- crates/passuff-core/src/lib.rs
+- crates/passuff-core/src/model.rs
+- crates/passuff-core/src/probe.rs
+- crates/passuff-core/src/state.rs
+- scripts/bundle-macos.sh
+- scripts/json_to_cobertura.py
+- scripts/qualify-e2e.sh
+- scripts/qualify/ci-recovery-unseen.patch
+- scripts/qualify/credentials-token-file-mode.patch
+- scripts/qualify/dedupe-replays-comment.patch
+- scripts/qualify/delivery-silent-ok.patch
+- scripts/qualify/inbox-paging-skips-selected-page.patch
+- scripts/qualify/key-parser-unbinds-quit.patch
+- scripts/qualify/migration-not-persisted.patch
+- scripts/qualify/narrow-size-blind.patch
+- scripts/qualify/narrow-size-threshold.patch
+- scripts/qualify/observe-empty-payload.patch
+- scripts/qualify/own-comment-not-read.patch
+- scripts/qualify/quarantine-not-moved.patch
+- scripts/qualify/read-argument-guard.patch
+- scripts/qualify/scope-filter-dropped.patch
+- scripts/qualify/server-error-success.patch
+- scripts/qualify/setup-drops-accounts.patch
+- scripts/qualify/status-unread-count.patch
+- scripts/qualify/tab-does-not-switch.patch
+- scripts/qualify/transport-failure-skipped.patch
+- scripts/qualify/watch-interval-capped.patch
+- scripts/verify.sh
+specification_files:
+- README.md
+- docs/arc42/02-architecture-constraints.md
+- docs/arc42/03-context-and-scope.md
+- docs/domain-model.md
+- docs/glossary.md
+- docs/limits.md
+- docs/reference.md
+- givn/specification.yaml
+- givn/specs/change-watch-scope/usecase.md
+- givn/specs/change-watch-scope/watch-scope.feature
+- givn/specs/inspect-watch-status/usecase.md
+- givn/specs/inspect-watch-status/watch-status.feature
+- givn/specs/review-activity-inbox/activity-inbox.feature
+- givn/specs/review-activity-inbox/inbox-navigation.feature
+- givn/specs/review-activity-inbox/usecase.md
+- givn/specs/review-pull-request-stacks/stacked-inbox.feature
+- givn/specs/review-pull-request-stacks/usecase.md
+- givn/specs/set-up-passuff/initial-setup.feature
+- givn/specs/set-up-passuff/usecase.md
+- givn/specs/watch-pull-requests/pr-activity-notification.feature
+- givn/specs/watch-pull-requests/usecase.md
+source_kept_files: []
+end_to_end_files:
+- crates/passuff-e2e/Cargo.lock
+- crates/passuff-e2e/Cargo.toml
+- crates/passuff-e2e/tests/e2e_runner.rs
+- crates/passuff-e2e/tests/harness/bin.rs
+- crates/passuff-e2e/tests/harness/child.rs
+- crates/passuff-e2e/tests/harness/github.rs
+- crates/passuff-e2e/tests/harness/mod.rs
+- crates/passuff-e2e/tests/harness/pty.rs
+- crates/passuff-e2e/tests/harness/world.rs
+- crates/passuff-e2e/tests/steps/cli.rs
+- crates/passuff-e2e/tests/steps/mod.rs
+- crates/passuff-e2e/tests/steps/tui.rs
+- givn/specs/change-watch-scope/watch-scope.feature
+- givn/specs/inspect-watch-status/watch-status.feature
+- givn/specs/review-activity-inbox/activity-inbox.feature
+- givn/specs/review-activity-inbox/inbox-navigation.feature
+- givn/specs/set-up-passuff/initial-setup.feature
+- givn/specs/watch-pull-requests/pr-activity-notification.feature
+counts:
+  specification_files: 21
+  source_kept: 0
+  source_removed: 62
+  outside_spec_copy: 94
+  files_beside_removed_paths: 0
+checksums:
+  specification:
+    README.md: 9e1b71ed64895eca5d6f42808aee9c82ec02dd8404d775b77adf7d40d2eebbff
+    docs/arc42/02-architecture-constraints.md: a48508ab8c5b77e58c56044d720467b0cbbc5f88a301c0da5beb94075467701b
+    docs/arc42/03-context-and-scope.md: 5a3f1c3b87bb88b7463dc926845be689b5e816a2530d3435faf76129e3a4954f
+    docs/domain-model.md: d6868a91239a3d4824bdbae683cf8b0a2814f65c59bb2ef8b96f41a9e94907ea
+    docs/glossary.md: eda365f88981759f70f8dc51135e7e917818ec62515a006f39820198c5ac2826
+    docs/limits.md: ae043f1bf0bac3f1384f85d03c289791f81cf99f01b62fd24890df54977f1f05
+    docs/reference.md: fa6fd3d925affa6c62e5478786546978df7de75853a181668a6a2c0e22f71015
+    givn/specification.yaml: dab8ced4b68ab23793fbe1556630eb11ed3f80d0a7a58fd0027c2ef595896d7d
+    givn/specs/change-watch-scope/usecase.md: 0324550c03891bf3024f75b2a5db07dfd2a1d955f492d8ad9c7a850c56dc1cda
+    givn/specs/change-watch-scope/watch-scope.feature: ad0216e5b730af38a5daa87f414faf997908eb5cc3fdd69e044abf66adb7ae98
+    givn/specs/inspect-watch-status/usecase.md: 05a071c9273bc0b11e2cb1c6a9c66bb63d2a3501f52bdfa0045f69dae46300e3
+    givn/specs/inspect-watch-status/watch-status.feature: 58ada2a7bf215858850349ecbb92465b49defcad3889edefeaf82b3b5b5ac55f
+    givn/specs/review-activity-inbox/activity-inbox.feature: 6111f175a083a136b96ae420545f69d8dfa563065c14eda2c6042f3381ec6c94
+    givn/specs/review-activity-inbox/inbox-navigation.feature: 5adee03f9748e2d1377dcf1b1faa9e0171f7f15c848ebf4543d82839e5fea2e6
+    givn/specs/review-activity-inbox/usecase.md: d9ad408e7a721fc6b1cde810209cfaa943eca87d291feeb611ca3dfa59ced0b9
+    givn/specs/review-pull-request-stacks/stacked-inbox.feature: 90562a4beee2ae62ed3f464c62f0e4a56a4533d121c157f32592cf92c6de5124
+    givn/specs/review-pull-request-stacks/usecase.md: d8ba6f891e20c6ec8b26a6900047dcac0de1002737378e047f5aad155c694276
+    givn/specs/set-up-passuff/initial-setup.feature: 151c9eea745dd43e6671744b0fd4a47db20af11e67d888cfcb7a44df10419d0d
+    givn/specs/set-up-passuff/usecase.md: 8189c7668389a70b692c4d4bed8c0ab86cf7b6c49b81a270084a4b443fe24261
+    givn/specs/watch-pull-requests/pr-activity-notification.feature: a641d96c71a9d48325d0a90d8dc233a99135fa4a1305a42edd5608d949b600be
+    givn/specs/watch-pull-requests/usecase.md: 46b10cdae4ad6d1f7f7f7c4aaad8728cedc05945047416ad6054b6fe53310a37
+  end_to_end:
+    crates/passuff-e2e/Cargo.lock: fffee9afb85fb19c46d3018413b5587461a82c46505538bd32fb7f53464c1d25
+    crates/passuff-e2e/Cargo.toml: 194f5f6e4958d8e9bcd18c8866c09410ef2b3aacad1567c653acb510ee6bcf27
+    crates/passuff-e2e/tests/e2e_runner.rs: e4827641afe49fe1b3f1ce8e57eeda7d9d119d54ac9edbea3955c5c53c4b032e
+    crates/passuff-e2e/tests/harness/bin.rs: d6163607e58893c36b1b0470c0a5f8a9e834781d1fb9c1607937cfb7a133c45b
+    crates/passuff-e2e/tests/harness/child.rs: 5ee0eb85eacbf32b94bbfcad51474ec32ad76bc0e6941e165e09869e68853baf
+    crates/passuff-e2e/tests/harness/github.rs: 8b360c194e647022fa329b41e97104883bf46dd01af11ee9e25377345f985db0
+    crates/passuff-e2e/tests/harness/mod.rs: ab17554cfaff6f5e24defdda339eac86d42838b0139576889a5c86e0887e118a
+    crates/passuff-e2e/tests/harness/pty.rs: c1f4f281ec7058b765b86abf9989a350d114bcf87e5ef5bcf64e58e5409045a0
+    crates/passuff-e2e/tests/harness/world.rs: 6ed79a87c14ae09d706398dd50a92def59df845c8199058f5ce797768ccbd672
+    crates/passuff-e2e/tests/steps/cli.rs: c4f7e285a8b406b49c5d48d1f3a464dfa18b31307c3b9f9c83bd86b448447e1d
+    crates/passuff-e2e/tests/steps/mod.rs: dbca44006cac2c744a2e85e6649477f41c06c2bcce86953926ed1e1ab4105e55
+    crates/passuff-e2e/tests/steps/tui.rs: d648b65ec608ca9c6f057464819ed00ef6a7f02bbad1fb862230d8f6f40743fc
+    givn/specs/change-watch-scope/watch-scope.feature: ad0216e5b730af38a5daa87f414faf997908eb5cc3fdd69e044abf66adb7ae98
+    givn/specs/inspect-watch-status/watch-status.feature: 58ada2a7bf215858850349ecbb92465b49defcad3889edefeaf82b3b5b5ac55f
+    givn/specs/review-activity-inbox/activity-inbox.feature: 6111f175a083a136b96ae420545f69d8dfa563065c14eda2c6042f3381ec6c94
+    givn/specs/review-activity-inbox/inbox-navigation.feature: 5adee03f9748e2d1377dcf1b1faa9e0171f7f15c848ebf4543d82839e5fea2e6
+    givn/specs/set-up-passuff/initial-setup.feature: 151c9eea745dd43e6671744b0fd4a47db20af11e67d888cfcb7a44df10419d0d
+    givn/specs/watch-pull-requests/pr-activity-notification.feature: a641d96c71a9d48325d0a90d8dc233a99135fa4a1305a42edd5608d949b600be
+  scenarios:
+    givn/specs/change-watch-scope/watch-scope.feature: e643e2b993e69099e664eedd1d665f8865a08d27d3e1f32995c0def4b515b764
+    givn/specs/inspect-watch-status/watch-status.feature: 5a7333cad6aa82f930e583943651e1e3ae67231a040a17bba190e508548104d6
+    givn/specs/review-activity-inbox/activity-inbox.feature: f98f3ac7ec712f6ad8605b468bdf653e0d7f922de845ab0722d9f016e9384778
+    givn/specs/review-activity-inbox/inbox-navigation.feature: 99012449d049556d1263862fc3dea493d8d3fe146f43293155805ebc14e13887
+    givn/specs/set-up-passuff/initial-setup.feature: 3c9f70308114ea4b107808be8acce4125d5209792d3effc7611e81ba49fbdf10
+    givn/specs/watch-pull-requests/pr-activity-notification.feature: 400a3db1312831fc7cb82d61a3246e1eb30cde48ec5b0882f21c73d07714a79f
+specification_checksum: c338db8e544ea3af5b153b8e2e9176dd2777b3fd13b9524660702f9bade5ef7d
+end_to_end_checksum: 66f9875e6bacae4c1731ae136d0af0561a405e60138b45d0324a5f20e8cfad84
+copy_directory: /tmp/passuff-s12-full
+givn_version: 0.9.20

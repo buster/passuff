@@ -1,0 +1,12 @@
+Backend: git
+Revision: d63cdc84d89ac729d4460b63da181d180e209d0b
+Specification files: 21
+Source code kept: 0
+Source code removed: 62
+Outside the spec copy: 94
+Files beside removed paths: 0
+Specification checksum: c338db8e544e
+End-to-end checksum: 66f9875e6bac
+End-to-end tests: not copied (12 files)
+Copy directory: /tmp/passuff-s12-full
+Manifest: /tmp/passuff-s12-full.yaml

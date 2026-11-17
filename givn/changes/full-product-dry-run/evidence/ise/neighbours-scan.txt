@@ -1,0 +1,62 @@
+copy files (excluding target/ and builder-notes.md): 51
+neighbours outside the Specification and source roots: 3
+
+--- neighbours
+Cargo.lock
+Cargo.toml
+rust-toolchain.toml
+
+--- rebuilt files per source root
+crates/passuff-cli: 16
+crates/passuff-core: 8
+crates/passuff-config: 2
+scripts: 1
+
+--- invented paths inside a source root (5)
+crates/passuff-cli/src/cli.rs
+crates/passuff-cli/tests/steps/dispatch.rs
+crates/passuff-cli/tests/steps/specs.rs
+crates/passuff-cli/tests/steps/world.rs
+crates/passuff-core/src/credential.rs
+
+--- revision paths under a source root the rebuild did not recreate (40)
+crates/passuff-cli/src/args.rs
+crates/passuff-cli/src/paths.rs
+crates/passuff-cli/src/setup.rs
+crates/passuff-cli/src/sound.rs
+crates/passuff-cli/src/tui/app.rs
+crates/passuff-cli/src/tui/keys.rs
+crates/passuff-cli/src/tui/markdown.rs
+crates/passuff-cli/tests/steps/commands.rs
+crates/passuff-cli/tests/steps/setup.rs
+crates/passuff-cli/tests/steps/tui.rs
+crates/passuff-cli/tests/support/clock.rs
+crates/passuff-cli/tests/support/fake.rs
+crates/passuff-cli/tests/support/mod.rs
+crates/passuff-cli/tests/support/world.rs
+crates/passuff-core/src/credentials.rs
+crates/passuff-core/src/inbox.rs
+crates/passuff-core/src/probe.rs
+scripts/bundle-macos.sh
+scripts/json_to_cobertura.py
+scripts/qualify-e2e.sh
+scripts/qualify/ci-recovery-unseen.patch
+scripts/qualify/credentials-token-file-mode.patch
+scripts/qualify/dedupe-replays-comment.patch
+scripts/qualify/delivery-silent-ok.patch
+scripts/qualify/inbox-paging-skips-selected-page.patch
+scripts/qualify/key-parser-unbinds-quit.patch
+scripts/qualify/migration-not-persisted.patch
+scripts/qualify/narrow-size-blind.patch
+scripts/qualify/narrow-size-threshold.patch
+scripts/qualify/observe-empty-payload.patch
+scripts/qualify/own-comment-not-read.patch
+scripts/qualify/quarantine-not-moved.patch
+scripts/qualify/read-argument-guard.patch
+scripts/qualify/scope-filter-dropped.patch
+scripts/qualify/server-error-success.patch
+scripts/qualify/setup-drops-accounts.patch
+scripts/qualify/status-unread-count.patch
+scripts/qualify/tab-does-not-switch.patch
+scripts/qualify/transport-failure-skipped.patch
+scripts/qualify/watch-interval-capped.patch
