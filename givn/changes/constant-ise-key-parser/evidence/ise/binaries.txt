@@ -1,0 +1,2 @@
+3dd5562ce4bfab65062d3fa4a30a253f4e6f2acf85349c53cf610333ef332d4a  target/debug/passuff
+f29e793c5ca5c3ad12448585953c3cdd4e3e9bc1f2154771b95f5995f2a7bc0f  target/debug/passuff-tui

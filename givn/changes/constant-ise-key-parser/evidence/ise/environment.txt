@@ -1,0 +1,6 @@
+givn: givn 0.9.20
+rustc: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+cargo: cargo 1.99.1 (5f94df478 2026-08-27)
+uname: Linux 6.12.107+deb13-amd64 x86_64
+trial revision: b23d060d1c8a408d695b0e526414471bcad4b6a9
+copy: /tmp/passuff-s11-keys

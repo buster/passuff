@@ -1,0 +1,28 @@
+== quarantine path ==
+/tmp/passuff-s11-registry-quarantine
+
+== before ==
+== before ==
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-config-0.1.1
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-0.1.1
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-config-0.1.2
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-config-0.1.0
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-core-0.1.1
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-core-0.1.2
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-0.1.0
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-0.1.2
+/home/buster/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/passuff-core-0.1.0
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-0.1.0.crate
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-core-0.1.0.crate
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-config-0.1.0.crate
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-0.1.1.crate
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-config-0.1.1.crate
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-core-0.1.1.crate
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-0.1.2.crate
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-config-0.1.2.crate
+/home/buster/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/passuff-core-0.1.2.crate
+Error: /home/buster/.cargo/registry/git: No such file or directory (os error 2)
+
+== after ==
+== after ==
+Error: /home/buster/.cargo/registry/git: No such file or directory (os error 2)

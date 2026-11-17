@@ -1,0 +1,12 @@
+Backend: git
+Revision: b23d060d1c8a408d695b0e526414471bcad4b6a9
+Specification files: 21
+Source code kept: 61
+Source code removed: 1
+Outside the spec copy: 67
+Files beside removed paths: 4
+Specification checksum: c338db8e544e
+End-to-end checksum: 66f9875e6bac
+End-to-end tests: not copied (12 files)
+Copy directory: /tmp/passuff-s11-keys
+Manifest: /tmp/passuff-s11-keys.yaml

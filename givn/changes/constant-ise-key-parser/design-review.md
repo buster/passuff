@@ -45,12 +45,17 @@ product behavior change.
 | F2 | The frozen suite does not exercise `--keys` directly, so it cannot catch a narrowed string vocabulary by itself. | Accepted and mitigated: the component suite in the copy binds the scenario phrases through `parse_keys`, the kept `map_key` carries the full mapping, and the design records the limit. The frozen suite remains the acceptance authority. |
 | F3 | The design names the exact evidence paths and the copy directory under `/tmp`; a rerun would collide. | Hardened: the evidence command uses a fixed trial directory that must not exist; a rerun removes or renames the old copy first. The manifest and logs record the revision and the copy path. |
 | F4 | A `Specification defect` would leave no frozen result, which could be mistaken for a trial failure. | Hardened: the design and tasks state that a gap stops the rebuild attempt and is archived as the trial result, with the gap record naming the document. No invented rule is graded. |
+| F5 | The design predicted `End-to-end tests: not copied (13 files)`; the prepare report printed 12 at the trial revision. | Corrected in `design.md` after the prepare. The frozen set is 12 files at revision `b23d060`; both compare subjects still match. |
+| F6 | The reconstructed build root chose different dependency versions and features from the checkout: `toml 0.8`/`toml_edit 0.22` instead of `1`/`0.23`, `clap` without `env`, `reqwest` without `default-features = false` and `rustls-tls`, `tokio` without `sync`, `rust-version 1.85` instead of `1.88`, and no `[profile.dev]`/`[profile.test]`. | Recorded as a neighbour and builder assumption, not a parser `Specification defect`. The build root is outside every declared role, so the copy omits it; the builder reconstructed it from the kept manifests. The component suite (215/215) and the frozen suite (29/29) pass with the reconstruction. The copy is not promoted. |
 
 ## Re-confirmation
 
-No post-review design change has been made. The design's decisions, the
-technology table, the strict-mode section, the trial commands, the evidence
-layout, and the arc42 assessment were re-read against the served design and
+After the prepare, the report printed 12 frozen files, not 13; `design.md` was
+corrected. The builder's reconstructed build root differs from the checkout in
+dependency versions and features (F6); the design already classified the build
+root as a neighbour, and the trial records the exact differences. The design's
+decisions, the trial commands, the boundary, the gap rule, the evidence layout,
+and the arc42 assessment were re-read against the served design and
 design-review instructions. The verdict stands.
 
 ## Verdict

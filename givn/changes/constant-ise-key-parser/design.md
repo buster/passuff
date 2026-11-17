@@ -159,7 +159,7 @@ givn ise rebuild-component crates/passuff-cli/src/tui/keys.rs \
 
 The report must show one removed path, the retained Specification count, the
 kept source count, the outside count, the sibling count, both checksums, and
-`End-to-end tests: not copied (13 files)`. Save the output as
+`End-to-end tests: not copied (12 files)`. Save the output as
 `evidence/ise/prepare.txt` and the manifest as `evidence/ise/manifest.yaml`.
 
 ### 3. Baseline and builder

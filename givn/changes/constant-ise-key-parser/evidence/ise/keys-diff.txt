@@ -1,0 +1,222 @@
+--- /tmp/passuff-s11-keys/crates/passuff-cli/src/tui/keys.rs	2026-11-17 18:22:55.633632059 +0100
++++ /home/buster/projects/gh-notify/crates/passuff-cli/src/tui/keys.rs	2026-11-11 14:12:56.422973795 +0100
+@@ -1,13 +1,3 @@
+-//! Key tokens for the inbox TUI.
+-//!
+-//! The terminal event loop maps `crossterm` codes onto [`Key`] in
+-//! `tui::map_key`; the `--keys` option and the component scenarios use
+-//! [`parse_keys`] to turn a comma-separated phrase into the same sequence.
+-
+-/// One TUI key after the terminal-independent mapping.
+-///
+-/// The variants are the actions `TuiApp::handle_key` and its overlay handlers
+-/// distinguish; `Char` carries any other printable character unchanged.
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ pub enum Key {
+     Tab,
+@@ -21,6 +11,10 @@
+     Enter,
+     Esc,
+     Quit,
++    Left,
++    Right,
++    Space,
++    Help,
+     MarkRead,
+     MarkAllRead,
+     ToggleUnread,
+@@ -32,148 +26,62 @@
+     FilterStack,
+     ToggleIgnore,
+     ToggleIgnoredVisibility,
+-    Left,
+-    Right,
+     OpenSettings,
+     OpenPicker,
+-    Help,
+     ToggleMode,
+-    Space,
+     Char(char),
+ }
+ 
+-/// Parse a comma-separated key phrase.
+-///
+-/// Each segment is trimmed and either a documented key name (`tab`, `backtab`,
+-/// `down`, `up`, `pageup`, `pagedown`, `home`, `end`, `enter`, `esc`, `left`,
+-/// `right`, `space`, `comma`) or a single character, mapped exactly as the
+-/// terminal event loop maps a character key. Empty segments are skipped, so an
+-/// empty phrase yields an empty sequence.
+ pub fn parse_keys(value: &str) -> Result<Vec<Key>, String> {
+     let mut keys = Vec::new();
+-    for segment in value.split(',') {
+-        let token = segment.trim();
+-        if token.is_empty() {
++    for raw in value.split(',') {
++        let raw = raw.trim();
++        if raw.is_empty() {
+             continue;
+         }
+-        keys.push(parse_key(token).ok_or_else(|| format!("unknown key: {token}"))?);
++        let key = match raw {
++            "S" => Key::SortReverse,
++            "F" => Key::FilterStack,
++            "C" => Key::ResetView,
++            "H" => Key::Help,
++            _ => match raw.to_ascii_lowercase().as_str() {
++                "tab" => Key::Tab,
++                "backtab" => Key::BackTab,
++                "down" | "j" => Key::Down,
++                "up" | "k" => Key::Up,
++                "pageup" => Key::PageUp,
++                "pagedown" => Key::PageDown,
++                "home" => Key::Home,
++                "end" => Key::End,
++                "enter" => Key::Enter,
++                "esc" => Key::Esc,
++                "q" => Key::Quit,
++                "left" => Key::Left,
++                "right" => Key::Right,
++                "space" => Key::Space,
++                "comma" => Key::Char(','),
++                "h" | "f1" => Key::Help,
++                "r" => Key::MarkRead,
++                "a" => Key::MarkAllRead,
++                "u" => Key::ToggleUnread,
++                "c" => Key::ClearFilter,
++                "x" => Key::ToggleIgnore,
++                "s" => Key::SortNext,
++                "f" => Key::FilterPullRequest,
++                "p" => Key::OpenPicker,
++                "m" => Key::ToggleMode,
++                "y" => Key::Char('y'),
++                "n" => Key::Char('n'),
++                _ => {
++                    if raw.chars().count() == 1 {
++                        Key::Char(raw.chars().next().unwrap_or_default())
++                    } else {
++                        return Err(format!("unknown key: {raw}"));
++                    }
++                }
++            },
++        };
++        keys.push(key);
+     }
+     Ok(keys)
+ }
+-
+-fn parse_key(token: &str) -> Option<Key> {
+-    let named = match token {
+-        "tab" => Some(Key::Tab),
+-        "backtab" => Some(Key::BackTab),
+-        "down" => Some(Key::Down),
+-        "up" => Some(Key::Up),
+-        "pageup" => Some(Key::PageUp),
+-        "pagedown" => Some(Key::PageDown),
+-        "home" => Some(Key::Home),
+-        "end" => Some(Key::End),
+-        "enter" => Some(Key::Enter),
+-        "esc" => Some(Key::Esc),
+-        "left" => Some(Key::Left),
+-        "right" => Some(Key::Right),
+-        "space" => Some(Key::Space),
+-        "comma" => Some(Key::OpenSettings),
+-        _ => None,
+-    };
+-    if named.is_some() {
+-        return named;
+-    }
+-    let mut characters = token.chars();
+-    let character = characters.next()?;
+-    if characters.next().is_some() {
+-        return None;
+-    }
+-    Some(character_key(character))
+-}
+-
+-/// The same character mapping the terminal event loop applies in `map_key`.
+-fn character_key(character: char) -> Key {
+-    match character {
+-        'j' => Key::Down,
+-        'k' => Key::Up,
+-        'q' => Key::Quit,
+-        'r' => Key::MarkRead,
+-        'a' => Key::MarkAllRead,
+-        'u' => Key::ToggleUnread,
+-        'c' => Key::ClearFilter,
+-        'C' => Key::ResetView,
+-        'S' => Key::SortReverse,
+-        's' => Key::SortNext,
+-        'x' => Key::ToggleIgnore,
+-        'f' => Key::FilterPullRequest,
+-        'F' => Key::FilterStack,
+-        'h' | 'H' => Key::Help,
+-        'p' => Key::OpenPicker,
+-        ',' => Key::OpenSettings,
+-        ' ' => Key::Space,
+-        other => Key::Char(other),
+-    }
+-}
+-
+-#[cfg(test)]
+-mod tests {
+-    use super::*;
+-
+-    #[test]
+-    fn parses_documented_names() {
+-        assert_eq!(
+-            parse_keys("tab,backtab,j,down,k,up,r,a,q,enter,esc,left,right,pageup,pagedown,home,end,x,comma,space")
+-                .expect("documented keys"),
+-            vec![
+-                Key::Tab,
+-                Key::BackTab,
+-                Key::Down,
+-                Key::Down,
+-                Key::Up,
+-                Key::Up,
+-                Key::MarkRead,
+-                Key::MarkAllRead,
+-                Key::Quit,
+-                Key::Enter,
+-                Key::Esc,
+-                Key::Left,
+-                Key::Right,
+-                Key::PageUp,
+-                Key::PageDown,
+-                Key::Home,
+-                Key::End,
+-                Key::ToggleIgnore,
+-                Key::OpenSettings,
+-                Key::Space,
+-            ]
+-        );
+-    }
+-
+-    #[test]
+-    fn parses_scenario_characters() {
+-        assert_eq!(
+-            parse_keys("s,S,f,F,h,u,c,C,p").expect("scenario characters"),
+-            vec![
+-                Key::SortNext,
+-                Key::SortReverse,
+-                Key::FilterPullRequest,
+-                Key::FilterStack,
+-                Key::Help,
+-                Key::ToggleUnread,
+-                Key::ClearFilter,
+-                Key::ResetView,
+-                Key::OpenPicker,
+-            ]
+-        );
+-    }
+-
+-    #[test]
+-    fn skips_empty_segments() {
+-        assert_eq!(parse_keys(" tab , , j ").expect("spaced"), vec![Key::Tab, Key::Down]);
+-        assert!(parse_keys("").expect("empty").is_empty());
+-    }
+-
+-    #[test]
+-    fn rejects_unknown_names() {
+-        assert_eq!(parse_keys("tab,nope").unwrap_err(), "unknown key: nope");
+-    }
+-}

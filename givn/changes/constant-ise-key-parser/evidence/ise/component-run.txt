@@ -1,0 +1,1989 @@
+   Compiling passuff v0.1.3 (/tmp/passuff-s11-keys/crates/passuff-cli)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.29s
+     Running tests/features_runner.rs (target/debug/deps/features_runner-aa0b05a3d7c77f42)
+Feature: Watch scope editing
+  Scenario: Developer toggles a repository in the watch scope
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer selects "acme/api" in the watch scope
+   ✔  Then the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  And the picker shows "Watch scope"
+   ✔  And the picker shows "[x] acme/api"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "acme/api#42"
+   ✔  When the developer deselects "acme/api" in the watch scope
+   ✔  Then the watch scope does not contain "acme/api"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI does not show "acme/api#42"
+   ✔  And the state retains "acme/api#42"
+  Scenario: The picker shows the known repositories
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  When the developer opens the scope picker
+   ✔  Then the picker shows "Watch scope"
+   ✔  And the picker shows "[x] acme/api"
+   ✔  And the picker shows "selected"
+  Scenario: A deselected repository stops observation
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope does not contain "acme/api"
+   ✔  When "alice" comments "While away" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript does not report "New comment from @alice"
+   ✔  And the state retains "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI does not show "acme/api#42"
+  Scenario: The watcher reloads the scope without a restart
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/web#7"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  And a watcher is running with a configuration path
+   ✔  When the developer selects "acme/web" in the watch scope
+   ✔  And "bob" comments "After reload" on "acme/web#7"
+   ✔  And the watcher runs another cycle
+   ✔  Then the activity "New comment from @bob" is unread
+  Scenario: Developer switches the watch scope mode
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  When the developer switches the watch scope to "all"
+   ✔  Then the watch scope mode is "all"
+   ✔  When the developer opens the scope picker
+   ✔  Then the picker shows "Mode: all"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "watch scope: all authored pull requests"
+   ✔  When the developer switches the watch scope to "selected"
+   ✔  Then the watch scope contains "acme/api"
+   ✔  When the developer opens the scope picker
+   ✔  Then the picker shows "Mode: selected"
+  Scenario: Switching to selected with no retained set observes nothing
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watch scope mode is "all"
+   ✔  When the developer switches the watch scope to "selected"
+   ✔  Then the watch scope mode is "selected"
+   ✔  And the watch scope is empty
+   ✔  And the watch scope does not contain "acme/api"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "watching nothing"
+  Scenario: The last deselection observes nothing
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  When the developer deselects "acme/api" in the watch scope
+   ✔  Then the watch scope mode is "selected"
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "watching nothing"
+  Scenario: Switching to all observes every repository
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/web#7"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  When the developer switches the watch scope to "all"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "acme/api#42"
+   ✔  And the TUI shows "acme/web#7"
+  Scenario: Selecting a repository with no records records a baseline
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope does not contain "acme/api"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  When the developer selects "acme/api" in the watch scope
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Fresh baseline recorded for acme/api#42"
+  Scenario: An invalid repository entry is rejected
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the watch scope mode is "selected"
+   ✔  When the developer selects "acme" in the watch scope
+   ✔  Then the TUI reports "owner/repo"
+   ✔  And the watch scope does not contain "acme"
+  Scenario: Reselecting catches up silently
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope does not contain "acme/api"
+   ✔  And passuff runs one check
+   ✔  When "alice" comments "While you were away" on "acme/api#42"
+   ✔  And the developer selects "acme/api" in the watch scope
+   ✔  And passuff runs one check
+   ✔  Then the activity "New comment from @alice" is unread
+   ✔  And the transcript does not report "New comment from @alice"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "comment by @alice"
+  Scenario: A scope write failure keeps the previous scope
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  And the configuration directory cannot be written
+   ✔  When the developer selects "acme/web" in the watch scope
+   ✔  Then the TUI reports "cannot write configuration"
+   ✔  And the watch scope contains "acme/api"
+   ✔  And the watch scope does not contain "acme/web"
+  Scenario: Deselecting hides status and activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope does not contain "acme/api"
+   ✔  When "alice" comments "Before deselect" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer asks for status
+   ✔  Then the transcript does not report "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI does not show "comment by @alice"
+   ✔  And the state retains "acme/api#42"
+  Scenario: Two accounts share the global scope
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a configured account "work" with login "octo-work"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/web#7"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  When passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "acme/api#42"
+   ✔  And the TUI does not show "acme/web#7"
+  Scenario: A reload failure keeps the previous scope
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watch scope mode is "selected"
+   ✔  And the watch scope contains "acme/api"
+   ✔  And a watcher is running with a configuration path
+   ✔  When the configuration file is corrupted
+   ✔  And the watcher runs another cycle
+   ✔  Then the transcript reports "configuration error"
+  Scenario: The picker shows the focus relations
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the scope picker
+   ✔  Then the picker shows "Focus"
+   ✔  And the picker shows "[x] authored"
+   ✔  And the picker shows "[x] assigned"
+   ✔  And the picker shows "[x] review requested"
+   ✔  And the picker shows "[x] team review"
+   ✔  And the picker does not show "Add:"
+   ✔  And the picker does not show "owner/name"
+  Scenario: Narrowing the focus persists the relation set
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer narrows the focus to "authored,assigned"
+   ✔  Then the focus relations are "authored,assigned"
+  Scenario: Developer narrows the focus in the watch scope
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer narrows the focus to "authored,assigned"
+   ✔  Then the focus relations are "authored,assigned"
+   ✔  And the picker shows "[x] authored"
+   ✔  And the picker shows "[ ] team review"
+Feature: Watch status
+  Scenario: Status lists configured accounts before the first check
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "personal not resolved"
+   ✔  And the transcript reports "last check never"
+  Scenario: Status shows the login and last check after a check
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When passuff runs one check
+   ✔  And the developer asks for status
+   ✔  Then the transcript reports "personal @octo-personal"
+   ✔  And the transcript does not report "last check never"
+  Scenario: Status shows the watch scope when all repositories are watched
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "watch scope: all authored pull requests"
+  Scenario: Status shows the watch scope when a repository allowlist is configured
+   ✔  Given the watch scope is limited to "acme/api"
+   ✔  And a configured account "personal" with login "octo-personal"
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "watch scope: acme/api"
+  Scenario: Status lists watched pull requests with their state and CI
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" is "merged"
+   ✔  And the watcher has already observed "acme/api#42" with a failing CI result
+   ✔  When passuff runs one check
+   ✔  And the developer asks for status
+   ✔  Then the transcript reports "acme/api#42 merged CI failing"
+   ✔  And the transcript reports "Pull request acme/api#42"
+   ✔  And the transcript does not report "Open"
+   ✔  And the transcript does not report "Success"
+  Scenario: Status lists multiple accounts
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a configured account "work" with login "octo-work"
+   ✔  When passuff runs one check
+   ✔  And the developer asks for status
+   ✔  Then the transcript reports "personal @octo-personal"
+   ✔  And the transcript reports "work @octo-work"
+  Scenario: Status reports unread and total activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer asks for status
+   ✔  Then the transcript reports "1 unread of 1"
+  Scenario: Status uses human labels for closed and pending
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" is "closed"
+   ✔  And the CI result on "acme/api#42" is "pending"
+   ✔  When passuff runs one check
+   ✔  And the developer asks for status
+   ✔  Then the transcript reports "acme/api#42 closed CI pending"
+  Scenario Outline: A read command rejects invalid configuration
+   ✔  Given a configured account "work" with no credential source
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "configuration error"
+   ✔  And the exit status is 2
+  Scenario Outline: A read command rejects invalid configuration
+   ✔  Given a configured account "work" with no credential source
+   ✔  When the developer lists the inbox
+   ✔  Then the transcript reports "configuration error"
+   ✔  And the exit status is 2
+  Scenario Outline: A read command rejects invalid configuration
+   ✔  Given a configured account "work" with no credential source
+   ✔  When the developer lists all activity
+   ✔  Then the transcript reports "configuration error"
+   ✔  And the exit status is 2
+  Scenario Outline: A read command rejects invalid configuration
+   ✔  Given a configured account "work" with no credential source
+   ✔  When the developer marks all activity read
+   ✔  Then the transcript reports "configuration error"
+   ✔  And the exit status is 2
+  Scenario: Status with no state shows empty sections
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And no state file
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "no watched pull requests"
+   ✔  And the transcript reports "0 unread of 0"
+   ✔  And the exit status is 0
+  Scenario: Developer sees the watch state
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When passuff runs one check
+   ✔  And the developer asks for status
+   ✔  Then the transcript reports "personal @octo-personal"
+   ✔  And the transcript reports "acme/api#42 open CI passing"
+   ✔  And the exit status is 0
+Feature: Activity inbox
+  Scenario: Inbox lists unread activity newest first
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer lists the inbox
+   ✔  Then the inbox shows "CI failing" before "New comment from @alice" for "acme/api#42"
+   ✔  And every inbox record is unread
+   ✔  And the inbox shows an activity id and occurrence time
+   ✔  And the transcript does not report "Open"
+   ✔  And the transcript does not report "Success"
+   ✔  And the transcript does not report "Can you split this migration?"
+  Scenario: Inbox with all includes read activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer marks the newest activity read
+   ✔  And the developer lists all activity
+   ✔  Then the inbox shows "New comment from @alice" for "acme/api#42" as read
+  Scenario: Read marks one activity read
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer marks the newest activity read
+   ✔  Then the transcript reports "1 activity record read"
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "0 unread of 1"
+  Scenario: Read all marks every activity read
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer marks all activity read
+   ✔  Then the transcript reports "2 activity records read"
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "0 unread of 2"
+  Scenario: Read marks only the named activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer marks the newest activity read
+   ✔  Then the transcript reports "1 activity record read"
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "1 unread of 2"
+   ✔  When the developer lists all activity
+   ✔  Then the inbox shows "CI failing" for "acme/api#42" as read
+   ✔  And the inbox shows "New comment from @alice" for "acme/api#42" as unread
+  Scenario: Read refuses an unknown activity id
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer marks activity "a999" read
+   ✔  Then the transcript reports "no activity with id a999"
+   ✔  And the exit status is 2
+  Scenario: Read state survives a restart
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer marks the newest activity read
+   ✔  And the developer reopens passuff
+   ✔  And the developer asks for status
+   ✔  Then the transcript reports "0 unread of 1"
+  Scenario: Activity history keeps the 500 most recent records
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a state with 500 activity records
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "One more" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the state retains 500 activity records
+   ✔  And the oldest activity record is gone
+  Scenario: Recording activity survives a delivery failure
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the desktop notification surface is unavailable
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer asks for status
+   ✔  Then the transcript reports "1 unread of 1"
+  Scenario: Inbox with no state shows no activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And no state file
+   ✔  When the developer lists all activity
+   ✔  Then the transcript reports "no activity"
+   ✔  And no state file was created
+   ✔  And the exit status is 0
+  Scenario: A state write failure is reported
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a version-1 state file with one watched pull request
+   ✔  And the state directory cannot be written
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "state error"
+   ✔  And the exit status is 3
+  Scenario: Inbox reports a state error
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a version-1 state file with one watched pull request
+   ✔  And the state directory cannot be written
+   ✔  When the developer lists all activity
+   ✔  Then the transcript reports "state error"
+   ✔  And the exit status is 3
+  Scenario: Read reports a state error
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a state with one activity record
+   ✔  And the state directory cannot be written
+   ✔  When the developer marks the newest activity read
+   ✔  Then the transcript reports "state error"
+   ✔  And the exit status is 3
+  Scenario: Read requires an activity id or all
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer runs read with no target
+   ✔  Then the transcript reports "read requires exactly one"
+   ✔  And the exit status is 2
+  Scenario: A version-1 state loads with empty history
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a version-1 state file with one watched pull request
+   ✔  When the developer lists all activity
+   ✔  Then the transcript reports "no activity"
+   ✔  And the state file version is 2
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "acme/api#42 open CI passing"
+  Scenario: Developer lists unread activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer lists the inbox
+   ✔  Then the transcript reports "New comment from @alice"
+   ✔  And the transcript reports "acme/api#42"
+   ✔  And the exit status is 0
+  Scenario: Developer marks activity read
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer marks all activity read
+   ✔  Then the transcript reports "1 activity record read"
+   ✔  When the developer lists the inbox
+   ✔  Then the transcript reports "no unread activity"
+   ✔  And the exit status is 0
+  Scenario: An ignored pull request produces no activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the pull request "acme/api#42" is ignored
+   ✔  When "alice" comments "Not interesting" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+   ✔  When the developer lists the inbox
+   ✔  Then the transcript reports "no unread activity"
+  Scenario: The terminal UI shows the inbox
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "1 unread of 1"
+   ✔  And the TUI shows "personal @octo-personal"
+   ✔  And the TUI shows "watch scope: all authored pull requests"
+   ✔  And the TUI shows "Pull request acme/api#42"
+   ✔  And the TUI shows "comment by @alice"
+   ✔  And the TUI does not show "Open"
+   ✔  And the TUI does not show "Success"
+   ✔  And the TUI does not show "token-TOKEN_PERSONAL"
+  Scenario: The terminal UI shows the empty inbox
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And no state file
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "r"
+   ✔  Then the TUI shows "no activity yet"
+   ✔  And the TUI shows "0 unread of 0"
+  Scenario: The selection moves and clamps
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "down"
+   ✔  Then the selected activity is "New comment from @alice"
+   ✔  When the developer presses "up"
+   ✔  Then the selected activity is "CI failing: build"
+   ✔  When the developer presses "j"
+   ✔  Then the selected activity is "New comment from @alice"
+   ✔  When the developer presses "j"
+   ✔  Then the selected activity is "New comment from @alice"
+   ✔  When the developer presses "k"
+   ✔  Then the selected activity is "CI failing: build"
+  Scenario: The selected activity is marked read
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "r"
+   ✔  Then the TUI reports "1 unread of 2"
+   ✔  And the activity "CI failing: build" is read
+   ✔  And the activity "New comment from @alice" is unread
+  Scenario: Every activity is marked read
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "a"
+   ✔  Then the TUI reports "0 unread of 2"
+  Scenario Outline: The terminal UI quits
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And no state file
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "q"
+   ✔  Then the terminal UI is closed
+  Scenario Outline: The terminal UI quits
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And no state file
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "esc"
+   ✔  Then the terminal UI is closed
+  Scenario: The terminal UI reports a configuration error
+   ✔  Given a configured account "work" with no credential source
+   ✔  When the developer starts the inbox TUI binary
+   ✔  Then the TUI reports "configuration error"
+   ✔  And the exit status is 2
+  Scenario: The terminal UI reports a state error
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the state path is a directory
+   ✔  When the developer starts the inbox TUI binary
+   ✔  Then the TUI reports "state error"
+   ✔  And the exit status is 3
+  Scenario: The terminal UI requires a terminal
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And no state file
+   ✔  When the developer starts the inbox TUI without a snapshot
+   ✔  Then the TUI reports "requires a terminal"
+   ✔  And the exit status is 3
+  Scenario: Developer opens the inbox TUI
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And the developer opens the inbox TUI observing the account
+   ✔  Then the TUI shows "1 unread of 1"
+   ✔  And the TUI shows "comment by @alice"
+   ✔  And the exit status is 0
+  Scenario: Developer opens an activity's details
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI with keys "enter"
+   ✔  Then the TUI shows "Activity api#42"
+   ✔  And the TUI shows "comment by @alice"
+   ✔  And the TUI shows "acme/api#42"
+   ✔  And the TUI shows "Pull request acme/api#42"
+   ✔  And the TUI shows "unread"
+   ✔  And the TUI shows "Enter open in browser"
+   ✔  And the exit status is 0
+  Scenario: Developer opens the pull request from an activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI with keys "enter,enter"
+   ✔  Then the browser opened "https://github.com/acme/api#42"
+   ✔  And the TUI does not show "Activity api#42"
+   ✔  And the exit status is 0
+  Scenario: Escape closes the activity detail
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "enter"
+   ✔  And the developer presses "esc"
+   ✔  Then the TUI does not show "Activity api#42"
+   ✔  And the TUI shows "Focus: activity"
+  Scenario: Enter with no activity shows no detail
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And no state file
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "no activity yet"
+   ✔  And the TUI does not show "Enter open in browser"
+  Scenario: A failed browser launch keeps the activity detail open
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "enter"
+   ✔  And the browser will fail to open
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "Activity api#42"
+   ✔  And the TUI shows "could not open browser"
+  Scenario: Inbox shows when a comment was written
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42" at "2026-11-02T09:15:00Z"
+   ✔  And passuff runs one check
+   ✔  And the developer lists the inbox
+   ✔  Then the inbox shows the occurrence time "2026-11-02T09:15:00Z" for "acme/api#42"
+  Scenario: Inbox marks an event without a reported time as approximate
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer lists the inbox
+   ✔  Then the inbox marks "CI failing" on "acme/api#42" as approximate
+  Scenario: Inbox orders activity by when it happened
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "First" on "acme/api#42" at "2026-11-02T09:15:00Z"
+   ✔  And "bob" comments "Second" on "acme/api#42" at "2026-11-02T09:45:00Z"
+   ✔  And passuff runs one check
+   ✔  And the developer lists the inbox
+   ✔  Then the inbox shows "New comment from @bob" before "New comment from @alice" for "acme/api#42"
+  Scenario: Inbox hides activity outside the focus
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "bob"
+   ✔  And a team review is requested on "acme/web#7"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/web#7"
+   ✔  And the focus relations are "authored"
+   ✔  When "bob" comments "Team queue" on "acme/web#7"
+   ✔  And "alice" comments "Mine" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer lists all activity
+   ✔  Then the transcript does not report "New comment from @bob"
+   ✔  And the inbox shows "New comment from @alice" for "acme/api#42" as unread
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "1 unread of 1"
+Feature: Inbox navigation
+  Scenario: Developer navigates the inbox panes
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  When "alice" comments "Review this" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI with keys "tab,j"
+   ✔  Then the TUI shows "Focus: PRs"
+   ✔  And the TUI shows "▶ acme/api#43"
+   ✔  And the exit status is 0
+  Scenario: The focus cycles between watched pull requests and activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  Then the TUI shows "Focus: PRs"
+   ✔  When the developer presses "tab"
+   ✔  Then the TUI shows "Focus: activity"
+  Scenario: The watched pull request selection scrolls
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And 25 authored pull requests in "acme/api" by "octo-personal"
+   ✔  And the watcher has already observed all of them
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer moves the selection down 24 times
+   ✔  Then the TUI shows "▶ acme/api#25"
+   ✔  And the TUI shows "Focus: PRs"
+  Scenario: A long pull request key keeps its number visible
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "very-long-organization/very-long-repository#1234" by "octo-personal"
+   ✔  And the watcher has already observed "very-long-organization/very-long-repository#1234"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "…repository#1234"
+  Scenario: The watched table shows the creator and the assignee
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" is assigned to "alice"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "☺"
+   ✔  And the TUI shows "@octo-personal → @alice"
+  Scenario: A stack is marked with a symbol and its position
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And GitHub reports stack 7 for "acme/api#42" at position 1 of 2 with base "main"
+   ✔  And GitHub reports stack 7 for "acme/api#43" at position 2 of 2 with base "main"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "☰"
+   ✔  And the TUI shows "1/2"
+  Scenario: A standalone pull request shows no stack symbol
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI does not show "☰"
+  Scenario: The developer jumps to the ends of the watched list
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And 5 authored pull requests in "acme/api" by "octo-personal"
+   ✔  And the watcher has already observed all of them
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "end"
+   ✔  Then the selected pull request is "acme/api#5"
+   ✔  When the developer presses "home"
+   ✔  Then the selected pull request is "acme/api#1"
+  Scenario: The developer sorts the watched list
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "s"
+   ✔  Then the TUI shows "sort: name ↑"
+   ✔  When the developer presses "S"
+   ✔  Then the TUI shows "sort: name ↓"
+  Scenario: The developer filters the activity to a pull request
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  When "alice" comments "Review this" on "acme/api#42"
+   ✔  And "bob" comments "Review that" on "acme/api#43"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "f"
+   ✔  Then the TUI shows "Activity · acme/api#42"
+   ✔  And the TUI shows "1 unread of 1"
+   ✔  And the TUI shows "(filtered from 2)"
+   ✔  When the developer presses "c"
+   ✔  Then the TUI shows "2 unread of 2"
+   ✔  And the TUI does not show "(filtered from"
+  Scenario: The developer filters the activity to a stack
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  And GitHub reports stack 7 for "acme/api#42" at position 1 of 2 with base "main"
+   ✔  And GitHub reports stack 7 for "acme/api#43" at position 2 of 2 with base "main"
+   ✔  When "alice" comments "Review this" on "acme/api#42"
+   ✔  And "bob" comments "Review that" on "acme/api#43"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "F"
+   ✔  Then the TUI shows "Activity · acme/api stack 7"
+   ✔  And the TUI shows "2 unread of 2"
+  Scenario: The developer filters the activity to unread records
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Review this" on "acme/api#42"
+   ✔  And "bob" comments "Review that" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "r"
+   ✔  And the developer presses "u"
+   ✔  Then the TUI shows "Activity · unread"
+   ✔  And the TUI shows "1 unread of 1"
+   ✔  And the TUI shows "(filtered from 2)"
+   ✔  When the developer presses "c"
+   ✔  Then the TUI shows "1 unread of 2"
+   ✔  And the TUI does not show "(filtered from"
+  Scenario: Marking all read applies to the filtered activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  When "alice" comments "Review this" on "acme/api#42"
+   ✔  And "bob" comments "Review that" on "acme/api#43"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "f"
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "a"
+   ✔  Then the activity "New comment from @alice" is read
+   ✔  And the activity "New comment from @bob" is unread
+  Scenario: The developer closes dialogs with q
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Review this" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "open in browser"
+   ✔  When the developer presses "q"
+   ✔  Then the TUI does not show "open in browser"
+   ✔  When the developer presses "tab"
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "Creator:"
+   ✔  When the developer presses "q"
+   ✔  Then the TUI does not show "Creator:"
+   ✔  When the developer presses "h"
+   ✔  Then the TUI shows "Pull request pane"
+   ✔  When the developer presses "q"
+   ✔  Then the TUI does not show "Pull request pane"
+   ✔  When the developer presses "comma"
+   ✔  Then the TUI shows "Desktop notifications"
+   ✔  When the developer presses "q"
+   ✔  Then the TUI does not show "Desktop notifications"
+  Scenario: The developer mutes notifications from the settings dialog
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "comma"
+   ✔  Then the TUI shows "Settings"
+   ✔  And the TUI shows "Desktop notifications"
+   ✔  And the TUI shows "Sound"
+   ✔  When the developer presses "j"
+   ✔  And the developer presses "space"
+   ✔  Then the notification sound is muted
+   ✔  And the desktop notification is enabled
+   ✔  When the developer presses "esc"
+   ✔  Then the TUI does not show "Desktop notifications"
+  Scenario: The developer opens the key reference
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "h"
+   ✔  Then the TUI shows "Activity pane"
+   ✔  And the TUI shows "mark visible read"
+   ✔  When the developer presses "esc"
+   ✔  Then the TUI does not show "Activity pane"
+  Scenario: The pull request detail shows its metadata
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" has the description "Adds the live inbox"
+   ✔  And the pull request "acme/api#42" is assigned to "alice"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "Status: open   CI: passing"
+   ✔  And the TUI shows "Creator: @octo-personal"
+   ✔  And the TUI shows "Assignee: @alice"
+   ✔  And the TUI shows "Adds the live inbox"
+   ✔  And the TUI shows "CI: passing"
+  Scenario: The activity detail shows and scrolls a long comment
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the pull request "acme/api#42" receives a long comment from "alice"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "Comment by @alice"
+   ✔  And the TUI shows "comment line 1"
+   ✔  And the TUI does not show "comment line 40"
+   ✔  When the developer presses "end"
+   ✔  Then the TUI shows "comment line 40"
+   ✔  When the developer presses "home"
+   ✔  Then the TUI shows "comment line 1"
+   ✔  And the TUI does not show "comment line 40"
+  Scenario: The developer scrolls the pull request detail
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" has a long description
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "line 1"
+   ✔  And the TUI does not show "line 40"
+   ✔  When the developer presses "end"
+   ✔  Then the TUI shows "line 40"
+   ✔  When the developer presses "home"
+   ✔  Then the TUI shows "line 1"
+   ✔  And the TUI does not show "line 40"
+  Scenario: The pull request description keeps its paragraphs
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" has a multi-line description
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "Description:"
+   ✔  And the TUI shows "Summary"
+   ✔  And the TUI shows "Second paragraph"
+   ✔  And the TUI does not show "Summary First paragraph"
+  Scenario: The pull request description renders a Markdown subset
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" has a markdown description
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "Summary"
+   ✔  And the TUI shows "• first item"
+   ✔  And the TUI shows "bold text"
+   ✔  And the TUI does not show "## Summary"
+   ✔  And the TUI does not show "**bold**"
+  Scenario: The developer ignores and restores a pull request
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "x"
+   ✔  Then the TUI shows "acme/api#42"
+   ✔  And the TUI shows "⊘"
+   ✔  And the TUI shows "x unignore"
+   ✔  When the developer presses "right"
+   ✔  Then the TUI shows "acme/api#42"
+   ✔  When the developer presses "x"
+   ✔  Then the TUI shows "x ignore"
+   ✔  And the TUI does not show "⊘"
+   ✔  When the developer presses "left"
+   ✔  Then the TUI shows "acme/api#42"
+  Scenario: A refresh preserves the selected pull request
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "j"
+   ✔  Then the selected pull request is "acme/api#43"
+   ✔  When an authored pull request "acme/api#44" by "octo-personal" appears
+   ✔  And the developer refreshes the inbox
+   ✔  Then the selected pull request is "acme/api#43"
+   ✔  And the TUI shows "acme/api#44"
+  Scenario: The inbox shows activity observed while it is open
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And "alice" comments "Review this" on "acme/api#42" after the first observation
+   ✔  When the developer opens the inbox TUI and lets it observe for "4" seconds
+   ✔  Then the TUI shows "comment by @alice"
+   ✔  And the TUI shows "1 unread of 1"
+   ✔  And the exit status is 0
+  Scenario: The inbox keeps observation cheap while nothing changes
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the inbox observes the account three times with no change
+   ✔  Then the inbox has asked GitHub for the full account history "1" time
+   ✔  And the inbox has asked GitHub for a change signal "3" times
+  Scenario: The inbox paces observation against the account allowance
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the account has "100" API points left until the allowance resets in "3600" seconds
+   ✔  When the inbox plans its next observation
+   ✔  Then the inbox waits at least "30" seconds before observing again
+  Scenario: A failed observation keeps the last inbox view
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Review this" on "acme/api#42"
+   ✔  And the developer opens the inbox TUI
+   ✔  And the inbox observes the account
+   ✔  And GitHub becomes unavailable for the next observation
+   ✔  And the inbox observes the account
+   ✔  Then the TUI still shows "comment by @alice"
+   ✔  And the exit status is 0
+  Scenario: The inbox observes only the open pull request that changed
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42" and "acme/api#43"
+   ✔  When the developer opens the inbox TUI
+   ✔  And the inbox observes the account
+   ✔  And "alice" comments "Review this" on "acme/api#42"
+   ✔  And the inbox observes the account
+   ✔  Then the TUI shows "comment by @alice"
+   ✔  And the inbox has observed only "acme/api#42"
+  Scenario: The inbox reconciles open pull requests when the interval elapses
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "alice"
+   ✔  And the pull request "acme/api#42" is assigned to me
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the reconciliation interval is "1" seconds
+   ✔  When the developer opens the inbox TUI
+   ✔  And the inbox observes the account
+   ✔  And "bob" comments "Can you review this?" on "acme/api#42"
+   ✔  And the inbox waits "2" seconds
+   ✔  And the inbox observes the account
+   ✔  Then the TUI shows "comment by @bob"
+  Scenario: The activity table shows when the activity happened
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42" at "2026-11-02T09:15:00Z"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "11-02 09:15"
+  Scenario: The activity table marks a CI failure as approximate
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI marks "CI failing" on "acme/api#42" as approximate
+  Scenario: The activity detail shows when the activity happened and when it was fetched
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42" at "2026-11-02T09:15:00Z"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI with keys "enter"
+   ✔  Then the TUI shows "When: 11-02 09:15"
+   ✔  And the TUI shows "Fetched: 11-02 12:00"
+  Scenario: The activity detail marks an activity without a reported time as approximate
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI with keys "enter"
+   ✔  Then the TUI shows "When: ~11-02 12:00"
+   ✔  And the TUI shows "(fetch time)"
+  Scenario: The watched table hides a pull request outside the focus
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "bob"
+   ✔  And a team review is requested on "acme/web#7"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/web#7"
+   ✔  And the focus relations are "authored"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "acme/api#42"
+   ✔  And the TUI does not show "acme/web#7"
+  Scenario: Changing the focus in the picker filters the inbox immediately
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "bob"
+   ✔  And a team review is requested on "acme/web#7"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/web#7"
+   ✔  And the involvement relations are unknown
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "acme/api#42"
+   ✔  And the TUI shows "acme/web#7"
+   ✔  When the developer opens the live scope picker
+   ✔  And the developer presses "space" in the scope picker
+   ✔  And the developer presses "esc" in the scope picker
+   ✔  Then the TUI does not show "acme/api#42"
+   ✔  And the TUI shows "acme/web#7"
+Feature: Stacked inbox
+  Scenario: Developer reviews a stacked inbox
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  And GitHub reports stack 7 for "acme/api#42" at position 1 of 2 with base "main"
+   ✔  And GitHub reports stack 7 for "acme/api#43" at position 2 of 2 with base "main"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#43"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "1/2"
+   ✔  And the TUI shows "2/2"
+   ✔  And the TUI shows "comment by @alice"
+   ✔  And the exit status is 0
+  Scenario: The stack orders members by position
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And GitHub reports stack 7 for "acme/api#43" at position 1 of 2 with base "main"
+   ✔  And GitHub reports stack 7 for "acme/api#42" at position 2 of 2 with base "main"
+   ✔  When passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "1/2" before "2/2"
+  Scenario: An unwatched stack member leaves a position gap
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#44" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#44"
+   ✔  And GitHub reports stack 7 for "acme/api#42" at position 1 of 3 with base "main"
+   ✔  And GitHub reports stack 7 for "acme/api#44" at position 3 of 3 with base "main"
+   ✔  When passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "1/3"
+   ✔  And the TUI shows "3/3"
+   ✔  And the TUI does not show "2/3"
+  Scenario: A merged stack member remains in the group
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And the pull request "acme/api#42" is "merged"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  And GitHub reports stack 7 for "acme/api#42" at position 1 of 2 with base "main"
+   ✔  And GitHub reports stack 7 for "acme/api#43" at position 2 of 2 with base "main"
+   ✔  When passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "1/2"
+   ✔  And the TUI shows "merged"
+   ✔  And the TUI shows "2/2"
+  Scenario: A pull request without stack metadata stays standalone
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "acme/api#42"
+   ✔  And the TUI does not show "1/1"
+  Scenario: Stack membership updates after a change
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And GitHub reports stack 7 for "acme/api#42" at position 1 of 1 with base "main"
+   ✔  When passuff runs one check
+   ✔  And GitHub reports stack 8 for "acme/api#42" at position 1 of 1 with base "release"
+   ✔  And passuff runs one check
+   ✔  And the developer opens the inbox TUI
+   ✔  And the developer presses "tab"
+   ✔  And the developer presses "enter"
+   ✔  Then the TUI shows "base release"
+   ✔  And the TUI does not show "base main"
+  Scenario: The activity keeps the stack label
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/api#43" by "octo-personal"
+   ✔  And an authored pull request "acme/api#40" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#40"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the watcher has already observed "acme/api#43"
+   ✔  And GitHub reports stack 7 for "acme/api#42" at position 1 of 2 with base "main"
+   ✔  And GitHub reports stack 7 for "acme/api#43" at position 2 of 2 with base "main"
+   ✔  When "carol" comments "Standalone" on "acme/api#40"
+   ✔  And "bob" comments "Review this" on "acme/api#42"
+   ✔  And "alice" comments "Review that" on "acme/api#43"
+   ✔  And passuff runs one check
+   ✔  And the developer marks the newest activity read
+   ✔  And the developer opens the inbox TUI
+   ✔  Then the TUI shows "2 unread of 3"
+   ✔  And the TUI shows "stack 7"
+Feature: Initial setup
+  Scenario: Developer sets up passuff on first run
+   ✔  Given no configuration file exists
+   ✔  When the developer runs setup with:
+       | label | personal      |
+       | auth  | gh_oauth      |
+       | login | octo-personal |
+       | watch | all           |
+   ✔  Then the configuration is created
+   ✔  And the configuration contains account "personal"
+   ✔  And the configuration contains auth "gh_oauth"
+   ✔  And the configuration does not contain "token"
+   ✔  When the developer opens the inbox TUI
+   ✔  Then the TUI shows "personal"
+   ✔  And the exit status is 0
+  Scenario: Setup creates a token environment account
+   ✔  Given no configuration file exists
+   ✔  When the developer runs setup with:
+       | label    | work       |
+       | auth     | token_env  |
+       | variable | WORK_TOKEN |
+       | login    | octo-work  |
+       | watch    | all        |
+   ✔  Then the configuration contains token env "WORK_TOKEN"
+   ✔  And the configuration does not contain "token-value"
+  Scenario: Setup rejects an invalid repository and asks again
+   ✔  Given no configuration file exists
+   ✔  When the developer runs setup with:
+       | label | personal      |
+       | auth  | gh_oauth      |
+       | login | octo-personal |
+       | watch | selected      |
+       | repos | acme          |
+   ✔  Then setup reports "must be owner/repo"
+   ✔  And the configuration is not created
+  Scenario: Setup preserves an existing configuration by default
+   ✔  Given a configuration file exists
+   ✔  When the developer runs setup and answers "no" to replacement
+   ✔  Then the configuration is unchanged
+   ✔  And the exit status is 0
+  Scenario: Setup replaces an existing configuration after confirmation
+   ✔  Given a configuration file exists
+   ✔  When the developer runs setup with:
+       | label   | personal |
+       | auth    | gh_oauth |
+       | login   | octo-new |
+       | watch   | all      |
+       | replace | yes      |
+   ✔  Then the configuration contains login "octo-new"
+  Scenario: An insecure token file is rejected
+   ✔  Given no configuration file exists
+   ✔  And a world-readable token file
+   ✔  When the developer runs setup with:
+       | label | personal      |
+       | auth  | token_file    |
+       | file  | TOKEN_FILE    |
+       | login | octo-personal |
+       | watch | all           |
+   ✔  Then setup reports "insecure"
+   ✔  And the configuration is not created
+  Scenario: A failed write leaves no partial configuration
+   ✔  Given no configuration file exists
+   ✔  And the setup configuration directory cannot be written
+   ✔  When the developer runs setup with:
+       | label | personal      |
+       | auth  | gh_oauth      |
+       | login | octo-personal |
+       | watch | all           |
+   ✔  Then setup reports "cannot write configuration"
+   ✔  And the configuration is not created
+  Scenario: The terminal UI without a terminal points to setup
+   ✔  Given no configuration file exists
+   ✔  When the developer opens the inbox TUI without a terminal
+   ✔  Then the TUI reports "passuff setup"
+   ✔  And the exit status is 2
+Feature: Pull request activity notification
+  Scenario: Developer starts watching and is notified of a new comment
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  When passuff starts watching
+   ✔  And "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  Then the terminal shows a notification for "acme/api#42"
+   ✔  And the desktop notification reports "New comment from @alice"
+   ✔  And the configured sound is played once
+  Scenario: A pull request I did not author is watched
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "alice"
+   ✔  And the pull request "acme/api#42" is assigned to me
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "bob" comments "Can you review this?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+  Scenario: A pull request opened after the last check is an activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When passuff runs one check
+   ✔  And an authored pull request "acme/api#42" by "octo-personal" is created after the last check
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+   ✔  And the transcript reports "New pull request by @octo-personal"
+  Scenario: Developer runs a single check and sees the current activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "New comment from @alice"
+   ✔  And the desktop notification reports "New comment from @alice"
+   ✔  And the configured sound is played once
+   ✔  And the exit status is 0
+  Scenario: Developer asks for usage
+   ✔  When the developer runs passuff with "--help"
+   ✔  Then the transcript shows the available commands
+   ✔  And the exit status is 0
+  Scenario: Developer asks for the version
+   ✔  When the developer runs passuff with "--version"
+   ✔  Then the transcript shows the version
+   ✔  And the exit status is 0
+  Scenario: The developer tests notifications
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer runs the notification test
+   ✔  Then the transcript reports "desktop notification sent"
+   ✔  And the transcript reports "sound played"
+   ✔  And the desktop notification reports "If you can read this, passuff notifications are working."
+   ✔  And the configured sound is played once
+   ✔  And the exit status is 0
+  Scenario: The developer tests notifications on the command line
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer runs the notification test
+   ✔  Then the transcript reports "desktop notification sent"
+   ✔  And the desktop notification reports "If you can read this, passuff notifications are working."
+   ✔  And the exit status is 0
+  Scenario: The notification test can mute the sound
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer runs the notification test with "--no-sound"
+   ✔  Then the transcript reports "desktop notification sent"
+   ✔  And the transcript reports "sound is disabled"
+   ✔  And the exit status is 0
+  Scenario: The notification test can mute the desktop notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  When the developer runs the notification test with "--no-desktop"
+   ✔  Then the transcript reports "desktop notifications are disabled"
+   ✔  And the transcript reports "sound played"
+   ✔  And the exit status is 0
+  Scenario: The notification test reports an unavailable surface
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the desktop notification surface is unavailable
+   ✔  And the sound player is unavailable
+   ✔  When the developer runs the notification test
+   ✔  Then the transcript reports "desktop notification failed"
+   ✔  And the transcript reports "sound unavailable"
+   ✔  And the exit status is 1
+  Scenario: The notification test reports disabled surfaces
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the desktop notification is disabled in configuration
+   ✔  And sound is disabled in configuration
+   ✔  When the developer runs the notification test
+   ✔  Then the transcript reports "desktop notifications are disabled"
+   ✔  And the transcript reports "nothing to test"
+   ✔  And the exit status is 2
+  Scenario: A review comment from another person notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" writes a review comment "This needs a test" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Review comment from @alice"
+  Scenario Outline: A submitted review notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" submits a "approved" review on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Review approved by @alice"
+  Scenario Outline: A submitted review notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" submits a "changes requested" review on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Review changes requested by @alice"
+  Scenario Outline: A submitted review notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" submits a "commented" review on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Review commented by @alice"
+  Scenario: A review from a configured account stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "octo-personal" submits an "approved" review on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+   ✔  When the developer lists all activity
+   ✔  Then the transcript reports "Review approved by @octo-personal"
+   ✔  And the activity "Review approved by @octo-personal" is read
+  Scenario: A commit push stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" pushes a commit to "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario: Activity on someone else's pull request stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a pull request "acme/other#9" by "someone-else"
+   ✔  And the watcher has already observed "acme/other#9"
+   ✔  When "alice" comments "Looks good" on "acme/other#9"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A failing CI result notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "CI failing"
+  Scenario Outline: A failing CI result notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the CI result on "acme/api#42" becomes "error"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "CI failing"
+  Scenario: A CI recovery notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42" with a failing CI result
+   ✔  When the CI result on "acme/api#42" becomes "successful"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "CI recovered"
+  Scenario: A CI recovery across pending notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42" with a failing CI result
+   ✔  When the CI result on "acme/api#42" becomes "pending"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+   ✔  When the CI result on "acme/api#42" becomes "successful"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "CI recovered"
+  Scenario Outline: A pull request merged or closed while the watcher was stopped is reported
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the pull request "acme/api#42" becomes "merged" while the watcher is stopped
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Merged"
+  Scenario Outline: A pull request merged or closed while the watcher was stopped is reported
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the pull request "acme/api#42" becomes "closed" while the watcher is stopped
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Closed"
+  Scenario Outline: A short-lived pull request merged or closed between checks notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When an authored pull request "acme/new#1" by "octo-personal" is created and "merged" between checks
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/new#1"
+   ✔  And the transcript reports "Merged"
+  Scenario Outline: A short-lived pull request merged or closed between checks notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When an authored pull request "acme/new#1" by "octo-personal" is created and "closed" between checks
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/new#1"
+   ✔  And the transcript reports "Closed"
+  Scenario: A merge performed by the configured account still notifies
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the configured account "octo-personal" merges "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Merged"
+  Scenario: A reopened pull request stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the pull request "acme/api#42" becomes "closed"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Closed"
+   ✔  When the pull request "acme/api#42" is reopened
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario: A reopened pull request notifies again when closed
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When the pull request "acme/api#42" becomes "closed"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Closed"
+   ✔  When the pull request "acme/api#42" is reopened
+   ✔  And passuff runs one check
+   ✔  When the pull request "acme/api#42" becomes "closed"
+   ✔  And passuff runs one check
+   ✔  Then the latest transcript reports "Closed"
+  Scenario Outline: A bot comment is handled according to the bot setting
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And bot comments are "disabled" in configuration
+   ✔  When "dependabot[bot]" comments "Bump lodash" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A bot comment is handled according to the bot setting
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And bot comments are "enabled" in configuration
+   ✔  When "dependabot[bot]" comments "Bump lodash" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "New comment from @dependabot[bot]"
+  Scenario: A pull request already merged at the baseline is not reported on the next cycle
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" is "merged"
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports no notifications
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario: Historical activity is not replayed on first observation
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request already has a comment by "alice"
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "Fresh baseline recorded"
+   ✔  And the transcript reports no notifications
+  Scenario: A pull request first seen after the first cycle records a baseline
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When an authored pull request "acme/new#2" by "octo-personal" appears with an existing comment by "alice"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "Fresh baseline recorded"
+   ✔  And the report records a baseline for "acme/new#2"
+   ✔  And the transcript reports no notifications
+  Scenario: Multiple events on one pull request produce one notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And "alice" submits a "changes requested" review on "acme/api#42"
+   ✔  And the CI result on "acme/api#42" becomes "failing"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports one notification for "acme/api#42"
+   ✔  And the notification mentions "New comment", "Review changes requested", and "CI failing"
+   ✔  And the desktop notification reports "3 activities on acme/api#42"
+   ✔  And the configured sound is played once
+  Scenario Outline: A disabled event family suppresses its notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And no prior activity exists for "acme/api#42"
+   ✔  And the "comments" event family is disabled in configuration
+   ✔  When "alice" comments "Can you split this?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A disabled event family suppresses its notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And no prior activity exists for "acme/api#42"
+   ✔  And the "comments" event family is disabled in configuration
+   ✔  When "alice" writes a review comment "Needs a test" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A disabled event family suppresses its notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And no prior activity exists for "acme/api#42"
+   ✔  And the "reviews" event family is disabled in configuration
+   ✔  When "alice" submits an "approved" review on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A disabled event family suppresses its notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the CI result is "successful" for "acme/api#42"
+   ✔  And the "ci_failure" event family is disabled in configuration
+   ✔  When the CI result becomes "failing" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A disabled event family suppresses its notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the CI result is "failing" for "acme/api#42"
+   ✔  And the "ci_recovery" event family is disabled in configuration
+   ✔  When the CI result becomes "successful" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A disabled event family suppresses its notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the pull request is "open" for "acme/api#42"
+   ✔  And the "state_changes" event family is disabled in configuration
+   ✔  When the pull request becomes "merged" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario: A configured sound is used
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the sound is configured to "crates/passuff-cli/assets/notification.wav"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "New comment from @alice"
+   ✔  And the configured sound file "crates/passuff-cli/assets/notification.wav" is played once
+  Scenario: A disabled sound produces no sound
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And sound is disabled in configuration
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "New comment from @alice"
+   ✔  And the desktop notification is recorded
+   ✔  And no sound is played
+  Scenario: A disabled desktop notification keeps the transcript
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the desktop notification is disabled in configuration
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "New comment from @alice"
+   ✔  And no desktop notification is recorded
+   ✔  And the configured sound is played once
+   ✔  And the exit status is 0
+  Scenario: An unavailable desktop surface keeps the transcript
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the desktop notification surface is unavailable
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "New comment from @alice"
+   ✔  And the transcript reports "desktop notification failed"
+   ✔  And the exit status is 0
+  Scenario: A missing sound player still delivers the notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  And the sound player is unavailable
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "New comment from @alice"
+   ✔  And the desktop notification is recorded
+   ✔  And the transcript reports "sound unavailable"
+   ✔  And the exit status is 0
+  Scenario: Each configured account is observed
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a configured account "work" with login "octo-work"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42" and "acme/web#7"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And "bob" comments "Please update the changelog" on "acme/web#7"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+   ✔  And the transcript reports a notification for "acme/web#7"
+  Scenario: A comment from another configured account stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a configured account "work" with login "octo-work"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "octo-work" comments "I will rerun CI" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+   ✔  When the developer lists all activity
+   ✔  Then the transcript reports "New comment from @octo-work"
+   ✔  And the activity "New comment from @octo-work" is read
+  Scenario: A failed account does not stop the other account
+   ✔  Given a configured account "work" with an invalid credential
+   ✔  And a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "account work failed"
+   ✔  And the transcript reports a notification for "acme/api#42"
+   ✔  And the exit status is 1
+  Scenario: A restart does not replay notified activity
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+   ✔  When passuff restarts and runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario: A corrupt state file is replaced with a baseline
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request already has a comment by "alice"
+   ✔  And a corrupt persisted observation
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "Fresh baseline recorded"
+   ✔  And the transcript reports no notifications
+  Scenario: An invalid configuration is rejected
+   ✔  Given an invalid configuration
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "configuration error"
+   ✔  And the exit status is 2
+  Scenario: A state write failure is reported with a nonzero status
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the state file cannot be written
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "state error"
+   ✔  And the exit status is 3
+  Scenario Outline: A non-notified change stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When a "label" change occurs on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A non-notified change stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When a "draft" change occurs on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A non-notified change stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When a "assignee" change occurs on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A non-notified change stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When a "milestone" change occurs on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: A non-notified change stays silent
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When a "base branch" change occurs on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario: No authored pull requests produce no notifications
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And the account has no authored pull requests
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports no notifications
+   ✔  And the exit status is 0
+  Scenario: A single check with no changes reports no notifications
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports no notifications
+   ✔  And no desktop notification is recorded
+   ✔  And no sound is played
+   ✔  And the exit status is 0
+  Scenario: A gh OAuth account uses the existing gh session
+   ✔  Given a configured account "work" authenticating through gh as "octo-work"
+   ✔  And gh is authenticated as "octo-work"
+   ✔  And an authored pull request "acme/api#42" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+  Scenario: An interactive watch starts a browser login when the gh session is missing
+   ✔  Given a configured account "work" authenticating through gh as "octo-work"
+   ✔  And gh is not authenticated as "octo-work"
+   ✔  And the terminal is interactive
+   ✔  When the watcher starts interactively
+   ✔  Then gh started a browser login for "octo-work"
+   ✔  And the transcript reports "passuff: watching"
+  Scenario: A one-shot check never starts a browser login
+   ✔  Given a configured account "work" authenticating through gh as "octo-work"
+   ✔  And gh is not authenticated as "octo-work"
+   ✔  And the terminal is interactive
+   ✔  When passuff runs one check
+   ✔  Then gh did not start a browser login
+   ✔  And the transcript reports "account work failed"
+   ✔  And the exit status is 1
+  Scenario: A non-interactive watch never starts a browser login
+   ✔  Given a configured account "work" authenticating through gh as "octo-work"
+   ✔  And gh is not authenticated as "octo-work"
+   ✔  And the terminal is not interactive
+   ✔  When the watcher runs one observation cycle
+   ✔  Then gh did not start a browser login
+   ✔  And the transcript reports "account work failed"
+  Scenario: A failed browser login is attempted once per account
+   ✔  Given a configured account "work" authenticating through gh as "octo-work"
+   ✔  And gh is not authenticated as "octo-work"
+   ✔  And a configured account "home" authenticating through gh as "octo-home"
+   ✔  And gh is not authenticated as "octo-home"
+   ✔  And the terminal is interactive
+   ✔  And gh login always fails
+   ✔  When the watcher runs two observation cycles
+   ✔  Then gh started one browser login for "octo-work"
+   ✔  And gh started one browser login for "octo-home"
+   ✔  And the transcript reports "account work failed"
+   ✔  And the transcript reports "account home failed"
+   ✔  And the transcript reports "gh auth login failed"
+  Scenario: A failed browser login does not stop the other account
+   ✔  Given a configured account "alpha" authenticating through gh as "octo-work"
+   ✔  And gh is not authenticated as "octo-work"
+   ✔  And the terminal is interactive
+   ✔  And gh login always fails
+   ✔  And a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And the watcher runs one observation cycle
+   ✔  Then the transcript reports "account alpha failed"
+   ✔  And the transcript reports a notification for "acme/api#42"
+  Scenario Outline: A token file readable only by the operator is used
+   ✔  Given a configured account "work" with a personal access token in a file with mode "600"
+   ✔  And an authored pull request "acme/api#42" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+  Scenario Outline: A token file readable only by the operator is used
+   ✔  Given a configured account "work" with a personal access token in a file with mode "400"
+   ✔  And an authored pull request "acme/api#42" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+  Scenario Outline: A token file readable by other local users is refused
+   ✔  Given a configured account "work" with a personal access token in a file with mode "640"
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "token_file is not private"
+   ✔  And the exit status is 2
+  Scenario Outline: A token file readable by other local users is refused
+   ✔  Given a configured account "work" with a personal access token in a file with mode "604"
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "token_file is not private"
+   ✔  And the exit status is 2
+  Scenario Outline: A token file readable by other local users is refused
+   ✔  Given a configured account "work" with a personal access token in a file with mode "660"
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "token_file is not private"
+   ✔  And the exit status is 2
+  Scenario: A missing token file is an account failure
+   ✔  Given a configured account "work" with a personal access token file that does not exist
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "account work failed"
+   ✔  And the transcript reports "token file is missing: "
+   ✔  And the exit status is 1
+  Scenario Outline: An unusable token file is reported
+   ✔  Given a configured account "work" with a relative token file path
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "must be absolute or start with ~"
+   ✔  And the exit status is 2
+  Scenario Outline: An unusable token file is reported
+   ✔  Given a configured account "work" with a token file path that is a directory
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "not a regular file"
+   ✔  And the exit status is 2
+  Scenario Outline: An unusable token file is reported
+   ✔  Given a configured account "work" with an empty token file
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "token file is empty"
+   ✔  And the exit status is 1
+  Scenario: A token file path starting with ~ is expanded
+   ✔  Given a configured account "work" with a personal access token in "~/work.token"
+   ✔  And an authored pull request "acme/api#42" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+  Scenario: A personal access token for a different login is an account failure
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And a configured account "work" with an expected login "octo-work" and a personal access token belonging to "octo-work"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/work#7" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42" and "acme/work#7"
+   ✔  When "octo-other" comments "I am someone else" on "acme/api#42"
+   ✔  And "alice" comments "Please rebase" on "acme/work#7"
+   ✔  And the credential for "work" becomes a token belonging to "octo-other"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "credential belongs to @octo-other, expected @octo-work"
+   ✔  And the transcript reports a notification for "acme/api#42"
+   ✔  And the transcript reports no notification for "acme/work#7"
+   ✔  And the exit status is 1
+  Scenario: A personal access token whose login differs only in case is accepted
+   ✔  Given a configured account "work" with an expected login "octo-work" and a personal access token belonging to "octo-WORK"
+   ✔  And an authored pull request "acme/api#42" by "octo-WORK"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+  Scenario: A credential value never appears in the transcript or state
+   ✔  Given a configured account "work" with login "octo-work"
+   ✔  And an authored pull request "acme/api#42" by "octo-work"
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "Fresh baseline recorded"
+   ✔  And the credential value "token-TOKEN_WORK" appears in neither the transcript nor the state file
+  Scenario: A legacy environment credential remains a personal access token account
+   ✔  Given a configured account "work" with an environment credential
+   ✔  And an authored pull request "acme/api#42" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+  Scenario: A legacy command credential remains a personal access token account
+   ✔  Given a configured account "work" with a command credential
+   ✔  And an authored pull request "acme/api#42" by "octo-work"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" comments "Can you split this migration?" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports a notification for "acme/api#42"
+  Scenario Outline: An invalid credential configuration is rejected
+   ✔  Given a configured account "work" with no credential source
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "must select exactly one credential source"
+   ✔  And the exit status is 2
+  Scenario Outline: An invalid credential configuration is rejected
+   ✔  Given a configured account "work" with an unknown auth mode
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "unknown auth mode"
+   ✔  And the exit status is 2
+  Scenario Outline: An invalid credential configuration is rejected
+   ✔  Given a configured account "work" with two personal access token sources
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "must select exactly one credential source"
+   ✔  And the exit status is 2
+  Scenario Outline: An invalid credential configuration is rejected
+   ✔  Given a configured account "work" with gh OAuth but no expected login
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "requires github_user"
+   ✔  And the exit status is 2
+  Scenario Outline: An invalid credential configuration is rejected
+   ✔  Given a configured account "work" with gh OAuth and a personal access token source
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "must not set a personal access token source"
+   ✔  And the exit status is 2
+  Scenario Outline: An invalid credential configuration is rejected
+   ✔  Given a configured account "work" with a literal personal access token
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "must not contain a literal token"
+   ✔  And the exit status is 2
+  Scenario: A repository outside the watch scope is not watched
+   ✔  Given the watch scope is limited to "acme/api"
+   ✔  And a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "octo-personal"
+   ✔  And a state already watches "acme/web#7"
+   ✔  When "alice" comments "Please update the changelog" on "acme/web#7"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notification for "acme/web#7"
+   ✔  When the developer asks for status
+   ✔  Then the transcript reports "acme/api#42 open CI passing"
+   ✔  And the transcript does not report "acme/web#7"
+  Scenario Outline: Activity on a merged or closed pull request does not notify
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" is "merged"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "@alice" comments "Post-terminal note" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario Outline: Activity on a merged or closed pull request does not notify
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" is "closed"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "@alice" comments "Post-terminal note" on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario: A review on a merged pull request does not notify
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the pull request "acme/api#42" is "merged"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "alice" submits a "changes requested" review on "acme/api#42"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports no notifications
+  Scenario: A failed observation keeps the change pending
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42"
+   ✔  When "@alice" comments "Retry me" on "acme/api#42"
+   ✔  And the next observation fails
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "account personal failed"
+   ✔  When passuff runs one check
+   ✔  Then the transcript reports "New comment"
+  Scenario: Activity on two pull requests produces one digest notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/api#42" by "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "octo-personal"
+   ✔  And the watcher has already observed "acme/api#42" and "acme/web#7"
+   ✔  When "alice" comments "Review this" on "acme/api#42"
+   ✔  And "bob" comments "Ship it" on "acme/web#7"
+   ✔  And passuff runs one check
+   ✔  Then the transcript reports "2 activities in 2 pull requests"
+   ✔  And the desktop notification reports "2 activities in 2 pull requests"
+   ✔  And the desktop notification reports "acme/api#42: 1 activity"
+   ✔  And the desktop notification reports "acme/web#7: 1 activity"
+   ✔  And the transcript reports "New comment from @alice"
+   ✔  And the transcript reports "New comment from @bob"
+   ✔  And the configured sound is played once
+  Scenario: A pull request outside the focus produces no notification
+   ✔  Given a configured account "personal" with login "octo-personal"
+   ✔  And an authored pull request "acme/web#7" by "bob"
+   ✔  And a team review is requested on "acme/web#7"
+   ✔  And the watcher has already observed "acme/web#7"
+   ✔  And the focus relations are "authored"
+   ✔  When "alice" comments "Team queue" on "acme/web#7"
+   ✔  And passuff runs one check
+   ✔  Then the transcript does not report "New comment from @alice"
+   ✔  And the activity "New comment from @alice" is unread
+   ✔  When the developer narrows the focus to "authored,team-review-requested"
+   ✔  And the developer lists all activity
+   ✔  Then the inbox shows "New comment from @alice" for "acme/web#7" as unread
+[Summary]
+7 features
+215 scenarios (215 passed)
+1731 steps (1731 passed)
+givn result: total 215, passed 215, failed 0, skipped 0
