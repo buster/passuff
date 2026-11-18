@@ -1,121 +1,112 @@
-use std::path::{Path, PathBuf};
+//! Sound playback through a system player. The bundled sound is embedded and
+//! written to a temporary file only when the workspace asset is not present at
+//! runtime.
+
+use std::fmt;
+use std::path::PathBuf;
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
 
-pub trait SoundPlayer: Send + Sync {
-    fn play(&self, file: &Path) -> Result<(), String>;
+use crate::delivery::find_in_path;
+
+const BUNDLED: &[u8] = include_bytes!("../assets/notification.wav");
+const ASSET_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/notification.wav");
+
+#[derive(Debug)]
+pub enum SoundError {
+    Unavailable(String),
+    Failed(String),
 }
 
-#[derive(Default)]
-pub struct RecordingSoundPlayer {
-    plays: Mutex<Vec<PathBuf>>,
-    available: AtomicBool,
-}
-
-impl RecordingSoundPlayer {
-    pub fn available() -> Self {
-        Self {
-            plays: Mutex::new(Vec::new()),
-            available: AtomicBool::new(true),
-        }
-    }
-
-    pub fn unavailable() -> Self {
-        Self {
-            plays: Mutex::new(Vec::new()),
-            available: AtomicBool::new(false),
-        }
-    }
-
-    pub fn set_available(&self, available: bool) {
-        self.available.store(available, Ordering::SeqCst);
-    }
-
-    pub fn plays(&self) -> Vec<PathBuf> {
-        self.plays
-            .lock()
-            .map(|value| value.clone())
-            .unwrap_or_default()
-    }
-
-    pub fn clear(&self) {
-        if let Ok(mut plays) = self.plays.lock() {
-            plays.clear();
-        }
-    }
-}
-
-impl SoundPlayer for RecordingSoundPlayer {
-    fn play(&self, file: &Path) -> Result<(), String> {
-        if !self.available.load(Ordering::SeqCst) {
-            return Err("no sound player available".to_string());
-        }
-        if let Ok(mut plays) = self.plays.lock() {
-            plays.push(file.to_path_buf());
-        }
-        Ok(())
-    }
-}
-
-#[derive(Default)]
-pub struct SystemSoundPlayer;
-
-impl SoundPlayer for SystemSoundPlayer {
-    fn play(&self, file: &Path) -> Result<(), String> {
-        if let Ok(player) = std::env::var("PASSUFF_SOUND_PLAYER") {
-            return run_player(&player, &[file.as_os_str().to_owned()]);
-        }
-        #[cfg(target_os = "macos")]
-        {
-            return run_player("afplay", &[file.as_os_str().to_owned()]);
-        }
-        #[cfg(target_os = "linux")]
-        {
-            let file_arg = file.as_os_str().to_owned();
-            for player in ["paplay", "pw-play", "aplay"] {
-                if command_exists(player) {
-                    if let Ok(()) = run_player(player, std::slice::from_ref(&file_arg)) {
-                        return Ok(());
-                    }
-                }
+impl fmt::Display for SoundError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unavailable(detail) => {
+                write!(formatter, "sound unavailable: {detail}")
             }
-            if command_exists("canberra-gtk-play") {
-                return run_player(
-                    "canberra-gtk-play",
-                    &[
-                        std::ffi::OsString::from("--file"),
-                        file.as_os_str().to_owned(),
-                    ],
-                );
-            }
-            Err("no sound player available".to_string())
-        }
-        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-        {
-            let _ = file;
-            Err("sound is not supported on this platform".to_string())
+            Self::Failed(detail) => write!(formatter, "sound failed: {detail}"),
         }
     }
 }
 
-fn command_exists(name: &str) -> bool {
-    Command::new("sh")
-        .arg("-c")
-        .arg(format!("command -v {name} >/dev/null 2>&1"))
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
-}
-
-fn run_player(name: &str, args: &[std::ffi::OsString]) -> Result<(), String> {
-    let status = Command::new(name)
-        .args(args)
-        .status()
-        .map_err(|error| format!("{name}: {error}"))?;
-    if status.success() {
+pub fn play(sound_file: &str) -> Result<(), SoundError> {
+    let file = resolve_sound_file(sound_file)?;
+    let (program, mut arguments) = player()
+        .ok_or_else(|| SoundError::Unavailable("no system audio player was found".to_string()))?;
+    arguments.push(file.to_string_lossy().into_owned());
+    let output = Command::new(&program)
+        .args(&arguments)
+        .output()
+        .map_err(|error| {
+            SoundError::Unavailable(format!("cannot start {}: {error}", program.display()))
+        })?;
+    if output.status.success() {
         Ok(())
     } else {
-        Err(format!("{name} exited with {status}"))
+        let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(SoundError::Failed(if detail.is_empty() {
+            format!("{} exited with {}", program.display(), output.status)
+        } else {
+            detail
+        }))
     }
+}
+
+fn resolve_sound_file(sound_file: &str) -> Result<PathBuf, SoundError> {
+    if sound_file == "default" {
+        let asset = PathBuf::from(ASSET_PATH);
+        if asset.is_file() {
+            return Ok(asset);
+        }
+        let temporary =
+            std::env::temp_dir().join(format!("passuff-notification-{}.wav", std::process::id()));
+        std::fs::write(&temporary, BUNDLED).map_err(|error| {
+            SoundError::Unavailable(format!("cannot write bundled sound: {error}"))
+        })?;
+        return Ok(temporary);
+    }
+    let path = passuff_config::expand_home(sound_file);
+    if path.is_file() {
+        Ok(path)
+    } else {
+        Err(SoundError::Unavailable(format!(
+            "sound file is missing: {}",
+            path.display()
+        )))
+    }
+}
+
+fn player() -> Option<(PathBuf, Vec<String>)> {
+    if let Ok(value) = std::env::var("PASSUFF_SOUND_PLAYER") {
+        if value.trim().is_empty() {
+            return None;
+        }
+        let direct = PathBuf::from(&value);
+        if direct.is_file() {
+            return Some((direct, Vec::new()));
+        }
+        let mut parts = value.split_whitespace();
+        let program = parts.next()?;
+        let arguments = parts.map(str::to_string).collect();
+        let program = find_in_path(program)?;
+        return Some((program, arguments));
+    }
+
+    #[cfg(target_os = "macos")]
+    let candidates = ["afplay"];
+    #[cfg(target_os = "linux")]
+    let candidates = ["paplay", "pw-play", "aplay", "canberra-gtk-play"];
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    let candidates: [&str; 0] = [];
+
+    for candidate in candidates {
+        if let Some(program) = find_in_path(candidate) {
+            return Some((program, Vec::new()));
+        }
+    }
+    None
+}
+
+/// The bundled sound path as documented by the product.
+pub fn bundled_path() -> PathBuf {
+    PathBuf::from(ASSET_PATH)
 }

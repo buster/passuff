@@ -1,660 +1,581 @@
+//! Check-cycle orchestration: account resolution, observation, classification,
+//! and state updates. Delivery is deliberately outside this crate.
+
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::{Arc, Mutex};
+use std::process::Command;
 
-use chrono::{DateTime, Utc};
-use passuff_config::{AppConfig, FocusRelation, WatchMode};
+use chrono::Utc;
+use passuff_config::{AccountConfig, AppConfig, AuthMode, Relation};
 
-use crate::classifier::{classify, ClassificationContext};
-use crate::credentials::CredentialSource;
-use crate::github::{GatewayError, GatewayFactory, GitHubGateway};
-use crate::model::{
-    Allowance, Fingerprint, Notification, ProbeReport, PullRequestKey, PullRequestSnapshot,
-};
-use crate::probe::diff_probe;
-use crate::state::{
-    ActivityRecord, ScopeSnapshot, SnapshotStore, StateError, WatchedPullRequest, WatcherState,
-};
-
-#[derive(Debug, thiserror::Error)]
-pub enum CoreError {
-    #[error("state error: {0}")]
-    State(#[from] StateError),
-}
+use crate::classifier::{self, ClassifyContext};
+use crate::github::{DiscoveryObservation, GithubClient, PullRequestObservation, RateLimit};
+use crate::model::{AccountFailure, Notification, PullRequestKey, RefreshReport, WatcherState};
+use crate::view::{ignored_keys, scope_allows};
 
 #[derive(Debug, Clone)]
-pub struct AccountFailure {
-    pub label: String,
-    pub message: String,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct RefreshReport {
-    pub notifications: Vec<Notification>,
-    pub account_failures: Vec<AccountFailure>,
-    pub baselines: Vec<PullRequestKey>,
-}
-
-impl RefreshReport {
-    pub fn failed(&self) -> bool {
-        !self.account_failures.is_empty()
-    }
-
-    pub fn activity_count(&self) -> usize {
-        self.notifications
-            .iter()
-            .map(Notification::activity_count)
-            .sum()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AccountProbe {
-    pub label: String,
-    pub login: String,
-    pub report: ProbeReport,
-    pub targets: Vec<PullRequestKey>,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ProbeCycle {
-    pub accounts: Vec<AccountProbe>,
-    pub failures: Vec<AccountFailure>,
-    pub pending: BTreeMap<String, BTreeMap<String, Fingerprint>>,
-}
-
-pub trait Clock: Send + Sync {
-    fn now(&self) -> DateTime<Utc>;
-}
-
-pub struct SystemClock;
-
-impl Clock for SystemClock {
-    fn now(&self) -> DateTime<Utc> {
-        Utc::now()
-    }
-}
-
-pub struct FixedClock {
-    now: DateTime<Utc>,
-}
-
-impl FixedClock {
-    pub fn new(now: DateTime<Utc>) -> Self {
-        Self { now }
-    }
-}
-
-impl Clock for FixedClock {
-    fn now(&self) -> DateTime<Utc> {
-        self.now
-    }
-}
-
-#[derive(Clone)]
-struct ResolvedAccount {
-    label: String,
+struct Credential {
+    token: String,
     login: String,
-    gateway: Arc<Mutex<Box<dyn GitHubGateway>>>,
+}
+
+#[derive(Debug, Default)]
+pub struct ProbeReport {
+    pub failures: Vec<AccountFailure>,
+    pub changed: Vec<(String, Vec<String>)>,
+    pub logins: BTreeSet<String>,
+    pub rate_limits: Vec<RateLimit>,
 }
 
 pub struct PassuffCore {
-    config: AppConfig,
-    gateway_factory: Arc<dyn GatewayFactory>,
-    credentials: Arc<dyn CredentialSource>,
-    store: Arc<dyn SnapshotStore>,
-    clock: Arc<dyn Clock>,
-    cached: Mutex<Option<Vec<ResolvedAccount>>>,
+    client: GithubClient,
+    gh_login_attempted: BTreeSet<String>,
+    credentials: BTreeMap<String, Credential>,
+    probe_fingerprints: BTreeMap<String, BTreeMap<String, String>>,
+}
+
+impl Default for PassuffCore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PassuffCore {
-    pub fn new(
-        config: AppConfig,
-        gateway_factory: Arc<dyn GatewayFactory>,
-        credentials: Arc<dyn CredentialSource>,
-        store: Arc<dyn SnapshotStore>,
-        clock: Arc<dyn Clock>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            config,
-            gateway_factory,
-            credentials,
-            store,
-            clock,
-            cached: Mutex::new(None),
+            client: GithubClient::new(),
+            gh_login_attempted: BTreeSet::new(),
+            credentials: BTreeMap::new(),
+            probe_fingerprints: BTreeMap::new(),
         }
-    }
-
-    pub fn store(&self) -> &Arc<dyn SnapshotStore> {
-        &self.store
-    }
-
-    pub fn config(&self) -> &AppConfig {
-        &self.config
-    }
-
-    pub fn refresh_reconciliation(&self, interactive: bool) -> Result<RefreshReport, CoreError> {
-        self.refresh_internal(
-            interactive,
-            RefreshKind::Reconciliation,
-            &BTreeMap::new(),
-            &BTreeMap::new(),
-            false,
-        )
-    }
-
-    /// Probe every account cheaply and cache its gateway so the following
-    /// targeted pass can observe the selected node ids.
-    pub fn probe(&self, interactive: bool) -> Result<ProbeCycle, CoreError> {
-        let outcome = self.store.load()?;
-        let state = outcome.state;
-        if outcome.migrated {
-            self.store.save(&state)?;
-        }
-        let (resolved, mut failures) = self.resolve_accounts(interactive)?;
-        let cache = resolved.clone();
-        let mut cycle = ProbeCycle {
-            accounts: Vec::new(),
-            failures: Vec::new(),
-            pending: BTreeMap::new(),
-        };
-        for account in resolved {
-            let report = match account.gateway.lock() {
-                Ok(mut gateway) => gateway.probe(),
-                Err(_) => Err(GatewayError::Unavailable(
-                    "gateway is unavailable".to_string(),
-                )),
-            };
-            let report = match report {
-                Ok(report) => report,
-                Err(error) => {
-                    failures.push(AccountFailure {
-                        label: account.label.clone(),
-                        message: format!("account {} failed: {error}", account.label),
-                    });
-                    continue;
-                }
-            };
-            let account_state = state
-                .accounts
-                .get(&account.label)
-                .cloned()
-                .unwrap_or_default();
-            let diff = diff_probe(&account_state.accepted_probe, &report, self.clock.now());
-            let targets: Vec<PullRequestKey> = diff
-                .targets
-                .into_iter()
-                .filter(|key| self.config.watch_includes(key.repository()))
-                .collect();
-            cycle.pending.insert(account.label.clone(), diff.pending);
-            cycle.accounts.push(AccountProbe {
-                label: account.label,
-                login: account.login,
-                report,
-                targets,
-            });
-        }
-        cycle.failures = failures;
-        if let Ok(mut slot) = self.cached.lock() {
-            *slot = Some(cache);
-        }
-        Ok(cycle)
     }
 
     pub fn refresh_targeted(
-        &self,
+        &mut self,
+        config: &AppConfig,
+        state: &mut WatcherState,
         interactive: bool,
-        targets: &BTreeMap<String, Vec<PullRequestKey>>,
-        pending: &BTreeMap<String, BTreeMap<String, Fingerprint>>,
-    ) -> Result<RefreshReport, CoreError> {
-        self.refresh_internal(interactive, RefreshKind::Targeted, targets, pending, true)
+    ) -> RefreshReport {
+        self.refresh(config, state, interactive)
     }
 
-    fn refresh_internal(
-        &self,
+    pub fn refresh_reconciliation(
+        &mut self,
+        config: &AppConfig,
+        state: &mut WatcherState,
         interactive: bool,
-        kind: RefreshKind,
-        targets: &BTreeMap<String, Vec<PullRequestKey>>,
-        pending: &BTreeMap<String, BTreeMap<String, Fingerprint>>,
-        use_cache: bool,
-    ) -> Result<RefreshReport, CoreError> {
-        let outcome = self.store.load()?;
-        let mut state = outcome.state;
-        let cached = if use_cache {
-            self.cached.lock().ok().and_then(|mut slot| slot.take())
-        } else {
-            None
-        };
-        let (resolved, mut failures) = match cached {
-            Some(resolved) => (resolved, Vec::new()),
-            None => self.resolve_accounts(interactive)?,
-        };
-        let login_set: Vec<String> = resolved
-            .iter()
-            .map(|account| account.login.clone())
-            .collect();
-        let catch_up = self.catch_up_repositories(&state);
-        let now = self.clock.now();
-        let mut report = RefreshReport::default();
-        let mut notifications: BTreeMap<PullRequestKey, Vec<crate::model::ActivityEvent>> =
-            BTreeMap::new();
-        let mut pending_activity: Vec<ActivityRecord> = Vec::new();
-        let mut next_id = state.next_activity_id.max(1);
-        let mut baseline_set: BTreeSet<PullRequestKey> = BTreeSet::new();
+    ) -> RefreshReport {
+        self.refresh(config, state, interactive)
+    }
 
-        for account in resolved {
-            let snapshots = match kind {
-                RefreshKind::Reconciliation => self.fetch_reconciliation(&account),
-                RefreshKind::Targeted => {
-                    let keys = targets.get(&account.label).cloned().unwrap_or_default();
-                    match account.gateway.lock() {
-                        Ok(mut gateway) => {
-                            let mut fetch = || -> Result<Vec<PullRequestSnapshot>, GatewayError> {
-                                let mut snapshots = Vec::new();
-                                if !keys.is_empty() {
-                                    snapshots.extend(gateway.observe(&keys)?);
-                                }
-                                snapshots.extend(gateway.discover_involved()?);
-                                Ok(merge_snapshots(snapshots))
-                            };
-                            fetch()
-                        }
-                        Err(_) => Err(GatewayError::Unavailable(
-                            "gateway is unavailable".to_string(),
-                        )),
-                    }
-                }
-            };
-            let snapshots = match snapshots {
-                Ok(snapshots) => snapshots,
+    fn refresh(
+        &mut self,
+        config: &AppConfig,
+        state: &mut WatcherState,
+        interactive: bool,
+    ) -> RefreshReport {
+        let mut report = RefreshReport::default();
+        let mut resolved = Vec::new();
+
+        for (label, account) in &config.accounts {
+            match self.resolve_and_verify(label, account, interactive) {
+                Ok(credential) => resolved.push((label.clone(), account.clone(), credential)),
+                Err(message) => report.failures.push(AccountFailure {
+                    label: label.clone(),
+                    message,
+                }),
+            }
+        }
+
+        let logins: BTreeSet<String> = resolved
+            .iter()
+            .map(|(_, _, credential)| credential.login.to_ascii_lowercase())
+            .collect();
+        let ignored = ignored_keys(config);
+        let catch_up: BTreeSet<String> = state
+            .catch_up
+            .iter()
+            .map(|repository| repository.to_ascii_lowercase())
+            .collect();
+        let now = Utc::now();
+        let mut observed_repositories: BTreeSet<String> = BTreeSet::new();
+
+        for (label, account, credential) in resolved {
+            let url = account.graphql_url().to_string();
+            let authored = match self.client.authored(&url, &credential.token) {
+                Ok((nodes, _)) => nodes,
                 Err(error) => {
-                    failures.push(AccountFailure {
-                        label: account.label.clone(),
-                        message: format!("account {} failed: {error}", account.label),
+                    report.failures.push(AccountFailure {
+                        label,
+                        message: error.to_string(),
                     });
                     continue;
                 }
             };
-            let snapshots = self.merge_relations(snapshots, &login_set);
-            let account_state = state.accounts.entry(account.label.clone()).or_default();
-            account_state.login = Some(account.login.clone());
-            let previous_last_check = account_state.last_check;
-
-            for snapshot in &snapshots {
-                if !self.config.watch_includes(snapshot.key.repository()) {
+            let discovery = match self.client.discovery(&url, &credential.token) {
+                Ok(discovery) => discovery,
+                Err(error) => {
+                    report.failures.push(AccountFailure {
+                        label,
+                        message: error.to_string(),
+                    });
                     continue;
                 }
-                let key = snapshot.key.to_string();
-                let previous = account_state.pull_requests.get(&key).cloned();
-                let relations = self.relations_for(snapshot, previous.as_ref(), &login_set);
-                let focus_allows = self.config.focus.allows(&relations);
-                let catch_up_here = catch_up
-                    .iter()
-                    .any(|repo| repo.eq_ignore_ascii_case(snapshot.key.repository()));
-                let context = ClassificationContext {
-                    last_check: previous_last_check,
-                    logins: &login_set,
-                    events: &self.config.events,
-                    focus_allows,
-                    catch_up: catch_up_here,
-                    ignored: self.config.watch.is_ignored(&key),
-                };
-                let first = previous.is_none();
-                let terminal_known = previous
+            };
+
+            self.seed_probe(&label, &authored);
+            self.credentials.insert(label.clone(), credential.clone());
+
+            let mut merged: BTreeMap<String, (PullRequestObservation, Vec<Relation>)> =
+                BTreeMap::new();
+            for observation in authored {
+                // The viewer's pull request connection names the viewer as
+                // author. A node whose author is outside the configured login
+                // set is not an authored pull request (R2).
+                let authored_by_login = observation
+                    .author
                     .as_ref()
-                    .map(|record| record.state.is_terminal() && snapshot.state.is_terminal())
-                    .unwrap_or(false);
-                let classification = if terminal_known {
-                    crate::classifier::Classification {
-                        events: Vec::new(),
-                        updated: refresh_terminal_metadata(
-                            previous.as_ref().expect("previous"),
-                            snapshot,
-                            &relations,
-                        ),
-                    }
-                } else {
-                    classify(previous.as_ref(), snapshot, context)
-                };
-                for classified in classification.events {
-                    let id = format!("a{next_id}");
-                    next_id += 1;
-                    let record = ActivityRecord::from_event(
-                        id,
-                        now,
-                        &snapshot.key,
-                        &classified.event,
-                        snapshot.stack.clone(),
-                    );
-                    let notify = classified.notify && !record.read;
-                    pending_activity.push(record);
-                    if notify {
-                        notifications
-                            .entry(snapshot.key.clone())
-                            .or_default()
-                            .push(classified.event);
-                    }
+                    .is_some_and(|author| logins.contains(&author.to_ascii_lowercase()));
+                if authored_by_login {
+                    merged
+                        .entry(observation.key.clone())
+                        .or_insert_with(|| (observation, vec![Relation::Authored]));
                 }
-                if first {
-                    baseline_set.insert(snapshot.key.clone());
+            }
+            merge_discovery(&mut merged, &discovery);
+            for (observation, relations) in merged.values_mut() {
+                let authored_by_login = observation
+                    .author
+                    .as_ref()
+                    .is_some_and(|author| logins.contains(&author.to_ascii_lowercase()));
+                if authored_by_login && !relations.contains(&Relation::Authored) {
+                    relations.push(Relation::Authored);
                 }
-                account_state
-                    .pull_requests
-                    .insert(key, classification.updated);
             }
 
-            match kind {
-                RefreshKind::Reconciliation => {
-                    let mut fingerprints = BTreeMap::new();
-                    for snapshot in &snapshots {
-                        fingerprints.insert(snapshot.key.to_string(), fingerprint_of(snapshot));
-                    }
-                    account_state.accepted_probe = fingerprints;
+            let last_check = state
+                .accounts
+                .get(&label)
+                .and_then(|account| account.last_check);
+            let context = ClassifyContext {
+                now,
+                login_set: &logins,
+                focus: &config.focus,
+                events: &config.events,
+                ignored: &ignored,
+                catch_up: &catch_up,
+            };
+
+            for (key, (observation, relations)) in merged {
+                if !scope_allows(config, &key) {
+                    continue;
                 }
-                RefreshKind::Targeted => {
-                    if let Some(fingerprints) = pending.get(&account.label) {
-                        account_state.accepted_probe = fingerprints.clone();
-                    }
+                if let Some(repository) = PullRequestKey::parse(&key) {
+                    observed_repositories.insert(repository.repository_name().to_ascii_lowercase());
+                }
+                let result = classifier::apply(
+                    state,
+                    &label,
+                    &observation,
+                    &relations,
+                    last_check,
+                    &context,
+                );
+                if result.baseline && !report.baselines.contains(&key) {
+                    report.baselines.push(key.clone());
+                }
+                if !result.notified.is_empty() {
+                    push_notification(&mut report.notifications, key, result.notified);
                 }
             }
+
+            let account_state = state.accounts.entry(label.clone()).or_default();
+            account_state.login = Some(credential.login.clone());
             account_state.last_check = Some(now);
         }
 
-        state.next_activity_id = next_id;
-        for record in pending_activity {
-            state.push_activity(record);
+        for repository in observed_repositories {
+            state.catch_up.remove(&repository);
         }
 
-        for (key, events) in notifications {
-            let title = state
-                .accounts
-                .values()
-                .find_map(|account| account.pull_requests.get(&key.to_string()))
-                .map(|watched| watched.title.clone())
-                .filter(|title| !title.is_empty())
-                .unwrap_or_else(|| key.to_string());
-            report
-                .notifications
-                .push(Notification { key, title, events });
-        }
-        report.baselines = baseline_set.into_iter().collect();
-        if failures.is_empty() {
-            state.last_scope = Some(self.scope_snapshot());
-        }
-        report.account_failures = failures;
-        self.store.save(&state)?;
-        Ok(report)
+        report
     }
 
-    fn fetch_reconciliation(
-        &self,
-        account: &ResolvedAccount,
-    ) -> Result<Vec<PullRequestSnapshot>, GatewayError> {
-        let mut gateway = match account.gateway.lock() {
-            Ok(gateway) => gateway,
-            Err(_) => {
-                return Err(GatewayError::Unavailable(
-                    "gateway is unavailable".to_string(),
-                ))
-            }
-        };
-        let authored = gateway.list_authored()?;
-        let involved = gateway.discover_involved()?;
-        let mut by_key: BTreeMap<PullRequestKey, PullRequestSnapshot> = BTreeMap::new();
-        for snapshot in authored.into_iter().chain(involved) {
-            if let Some(existing) = by_key.get_mut(&snapshot.key) {
-                for relation in snapshot.relations {
-                    if !existing.relations.contains(&relation) {
-                        existing.relations.push(relation);
-                    }
-                }
-            } else {
-                by_key.insert(snapshot.key.clone(), snapshot);
-            }
-        }
-        Ok(by_key.into_values().collect())
-    }
-
-    fn merge_relations(
-        &self,
-        snapshots: Vec<PullRequestSnapshot>,
-        logins: &[String],
-    ) -> Vec<PullRequestSnapshot> {
-        snapshots
-            .into_iter()
-            .map(|mut snapshot| {
-                if logins
-                    .iter()
-                    .any(|login| login.eq_ignore_ascii_case(&snapshot.author))
-                    && !snapshot.relations.contains(&FocusRelation::Authored)
-                {
-                    snapshot.relations.push(FocusRelation::Authored);
-                }
-                snapshot.relations.sort();
-                snapshot.relations.dedup();
-                snapshot
-            })
-            .collect()
-    }
-
-    fn relations_for(
-        &self,
-        snapshot: &PullRequestSnapshot,
-        previous: Option<&WatchedPullRequest>,
-        logins: &[String],
-    ) -> Vec<FocusRelation> {
-        let mut relations = snapshot.relations.clone();
-        if logins
-            .iter()
-            .any(|login| login.eq_ignore_ascii_case(&snapshot.author))
-            && !relations.contains(&FocusRelation::Authored)
-        {
-            relations.push(FocusRelation::Authored);
-        }
-        if relations.is_empty() {
-            if let Some(previous) = previous {
-                relations = previous.relations.clone();
-            }
-        }
-        relations.sort();
-        relations.dedup();
-        relations
-    }
-
-    fn catch_up_repositories(&self, state: &WatcherState) -> BTreeSet<String> {
-        let Some(previous) = &state.last_scope else {
-            return BTreeSet::new();
-        };
-        let current_mode = self.config.watch.effective_mode();
-        let mut newly_included = BTreeSet::new();
-        match (previous.mode, current_mode) {
-            (WatchMode::All, _) => {}
-            (_, WatchMode::All) => {
-                for account in state.accounts.values() {
-                    for key in account.pull_requests.keys() {
-                        if let Ok(key) = key.parse::<PullRequestKey>() {
-                            let repository = key.repository().to_string();
-                            if !previous
-                                .repositories
-                                .iter()
-                                .any(|candidate| candidate.eq_ignore_ascii_case(&repository))
-                            {
-                                newly_included.insert(repository);
-                            }
-                        }
-                    }
-                }
-            }
-            (WatchMode::Selected, WatchMode::Selected) => {
-                for repository in &self.config.watch.repositories {
-                    if !previous
-                        .repositories
-                        .iter()
-                        .any(|candidate| candidate.eq_ignore_ascii_case(repository))
-                    {
-                        newly_included.insert(repository.clone());
-                    }
-                }
-            }
-        }
-        let mut catch_up = BTreeSet::new();
-        for repository in newly_included {
-            let has_records = state.accounts.values().any(|account| {
-                account.pull_requests.keys().any(|key| {
-                    key.parse::<PullRequestKey>()
-                        .map(|key| key.repository().eq_ignore_ascii_case(&repository))
-                        .unwrap_or(false)
-                })
-            });
-            if has_records {
-                catch_up.insert(repository);
-            }
-        }
-        catch_up
-    }
-
-    fn scope_snapshot(&self) -> ScopeSnapshot {
-        ScopeSnapshot {
-            mode: self.config.watch.effective_mode(),
-            repositories: self.config.watch.repositories.clone(),
-        }
-    }
-
-    fn resolve_accounts(
-        &self,
+    pub fn probe(
+        &mut self,
+        config: &AppConfig,
+        state: &mut WatcherState,
         interactive: bool,
-    ) -> Result<(Vec<ResolvedAccount>, Vec<AccountFailure>), CoreError> {
-        let mut resolved = Vec::new();
-        let mut failures = Vec::new();
-        for (label, account) in &self.config.accounts {
-            let credential = match self.credentials.resolve(label, account, interactive) {
+    ) -> ProbeReport {
+        let mut report = ProbeReport::default();
+        for (label, account) in &config.accounts {
+            let credential = match self.credential_for(label, account, interactive) {
                 Ok(credential) => credential,
-                Err(error) => {
-                    failures.push(AccountFailure {
+                Err(message) => {
+                    report.failures.push(AccountFailure {
                         label: label.clone(),
-                        message: format!("account {label} failed: {error}"),
+                        message,
                     });
                     continue;
                 }
             };
-            let gateway = match self
-                .gateway_factory
-                .create(label, account, &credential.token)
-            {
-                Ok(gateway) => gateway,
-                Err(error) => {
-                    failures.push(AccountFailure {
-                        label: label.clone(),
-                        message: format!("account {label} failed: {error}"),
-                    });
-                    continue;
-                }
-            };
-            let gateway = Arc::new(Mutex::new(gateway));
-            let viewer_login = match gateway.lock() {
-                Ok(mut gateway) => gateway.viewer_login(),
-                Err(_) => Err(GatewayError::Unavailable(
-                    "gateway is unavailable".to_string(),
-                )),
-            };
-            let viewer_login = match viewer_login {
+            let url = account.graphql_url().to_string();
+            let login = match self.client.viewer(&url, &credential.token) {
                 Ok(login) => login,
                 Err(error) => {
-                    failures.push(AccountFailure {
+                    report.failures.push(AccountFailure {
                         label: label.clone(),
-                        message: format!("account {label} failed: {error}"),
+                        message: error.to_string(),
                     });
                     continue;
                 }
             };
-            if let Some(expected) = account.expected_login() {
-                if !expected.eq_ignore_ascii_case(&viewer_login) {
-                    failures.push(AccountFailure {
+            if let Some(expected) = &account.github_user {
+                if !login.eq_ignore_ascii_case(expected) {
+                    report.failures.push(AccountFailure {
                         label: label.clone(),
-                        message: format!(
-                            "account {label} failed: credential belongs to @{viewer_login}, expected @{expected}"
-                        ),
+                        message: format!("credential belongs to @{login}, expected @{expected}"),
                     });
                     continue;
                 }
             }
-            resolved.push(ResolvedAccount {
-                label: label.clone(),
-                login: viewer_login,
-                gateway,
-            });
+            let probe = match self.client.probe(&url, &credential.token) {
+                Ok(probe) => probe,
+                Err(error) => {
+                    report.failures.push(AccountFailure {
+                        label: label.clone(),
+                        message: error.to_string(),
+                    });
+                    continue;
+                }
+            };
+            report.rate_limits.push(probe.rate_limit.clone());
+            report.logins.insert(login.to_ascii_lowercase());
+
+            let previous = self.probe_fingerprints.get(label);
+            let mut next = BTreeMap::new();
+            let mut changed = Vec::new();
+            for node in probe.nodes {
+                let key = node.key.clone();
+                let fingerprint = fingerprint(&node);
+                let was = previous.and_then(|previous| previous.get(&key));
+                let state_changed = state
+                    .accounts
+                    .get(label)
+                    .and_then(|account| account.pull_requests.get(&key))
+                    .is_some_and(|watched| watched.state != node.state);
+                if was != Some(&fingerprint) || state_changed {
+                    if let Some(id) = &node.node_id {
+                        changed.push(id.clone());
+                    }
+                }
+                next.insert(key, fingerprint);
+            }
+            self.probe_fingerprints.insert(label.clone(), next);
+            if !changed.is_empty() {
+                report.changed.push((label.clone(), changed));
+            }
+            self.credentials.insert(
+                label.clone(),
+                Credential {
+                    token: credential.token.clone(),
+                    login,
+                },
+            );
         }
-        Ok((resolved, failures))
+        report
     }
-}
 
-#[derive(Debug, Clone, Copy)]
-enum RefreshKind {
-    Reconciliation,
-    Targeted,
-}
+    pub fn observe_changed(
+        &mut self,
+        config: &AppConfig,
+        state: &mut WatcherState,
+        changed: &[(String, Vec<String>)],
+        logins: &BTreeSet<String>,
+        interactive: bool,
+    ) -> RefreshReport {
+        let mut report = RefreshReport::default();
+        let ignored = ignored_keys(config);
+        let catch_up: BTreeSet<String> = state
+            .catch_up
+            .iter()
+            .map(|repository| repository.to_ascii_lowercase())
+            .collect();
+        let now = Utc::now();
 
-fn refresh_terminal_metadata(
-    previous: &WatchedPullRequest,
-    snapshot: &PullRequestSnapshot,
-    relations: &[FocusRelation],
-) -> WatchedPullRequest {
-    let mut updated = previous.clone();
-    updated.baseline = true;
-    updated.title = snapshot.title.clone();
-    updated.body = snapshot.body.clone();
-    updated.author = snapshot.author.clone();
-    updated.assignees = snapshot.assignees.clone();
-    updated.url = snapshot.url.clone();
-    updated.head_oid = snapshot.head_oid.clone();
-    updated.created_at = snapshot.created_at;
-    updated.updated_at = snapshot.updated_at;
-    updated.merged_at = snapshot.merged_at;
-    updated.closed_at = snapshot.closed_at;
-    updated.stack = snapshot.stack.clone();
-    updated.relations = relations.to_vec();
-    for comment in &snapshot.comments {
-        updated.seen_comments.insert(comment.id.clone());
-    }
-    for review in &snapshot.reviews {
-        updated.seen_reviews.insert(review.id.clone());
-    }
-    for comment in &snapshot.review_comments {
-        updated.seen_review_comments.insert(comment.id.clone());
-    }
-    updated
-}
-
-fn merge_snapshots(snapshots: Vec<PullRequestSnapshot>) -> Vec<PullRequestSnapshot> {
-    let mut by_key: BTreeMap<PullRequestKey, PullRequestSnapshot> = BTreeMap::new();
-    for snapshot in snapshots {
-        if let Some(existing) = by_key.get_mut(&snapshot.key) {
-            for relation in snapshot.relations {
-                if !existing.relations.contains(&relation) {
-                    existing.relations.push(relation);
+        for (label, ids) in changed {
+            let Some(account) = config.accounts.get(label) else {
+                continue;
+            };
+            let credential = match self.credential_for(label, account, interactive) {
+                Ok(credential) => credential,
+                Err(message) => {
+                    report.failures.push(AccountFailure {
+                        label: label.clone(),
+                        message,
+                    });
+                    continue;
+                }
+            };
+            let url = account.graphql_url().to_string();
+            let observations = match self.client.observe(&url, &credential.token, ids) {
+                Ok(observations) => observations,
+                Err(error) => {
+                    report.failures.push(AccountFailure {
+                        label: label.clone(),
+                        message: error.to_string(),
+                    });
+                    continue;
+                }
+            };
+            let last_check = state
+                .accounts
+                .get(label)
+                .and_then(|account| account.last_check);
+            let context = ClassifyContext {
+                now,
+                login_set: logins,
+                focus: &config.focus,
+                events: &config.events,
+                ignored: &ignored,
+                catch_up: &catch_up,
+            };
+            for observation in observations {
+                if !scope_allows(config, &observation.key) {
+                    continue;
+                }
+                let relations: Vec<Relation> = if observation
+                    .author
+                    .as_ref()
+                    .is_some_and(|author| logins.contains(&author.to_ascii_lowercase()))
+                {
+                    vec![Relation::Authored]
+                } else {
+                    Vec::new()
+                };
+                let result =
+                    classifier::apply(state, label, &observation, &relations, last_check, &context);
+                if result.baseline && !report.baselines.contains(&observation.key) {
+                    report.baselines.push(observation.key.clone());
+                }
+                if !result.notified.is_empty() {
+                    push_notification(
+                        &mut report.notifications,
+                        observation.key.clone(),
+                        result.notified,
+                    );
                 }
             }
-        } else {
-            by_key.insert(snapshot.key.clone(), snapshot);
+            let account_state = state.accounts.entry(label.clone()).or_default();
+            account_state.login = Some(credential.login.clone());
+            account_state.last_check = Some(now);
+            self.credentials.insert(label.clone(), credential);
+        }
+        report
+    }
+
+    fn seed_probe(&mut self, label: &str, nodes: &[PullRequestObservation]) {
+        let mut fingerprints = BTreeMap::new();
+        for node in nodes {
+            fingerprints.insert(node.key.clone(), fingerprint(node));
+        }
+        self.probe_fingerprints
+            .insert(label.to_string(), fingerprints);
+    }
+
+    fn credential_for(
+        &mut self,
+        label: &str,
+        account: &AccountConfig,
+        interactive: bool,
+    ) -> Result<Credential, String> {
+        if let Some(credential) = self.credentials.get(label) {
+            return Ok(credential.clone());
+        }
+        let token = self.resolve_token(account, interactive)?;
+        Ok(Credential {
+            token,
+            login: account.github_user.clone().unwrap_or_default(),
+        })
+    }
+
+    fn resolve_and_verify(
+        &mut self,
+        label: &str,
+        account: &AccountConfig,
+        interactive: bool,
+    ) -> Result<Credential, String> {
+        let token = self.resolve_token(account, interactive)?;
+        let url = account.graphql_url();
+        let login = self
+            .client
+            .viewer(url, &token)
+            .map_err(|error| error.to_string())?;
+        if let Some(expected) = &account.github_user {
+            if !login.eq_ignore_ascii_case(expected) {
+                return Err(format!(
+                    "credential belongs to @{login}, expected @{expected}"
+                ));
+            }
+        }
+        let credential = Credential { token, login };
+        self.credentials
+            .insert(label.to_string(), credential.clone());
+        Ok(credential)
+    }
+
+    fn resolve_token(
+        &mut self,
+        account: &AccountConfig,
+        interactive: bool,
+    ) -> Result<String, String> {
+        match account.auth_mode() {
+            AuthMode::GhOauth => {
+                let login = account
+                    .github_user
+                    .as_deref()
+                    .ok_or_else(|| "gh_oauth requires github_user".to_string())?;
+                match gh_auth_token(login) {
+                    Ok(token) => Ok(token),
+                    Err(_) => {
+                        if interactive
+                            && !self
+                                .gh_login_attempted
+                                .contains(&login.to_ascii_lowercase())
+                        {
+                            self.gh_login_attempted.insert(login.to_ascii_lowercase());
+                            if gh_login(login) {
+                                if let Ok(token) = gh_auth_token(login) {
+                                    return Ok(token);
+                                }
+                                return Err(format!("gh auth token failed for @{login}"));
+                            }
+                            return Err(format!("gh auth login failed for @{login}"));
+                        }
+                        Err(format!("gh auth token failed for @{login}"))
+                    }
+                }
+            }
+            AuthMode::GithubPat => {
+                if let Some(variable) = &account.token_env {
+                    match std::env::var(variable) {
+                        Ok(value) if value.trim().is_empty() => Err(format!(
+                            "credential environment variable {variable} is empty"
+                        )),
+                        Ok(value) => Ok(value.trim().to_string()),
+                        Err(std::env::VarError::NotPresent) => Err(format!(
+                            "credential environment variable {variable} is not set"
+                        )),
+                        Err(std::env::VarError::NotUnicode(_)) => Err(format!(
+                            "credential environment variable {variable} is empty"
+                        )),
+                    }
+                } else if let Some(command) = &account.token_command {
+                    let output = Command::new("/bin/sh")
+                        .arg("-c")
+                        .arg(command)
+                        .output()
+                        .map_err(|_| "credential command failed".to_string())?;
+                    if !output.status.success() {
+                        return Err("credential command failed".to_string());
+                    }
+                    let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if token.is_empty() {
+                        return Err("credential command produced an empty token".to_string());
+                    }
+                    Ok(token)
+                } else if let Some(file) = &account.token_file {
+                    let path = passuff_config::expand_home(file);
+                    let text = std::fs::read_to_string(&path).map_err(|error| {
+                        if error.kind() == std::io::ErrorKind::NotFound {
+                            format!("token file is missing: {}", path.display())
+                        } else {
+                            format!("token file cannot be read: {}: {error}", path.display())
+                        }
+                    })?;
+                    let token = text.trim().to_string();
+                    if token.is_empty() {
+                        return Err("token file is empty".to_string());
+                    }
+                    Ok(token)
+                } else {
+                    Err("must select exactly one credential source".to_string())
+                }
+            }
         }
     }
-    by_key.into_values().collect()
 }
 
-fn fingerprint_of(snapshot: &PullRequestSnapshot) -> Fingerprint {
-    Fingerprint {
-        node_id: snapshot.node_id.clone(),
-        created_at: snapshot.created_at,
-        updated_at: snapshot.updated_at,
-        state: snapshot.state,
-        head_oid: snapshot.head_oid.clone(),
-        ci: snapshot.ci,
+fn merge_discovery(
+    merged: &mut BTreeMap<String, (PullRequestObservation, Vec<Relation>)>,
+    discovery: &DiscoveryObservation,
+) {
+    for (nodes, relation) in [
+        (&discovery.assigned, Relation::Assigned),
+        (&discovery.review_requested, Relation::ReviewRequested),
+        (
+            &discovery.team_review_requested,
+            Relation::TeamReviewRequested,
+        ),
+    ] {
+        for observation in nodes {
+            let entry = merged
+                .entry(observation.key.clone())
+                .or_insert_with(|| (observation.clone(), Vec::new()));
+            if !entry.1.contains(&relation) {
+                entry.1.push(relation);
+            }
+        }
     }
 }
 
-#[allow(dead_code)]
-pub fn allowance_label(allowance: &Allowance) -> String {
-    match allowance.reset_at {
-        Some(reset) => format!("{} points left until {}", allowance.remaining, reset),
-        None => format!("{} points left", allowance.remaining),
+fn fingerprint(observation: &PullRequestObservation) -> String {
+    format!(
+        "{}|{}|{}|{}|{}|{:?}",
+        observation.node_id.as_deref().unwrap_or_default(),
+        observation.state.human(),
+        observation
+            .created_at
+            .map(|time| time.to_rfc3339())
+            .unwrap_or_default(),
+        observation
+            .updated_at
+            .map(|time| time.to_rfc3339())
+            .unwrap_or_default(),
+        observation.head_ref_oid.as_deref().unwrap_or_default(),
+        observation.ci
+    )
+}
+
+fn push_notification(notifications: &mut Vec<Notification>, key: String, summaries: Vec<String>) {
+    if let Some(existing) = notifications
+        .iter_mut()
+        .find(|notification| notification.key == key)
+    {
+        existing.summaries.extend(summaries);
+    } else {
+        notifications.push(Notification { key, summaries });
     }
+}
+
+fn gh_auth_token(login: &str) -> Result<String, String> {
+    let output = Command::new("gh")
+        .args(["auth", "token", "--user", login])
+        .output()
+        .map_err(|_| format!("gh auth token failed for @{login}"))?;
+    if !output.status.success() {
+        return Err(format!("gh auth token failed for @{login}"));
+    }
+    let token = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if token.is_empty() {
+        return Err(format!("gh auth token failed for @{login}"));
+    }
+    Ok(token)
+}
+
+fn gh_login(_login: &str) -> bool {
+    Command::new("gh")
+        .args(["auth", "login", "--web"])
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
 }

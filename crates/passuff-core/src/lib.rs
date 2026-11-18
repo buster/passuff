@@ -1,33 +1,18 @@
-//! UI-agnostic observation, classification, persistence and inbox read model.
+//! UI-agnostic core for passuff: observation, classification, and watcher
+//! state. The core does not depend on a terminal, a notification surface, or a
+//! sound player.
 
 pub mod classifier;
 pub mod core;
-pub mod credentials;
 pub mod github;
-pub mod inbox;
 pub mod model;
-pub mod probe;
 pub mod state;
+pub mod view;
 
-pub use classifier::{classify, Classification, ClassificationContext, ClassifiedEvent};
-pub use core::{
-    AccountFailure, AccountProbe, Clock, CoreError, FixedClock, PassuffCore, ProbeCycle,
-    RefreshReport, SystemClock,
-};
-pub use credentials::{
-    CredentialError, CredentialSource, ResolvedCredential, SystemCredentialSource,
-};
-pub use github::{GatewayError, GatewayFactory, GitHubGateway, SystemGatewayFactory};
-pub use inbox::{
-    AccountView, ActivityView, InboxService, InboxView, MarkReadResult, PullRequestView,
-};
+pub use core::{PassuffCore, ProbeReport};
+pub use github::GithubClient;
 pub use model::{
-    ActivityEvent, Allowance, CiResult, CommentData, EventKind, Fingerprint, Notification,
-    ProbePullRequest, ProbeReport, PullRequestKey, PullRequestSnapshot, PullRequestState,
-    ReviewCommentData, ReviewData, ReviewState, StackInfo,
+    AccountFailure, AccountState, ActivityKind, ActivityRecord, CiResult, Notification, PrState,
+    PullRequestKey, RefreshReport, StackInfo, WatchedPullRequest, WatcherState,
 };
-pub use probe::{backoff, defer_pass, diff_probe, next_delay, open_targets, ProbeDiff};
-pub use state::{
-    AccountState, ActivityRecord, JsonStateStore, LoadOutcome, ScopeSnapshot, SnapshotStore,
-    StateError, WatchedPullRequest, WatcherState, ACTIVITY_LIMIT, STATE_VERSION,
-};
+pub use state::{LoadedState, StateError};

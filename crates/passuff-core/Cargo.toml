@@ -4,16 +4,12 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "UI-agnostic observation, classification and state for passuff"
+description = "Observation, classification, and watcher state for passuff"
 
 [dependencies]
-passuff-config.workspace = true
 chrono.workspace = true
-reqwest.workspace = true
+passuff-config = { path = "../passuff-config", version = "0.1.0" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
-
-[dev-dependencies]
-tempfile = "3"
+ureq.workspace = true

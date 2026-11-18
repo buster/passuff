@@ -1,223 +1,214 @@
-use chrono::{DateTime, SecondsFormat, Utc};
-use passuff_config::NotificationsConfig;
-use passuff_core::{
-    AccountView, ActivityView, InboxView, Notification, PullRequestView, RefreshReport,
-};
+//! Plain-text transcripts. Every line is written to stdout except account
+//! failures and delivery failures, which the runtime writes to stderr.
 
-use crate::delivery::{urgency_label, DesktopMessage};
+use passuff_config::AppConfig;
+use passuff_core::model::{AccountFailure, Notification, RefreshReport};
+use passuff_core::view;
+use passuff_core::{ActivityRecord, WatcherState};
 
-pub struct RenderedRefresh {
-    pub stdout: String,
-    pub stderr: String,
-    pub digest: Option<DesktopMessage>,
+use crate::util::{activity_word, record_word, rfc3339};
+
+#[derive(Debug, Clone)]
+pub struct Digest {
+    pub title: String,
+    pub body: String,
 }
 
-pub fn render_refresh(
-    report: &RefreshReport,
-    notifications: &NotificationsConfig,
-) -> RenderedRefresh {
-    let mut stdout = String::new();
-    let mut stderr = String::new();
-    for failure in &report.account_failures {
-        stderr.push_str(&format!("passuff: {}\n", failure.message));
+pub fn status(config: &AppConfig, state: &WatcherState) -> String {
+    let mut lines = Vec::new();
+    lines.push("passuff: accounts".to_string());
+
+    for label in config.accounts.keys() {
+        let stored = state.accounts.get(label);
+        let login = stored
+            .and_then(|account| account.login.as_deref())
+            .map(|login| format!("@{login}"))
+            .unwrap_or_else(|| "not resolved".to_string());
+        let last_check = stored
+            .and_then(|account| account.last_check)
+            .map(rfc3339)
+            .unwrap_or_else(|| "never".to_string());
+        lines.push(format!("  {label} {login}  last check {last_check}"));
     }
-    for baseline in &report.baselines {
-        stdout.push_str(&format!(
-            "passuff: Fresh baseline recorded for {baseline}\n"
-        ));
+
+    lines.push(format!(
+        "passuff: watch scope: {}",
+        view::scope_label(config)
+    ));
+
+    let watched = state.watched_by_key();
+    let login_set = state.login_set();
+    let mut rows: Vec<&passuff_core::WatchedPullRequest> = watched
+        .into_values()
+        .filter(|pull_request| view::watched_visible(config, pull_request, &login_set))
+        .collect();
+    rows.sort_by(|left, right| left.key.cmp(&right.key));
+
+    if rows.is_empty() {
+        lines.push("passuff: no watched pull requests".to_string());
+    } else {
+        lines.push("passuff: watched pull requests".to_string());
+        for pull_request in rows {
+            let title = if pull_request.title.is_empty() {
+                String::new()
+            } else {
+                format!(" - {}", pull_request.title)
+            };
+            lines.push(format!(
+                "  {} {} CI {}  Pull request {}{}",
+                pull_request.key,
+                pull_request.state.human(),
+                pull_request.ci.human(),
+                pull_request.key,
+                title
+            ));
+        }
+    }
+
+    let (unread, total) = view::unread_counts(config, state);
+    lines.push(format!("passuff: {unread} unread of {total}"));
+    lines.join("\n")
+}
+
+pub fn inbox(config: &AppConfig, state: &WatcherState, all: bool) -> String {
+    let records = view::visible_activity(config, state);
+    let selected: Vec<&ActivityRecord> = records
+        .into_iter()
+        .filter(|record| all || !record.read)
+        .collect();
+    if selected.is_empty() {
+        return if all {
+            "passuff: no activity".to_string()
+        } else {
+            "passuff: no unread activity".to_string()
+        };
+    }
+    selected
+        .into_iter()
+        .map(|record| {
+            let time = match record.occurred_at {
+                Some(time) => rfc3339(time),
+                None => format!("~{}", rfc3339(record.observed_at)),
+            };
+            format!(
+                "  {}  {}  {}  {}  {}",
+                record.id,
+                time,
+                record.key,
+                record.summary,
+                if record.read { "read" } else { "unread" }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+pub fn read_message(changed: usize) -> String {
+    format!("passuff: {changed} activity {} read", record_word(changed))
+}
+
+pub fn check_transcript(report: &RefreshReport) -> String {
+    let mut lines = Vec::new();
+    for key in &report.baselines {
+        lines.push(format!("passuff: Fresh baseline recorded for {key}"));
     }
     if report.notifications.is_empty() {
-        stdout.push_str("passuff: no notifications\n");
-    } else if report.notifications.len() == 1 {
+        lines.push("passuff: no notifications".to_string());
+        return lines.join("\n");
+    }
+
+    if report.notifications.len() == 1 {
         let notification = &report.notifications[0];
-        let count = notification.activity_count();
-        stdout.push_str(&format!("passuff: notification for {}\n", notification.key));
-        stdout.push_str(&format!(
-            "passuff: {count} {} on {}\n",
-            plural(count, "activity", "activities"),
+        lines.push(format!("passuff: notification for {}", notification.key));
+        lines.push(format!(
+            "passuff: {} {} on {}",
+            notification.summaries.len(),
+            activity_word(notification.summaries.len()),
             notification.key
         ));
-        for event in &notification.events {
-            stdout.push_str(&format!("  {}\n", event.summary));
+        for summary in &notification.summaries {
+            lines.push(format!("  {summary}"));
         }
     } else {
         let total: usize = report
             .notifications
             .iter()
-            .map(Notification::activity_count)
+            .map(|notification| notification.summaries.len())
             .sum();
-        let pull_requests = report.notifications.len();
-        stdout.push_str(&format!(
-            "passuff: {total} activities in {pull_requests} pull requests\n"
+        lines.push(format!(
+            "passuff: {total} activities in {} pull requests",
+            report.notifications.len()
         ));
         for notification in &report.notifications {
-            stdout.push_str(&format!("passuff: notification for {}\n", notification.key));
-            stdout.push_str(&format!(
-                "  {}: {} {}\n",
+            lines.push(format!("passuff: notification for {}", notification.key));
+            lines.push(format!(
+                "  {}: {} {}",
                 notification.key,
-                notification.activity_count(),
-                plural(notification.activity_count(), "activity", "activities")
+                notification.summaries.len(),
+                activity_word(notification.summaries.len())
             ));
-            for event in &notification.events {
-                stdout.push_str(&format!("    {}\n", event.summary));
+            for summary in &notification.summaries {
+                lines.push(format!("    {summary}"));
             }
         }
     }
-    let digest = digest_message(report, notifications);
-    RenderedRefresh {
-        stdout,
-        stderr,
-        digest,
-    }
+    lines.join("\n")
 }
 
-pub fn digest_message(
-    report: &RefreshReport,
-    notifications: &NotificationsConfig,
-) -> Option<DesktopMessage> {
-    if report.notifications.is_empty() {
+pub fn account_failure_line(failure: &AccountFailure) -> String {
+    format!(
+        "passuff: account {} failed: {}",
+        failure.label, failure.message
+    )
+}
+
+pub fn digest(notifications: &[Notification]) -> Option<Digest> {
+    if notifications.is_empty() {
         return None;
     }
-    let urgency = urgency_label(notifications.urgency).to_string();
-    if report.notifications.len() == 1 {
-        let notification = &report.notifications[0];
-        let count = notification.activity_count();
-        let title = if count == 1 {
-            format!("New activity on {}", notification.key)
-        } else {
-            format!("{count} activities on {}", notification.key)
-        };
-        let mut body = String::new();
-        if count > 1 {
-            body.push_str(&format!("{count} activities on {}\n", notification.key));
+    if notifications.len() == 1 {
+        let notification = &notifications[0];
+        if notification.summaries.len() == 1 {
+            return Some(Digest {
+                title: format!("New activity on {}", notification.key),
+                body: notification.summaries[0].clone(),
+            });
         }
-        for event in &notification.events {
-            body.push_str(&event.summary);
-            body.push('\n');
-        }
-        return Some(DesktopMessage {
+        let count = notification.summaries.len();
+        let title = format!("{count} activities on {}", notification.key);
+        let mut body = vec![title.clone()];
+        body.extend(notification.summaries.iter().cloned());
+        return Some(Digest {
             title,
-            body: body.trim_end().to_string(),
-            urgency,
+            body: body.join("\n"),
         });
     }
-    let total: usize = report
-        .notifications
+
+    let total: usize = notifications
         .iter()
-        .map(Notification::activity_count)
+        .map(|notification| notification.summaries.len())
         .sum();
-    let pull_requests = report.notifications.len();
-    let title = format!("{total} activities in {pull_requests} pull requests");
-    let mut body = format!("{title}\n");
-    for notification in report.notifications.iter().take(5) {
-        body.push_str(&format!(
-            "{}: {} {}\n",
+    let title = format!(
+        "{total} activities in {} pull requests",
+        notifications.len()
+    );
+    let mut body = vec![title.clone()];
+    for notification in notifications.iter().take(5) {
+        body.push(format!(
+            "{}: {} {}",
             notification.key,
-            notification.activity_count(),
-            plural(notification.activity_count(), "activity", "activities")
+            notification.summaries.len(),
+            activity_word(notification.summaries.len())
         ));
     }
-    if report.notifications.len() > 5 {
-        body.push_str(&format!(
-            "and {} more pull requests\n",
-            report.notifications.len() - 5
+    if notifications.len() > 5 {
+        body.push(format!(
+            "and {} more pull requests",
+            notifications.len() - 5
         ));
     }
-    Some(DesktopMessage {
+    Some(Digest {
         title,
-        body: body.trim_end().to_string(),
-        urgency,
+        body: body.join("\n"),
     })
 }
-
-pub fn render_status(view: &InboxView) -> String {
-    let mut output = String::new();
-    output.push_str("passuff: accounts\n");
-    for account in &view.accounts {
-        output.push_str(&format!(
-            "  {} {}  last check {}\n",
-            account.label,
-            account
-                .login
-                .as_deref()
-                .map(|login| format!("@{login}"))
-                .unwrap_or_else(|| "not resolved".to_string()),
-            account
-                .last_check
-                .map(format_timestamp)
-                .unwrap_or_else(|| "never".to_string())
-        ));
-    }
-    output.push_str(&format!("passuff: watch scope: {}\n", view.scope_label));
-    if view.watched.is_empty() {
-        output.push_str("passuff: no watched pull requests\n");
-    } else {
-        output.push_str("passuff: watched pull requests\n");
-        for pull_request in &view.watched {
-            output.push_str(&format!(
-                "  {} {} CI {}  Pull request {}{}\n",
-                pull_request.key,
-                pull_request.state.as_str(),
-                pull_request.ci.as_str(),
-                pull_request.key,
-                if pull_request.title.is_empty() {
-                    String::new()
-                } else {
-                    format!(" - {}", pull_request.title)
-                }
-            ));
-        }
-    }
-    output.push_str(&format!(
-        "passuff: {} unread of {}\n",
-        view.unread, view.total
-    ));
-    output
-}
-
-pub fn render_inbox(view: &InboxView, all: bool) -> String {
-    let records: Vec<&ActivityView> = view
-        .activity
-        .iter()
-        .filter(|record| !record.ignored)
-        .filter(|record| all || !record.read)
-        .collect();
-    if records.is_empty() {
-        return if all {
-            "passuff: no activity\n".to_string()
-        } else {
-            "passuff: no unread activity\n".to_string()
-        };
-    }
-    let mut output = String::new();
-    for record in records {
-        let time = record
-            .occurred_at
-            .map(format_timestamp)
-            .unwrap_or_else(|| format!("~{}", format_timestamp(record.observed_at)));
-        output.push_str(&format!(
-            "  {}  {}  {}  {}  {}\n",
-            record.id,
-            time,
-            record.pull_request,
-            record.summary,
-            if record.read { "read" } else { "unread" }
-        ));
-    }
-    output
-}
-
-pub fn format_timestamp(value: DateTime<Utc>) -> String {
-    value.to_rfc3339_opts(SecondsFormat::Secs, true)
-}
-
-pub fn plural<'a>(count: usize, singular: &'a str, plural: &'a str) -> &'a str {
-    if count == 1 {
-        singular
-    } else {
-        plural
-    }
-}
-
-#[allow(dead_code)]
-fn _account(_: &AccountView, _: &PullRequestView) {}

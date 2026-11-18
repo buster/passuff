@@ -6,38 +6,26 @@ rust-version.workspace = true
 license.workspace = true
 description = "Multi-account GitHub pull request inbox and desktop notifier"
 
-[features]
-default = []
-test-support = []
-
-[dependencies]
-passuff-config.workspace = true
-passuff-core.workspace = true
-chrono.workspace = true
-clap.workspace = true
-crossterm.workspace = true
-directories.workspace = true
-notify-rust.workspace = true
-ratatui.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-tokio.workspace = true
-
-[dev-dependencies]
-cucumber = "0.23"
-tempfile = "3"
-tokio.workspace = true
-
 [[bin]]
 name = "passuff"
-path = "src/main.rs"
+path = "src/bin/passuff.rs"
 
 [[bin]]
 name = "passuff-tui"
 path = "src/bin/passuff-tui.rs"
 
-[[test]]
-name = "features_runner"
-path = "tests/features_runner.rs"
-harness = false
+[dependencies]
+chrono.workspace = true
+clap.workspace = true
+crossterm.workspace = true
+ctrlc.workspace = true
+directories.workspace = true
+passuff-config = { path = "../passuff-config", version = "0.1.0" }
+passuff-core = { path = "../passuff-core", version = "0.1.0" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+
+[features]
+test-support = []

@@ -1,320 +1,627 @@
+//! Activity classification and deduplication.
+//!
+//! Classification compares one observation with a watched pull request's
+//! recorded observation. It records one activity record per event and reports
+//! at most one notification group per pull request per cycle.
+
 use std::collections::BTreeSet;
 
 use chrono::{DateTime, Utc};
-use passuff_config::{EventToggles, FocusRelation};
+use passuff_config::{EventToggles, FocusConfig, Relation};
 
+use crate::github::{CommentObservation, PullRequestObservation, ReviewObservation};
 use crate::model::{
-    ActivityEvent, CiResult, EventKind, PullRequestSnapshot, PullRequestState, ReviewState,
+    ActivityKind, ActivityRecord, CiResult, PrState, PullRequestKey, StackInfo, WatchedPullRequest,
+    WatcherState,
 };
-use crate::state::WatchedPullRequest;
 
-#[derive(Debug, Clone)]
-pub struct ClassifiedEvent {
-    pub event: ActivityEvent,
-    pub notify: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct Classification {
-    pub events: Vec<ClassifiedEvent>,
-    pub updated: WatchedPullRequest,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct ClassificationContext<'a> {
-    pub last_check: Option<DateTime<Utc>>,
-    pub logins: &'a [String],
+pub struct ClassifyContext<'a> {
+    pub now: DateTime<Utc>,
+    /// Lower-cased resolved logins.
+    pub login_set: &'a BTreeSet<String>,
+    pub focus: &'a FocusConfig,
     pub events: &'a EventToggles,
-    pub focus_allows: bool,
-    pub catch_up: bool,
-    pub ignored: bool,
+    /// Lower-cased `owner/repo#number`.
+    pub ignored: &'a BTreeSet<String>,
+    /// Lower-cased `owner/repo` awaiting a silent catch-up.
+    pub catch_up: &'a BTreeSet<String>,
 }
 
-pub fn classify(
-    previous: Option<&WatchedPullRequest>,
-    snapshot: &PullRequestSnapshot,
-    context: ClassificationContext<'_>,
-) -> Classification {
-    let mut updated = previous.cloned().unwrap_or_default();
-    let first = previous.is_none() || !previous.is_some_and(|record| record.baseline);
-    let mut events = Vec::new();
+#[derive(Debug, Default)]
+pub struct ClassifyResult {
+    pub baseline: bool,
+    pub notified: Vec<String>,
+}
 
-    let mut relations = snapshot.relations.clone();
-    if context
-        .logins
-        .iter()
-        .any(|login| login.eq_ignore_ascii_case(&snapshot.author))
-        && !relations.contains(&FocusRelation::Authored)
-    {
-        relations.push(FocusRelation::Authored);
-    }
-    if relations.is_empty() {
-        if let Some(previous) = previous {
-            relations = previous.relations.clone();
-        }
-    }
-    relations.sort();
-    relations.dedup();
+struct EventDraft {
+    kind: ActivityKind,
+    summary: String,
+    display: String,
+    event_id: String,
+    occurred_at: Option<DateTime<Utc>>,
+    body: Option<String>,
+    author: Option<String>,
+    notify: bool,
+    read: bool,
+}
 
-    updated.baseline = true;
-    updated.title = snapshot.title.clone();
-    updated.body = snapshot.body.clone();
-    updated.author = snapshot.author.clone();
-    updated.assignees = snapshot.assignees.clone();
-    updated.url = snapshot.url.clone();
-    updated.head_oid = snapshot.head_oid.clone();
-    updated.created_at = snapshot.created_at;
-    updated.updated_at = snapshot.updated_at;
-    updated.merged_at = snapshot.merged_at;
-    updated.closed_at = snapshot.closed_at;
-    updated.stack = snapshot.stack.clone();
-    updated.relations = relations.clone();
-    updated.state = snapshot.state;
-    updated.ci = snapshot.ci;
-    if snapshot.ci.is_failing() {
-        updated.ci_failure_seen = true;
-    }
+pub fn apply(
+    state: &mut WatcherState,
+    account: &str,
+    observation: &PullRequestObservation,
+    relations: &[Relation],
+    last_check: Option<DateTime<Utc>>,
+    context: &ClassifyContext<'_>,
+) -> ClassifyResult {
+    let mut result = ClassifyResult::default();
+    let repository = PullRequestKey::parse(&observation.key)
+        .map(|key| key.repository_name().to_ascii_lowercase())
+        .unwrap_or_default();
+    let ignored = context
+        .ignored
+        .contains(&observation.key.to_ascii_lowercase());
+    let catch_up = context.catch_up.contains(&repository);
+    let now = context.now;
 
-    for comment in &snapshot.comments {
-        updated.seen_comments.insert(comment.id.clone());
-    }
-    for review in &snapshot.reviews {
-        updated.seen_reviews.insert(review.id.clone());
-    }
-    for comment in &snapshot.review_comments {
-        updated.seen_review_comments.insert(comment.id.clone());
-    }
+    let existing = state
+        .accounts
+        .entry(account.to_string())
+        .or_default()
+        .pull_requests
+        .remove(&observation.key);
 
-    if context.ignored {
-        updated.terminal_reported = snapshot.state.is_terminal();
-        return Classification { events, updated };
-    }
+    let mut entry = match existing {
+        Some(mut entry) => {
+            if entry.state.is_terminal()
+                && observation.state.is_terminal()
+                && entry
+                    .terminal_at
+                    .is_some_and(|terminal| now.signed_duration_since(terminal).num_days() >= 30)
+            {
+                // Terminal retirement: a closed or merged pull request stops
+                // being an observation target after 30 days.
+                state
+                    .accounts
+                    .entry(account.to_string())
+                    .or_default()
+                    .pull_requests
+                    .insert(observation.key.clone(), entry);
+                return result;
+            }
 
-    let push = |events: &mut Vec<ClassifiedEvent>, event: ActivityEvent, notify: bool| {
-        events.push(ClassifiedEvent { event, notify });
-    };
+            let old_state = entry.state;
+            let reopened = old_state.is_terminal() && observation.state == PrState::Open;
+            let became_terminal = old_state == PrState::Open && observation.state.is_terminal();
+            let was_terminal = old_state.is_terminal();
 
-    if first {
-        let created_after_last_check = match (snapshot.created_at, context.last_check) {
-            (Some(created), Some(last_check)) => created > last_check,
-            _ => false,
-        };
-        updated.terminal_reported = snapshot.state.is_terminal();
-        if created_after_last_check && !context.catch_up {
-            match snapshot.state {
-                PullRequestState::Merged | PullRequestState::Closed => {
-                    let (kind, summary, occurred_at) = terminal_event(snapshot);
-                    if context.events.state_changes {
-                        push(
-                            &mut events,
-                            ActivityEvent {
-                                kind,
-                                summary: summary.to_string(),
-                                occurred_at,
-                                body: None,
-                                author: None,
-                                read: false,
-                            },
-                            context.focus_allows && !context.catch_up,
-                        );
-                    }
+            update_fields(&mut entry, observation);
+            merge_relations(&mut entry, relations);
+            entry.last_observed = Some(now);
+
+            if reopened {
+                entry.state_change_reported = false;
+                entry.terminal_at = None;
+                entry.seen_comments = observation
+                    .comments
+                    .iter()
+                    .map(|comment| comment.id.clone())
+                    .collect();
+                entry.seen_reviews = observation
+                    .reviews
+                    .iter()
+                    .map(|review| review.id.clone())
+                    .collect();
+                entry.seen_review_comments = observation
+                    .review_comments
+                    .iter()
+                    .map(|comment| comment.id.clone())
+                    .collect();
+            } else if became_terminal {
+                entry.terminal_at = Some(now);
+                if !entry.state_change_reported {
+                    entry.state_change_reported = true;
+                    let summary = match observation.state {
+                        PrState::Merged => "Merged",
+                        PrState::Closed => "Closed",
+                        PrState::Open => unreachable!(),
+                    };
+                    let occurred = match observation.state {
+                        PrState::Merged => observation.merged_at,
+                        PrState::Closed => observation.closed_at,
+                        PrState::Open => None,
+                    };
+                    let notify = !ignored
+                        && !catch_up
+                        && entry.in_focus(context.focus)
+                        && context.events.state_changes;
+                    let kind = if observation.state == PrState::Merged {
+                        ActivityKind::Merged
+                    } else {
+                        ActivityKind::Closed
+                    };
+                    record(
+                        state,
+                        &entry,
+                        now,
+                        EventDraft {
+                            kind,
+                            summary: summary.to_string(),
+                            display: summary.to_string(),
+                            event_id: format!(
+                                "state:{}:{}",
+                                observation.state.human(),
+                                now.timestamp_millis()
+                            ),
+                            occurred_at: occurred,
+                            body: None,
+                            author: None,
+                            notify,
+                            read: false,
+                        },
+                        &mut result,
+                    );
                 }
-                PullRequestState::Open => {
-                    if context.events.state_changes {
-                        push(
-                            &mut events,
-                            ActivityEvent {
-                                kind: EventKind::Opened,
-                                summary: format!("New pull request by @{}", snapshot.author),
-                                occurred_at: snapshot.created_at,
-                                body: None,
-                                author: Some(snapshot.author.clone()),
-                                read: false,
-                            },
-                            context.focus_allows && !context.catch_up,
-                        );
-                    }
+                // Comments and reviews that arrive with the terminal
+                // transition are not activity: only the transition (or a
+                // reopen) is reported.
+                entry.seen_comments = observation
+                    .comments
+                    .iter()
+                    .map(|comment| comment.id.clone())
+                    .collect();
+                entry.seen_reviews = observation
+                    .reviews
+                    .iter()
+                    .map(|review| review.id.clone())
+                    .collect();
+                entry.seen_review_comments = observation
+                    .review_comments
+                    .iter()
+                    .map(|comment| comment.id.clone())
+                    .collect();
+            } else if !was_terminal && !observation.state.is_terminal() {
+                classify_comments(
+                    state,
+                    &mut entry,
+                    &observation.comments,
+                    ActivityKind::Comment,
+                    context,
+                    ignored,
+                    catch_up,
+                    now,
+                    &mut result,
+                );
+                classify_comments(
+                    state,
+                    &mut entry,
+                    &observation.review_comments,
+                    ActivityKind::ReviewComment,
+                    context,
+                    ignored,
+                    catch_up,
+                    now,
+                    &mut result,
+                );
+                classify_reviews(
+                    state,
+                    &mut entry,
+                    &observation.reviews,
+                    context,
+                    ignored,
+                    catch_up,
+                    now,
+                    &mut result,
+                );
+                classify_ci(
+                    state,
+                    &mut entry,
+                    context,
+                    ignored,
+                    catch_up,
+                    now,
+                    &mut result,
+                );
+            } else {
+                // Terminal pull request: keep the seen sets current so a
+                // reopen starts from the present state.
+                entry.seen_comments = observation
+                    .comments
+                    .iter()
+                    .map(|comment| comment.id.clone())
+                    .collect();
+                entry.seen_reviews = observation
+                    .reviews
+                    .iter()
+                    .map(|review| review.id.clone())
+                    .collect();
+                entry.seen_review_comments = observation
+                    .review_comments
+                    .iter()
+                    .map(|comment| comment.id.clone())
+                    .collect();
+            }
+
+            entry
+        }
+        None => {
+            let created_after_last_check = last_check
+                .zip(observation.created_at)
+                .is_some_and(|(last_check, created)| created > last_check);
+            let authored = observation
+                .author
+                .as_ref()
+                .is_some_and(|author| context.login_set.contains(&author.to_ascii_lowercase()));
+
+            let mut entry = WatchedPullRequest::base_entry(
+                &observation.key,
+                observation.state,
+                observation.ci,
+                &observation.title,
+            );
+            update_fields(&mut entry, observation);
+            merge_relations(&mut entry, relations);
+            entry.last_observed = Some(now);
+            entry.seen_comments = observation
+                .comments
+                .iter()
+                .map(|comment| comment.id.clone())
+                .collect();
+            entry.seen_reviews = observation
+                .reviews
+                .iter()
+                .map(|review| review.id.clone())
+                .collect();
+            entry.seen_review_comments = observation
+                .review_comments
+                .iter()
+                .map(|comment| comment.id.clone())
+                .collect();
+            entry.was_failing = observation.ci.is_failing();
+            entry.state_change_reported = observation.state.is_terminal();
+            if observation.state.is_terminal() {
+                entry.terminal_at = Some(now);
+            }
+
+            result.baseline = true;
+
+            if created_after_last_check && authored && !ignored {
+                if observation.state == PrState::Open {
+                    let notify = !catch_up && entry.in_focus(context.focus);
+                    let author = observation.author.clone().unwrap_or_default();
+                    record(
+                        state,
+                        &entry,
+                        now,
+                        EventDraft {
+                            kind: ActivityKind::NewPullRequest,
+                            summary: format!("New pull request by @{author}"),
+                            display: format!("new pull request by @{author}"),
+                            event_id: "new-pull-request".to_string(),
+                            occurred_at: observation.created_at,
+                            body: observation.body.clone(),
+                            author: observation.author.clone(),
+                            notify,
+                            read: false,
+                        },
+                        &mut result,
+                    );
+                } else {
+                    let summary = match observation.state {
+                        PrState::Merged => "Merged",
+                        PrState::Closed => "Closed",
+                        PrState::Open => unreachable!(),
+                    };
+                    let kind = if observation.state == PrState::Merged {
+                        ActivityKind::Merged
+                    } else {
+                        ActivityKind::Closed
+                    };
+                    let notify =
+                        !catch_up && entry.in_focus(context.focus) && context.events.state_changes;
+                    let occurred = match observation.state {
+                        PrState::Merged => observation.merged_at,
+                        PrState::Closed => observation.closed_at,
+                        PrState::Open => None,
+                    };
+                    record(
+                        state,
+                        &entry,
+                        now,
+                        EventDraft {
+                            kind,
+                            summary: summary.to_string(),
+                            display: summary.to_string(),
+                            event_id: format!(
+                                "short-lived:{}:{}",
+                                observation.state.human(),
+                                now.timestamp_millis()
+                            ),
+                            occurred_at: occurred,
+                            body: None,
+                            author: None,
+                            notify,
+                            read: false,
+                        },
+                        &mut result,
+                    );
+                    entry.state_change_reported = true;
                 }
             }
-        }
-        return Classification { events, updated };
-    }
 
-    let previous_state = previous
-        .map(|record| record.state)
-        .unwrap_or(PullRequestState::Open);
-    if previous_state.is_terminal() {
-        if snapshot.state == PullRequestState::Open {
-            updated.terminal_reported = false;
+            entry
         }
-        return Classification { events, updated };
-    }
+    };
 
-    if snapshot.state.is_terminal() {
-        let (kind, summary, occurred_at) = terminal_event(snapshot);
-        if context.events.state_changes {
-            push(
-                &mut events,
-                ActivityEvent {
-                    kind,
-                    summary: summary.to_string(),
-                    occurred_at,
-                    body: None,
-                    author: None,
-                    read: false,
+    merge_relations(&mut entry, relations);
+    state
+        .accounts
+        .entry(account.to_string())
+        .or_default()
+        .pull_requests
+        .insert(observation.key.clone(), entry);
+    state.cap_activity();
+    result
+}
+
+fn update_fields(entry: &mut WatchedPullRequest, observation: &PullRequestObservation) {
+    entry.state = observation.state;
+    entry.ci = observation.ci;
+    entry.title = observation.title.clone();
+    entry.body = observation.body.clone();
+    entry.url = observation.url.clone();
+    entry.author = observation.author.clone();
+    entry.author_is_bot = observation.author_is_bot;
+    entry.assignees = observation.assignees.clone();
+    entry.is_draft = observation.is_draft;
+    entry.created_at = observation.created_at;
+    entry.updated_at = observation.updated_at;
+    entry.merged_at = observation.merged_at;
+    entry.closed_at = observation.closed_at;
+    entry.stack = observation.stack.clone();
+    entry.node_id = observation.node_id.clone();
+}
+
+fn merge_relations(entry: &mut WatchedPullRequest, relations: &[Relation]) {
+    if !relations.is_empty() {
+        entry.relations_known = true;
+        for relation in relations {
+            if !entry.relations.contains(relation) {
+                entry.relations.push(*relation);
+            }
+        }
+        entry.relations.sort_by_key(|relation| match relation {
+            Relation::Authored => 0,
+            Relation::Assigned => 1,
+            Relation::ReviewRequested => 2,
+            Relation::TeamReviewRequested => 3,
+        });
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn classify_comments(
+    state: &mut WatcherState,
+    entry: &mut WatchedPullRequest,
+    comments: &[CommentObservation],
+    kind: ActivityKind,
+    context: &ClassifyContext<'_>,
+    ignored: bool,
+    catch_up: bool,
+    now: DateTime<Utc>,
+    result: &mut ClassifyResult,
+) {
+    for comment in comments {
+        let already_seen = match kind {
+            ActivityKind::Comment => entry.seen_comments.contains(&comment.id),
+            _ => entry.seen_review_comments.contains(&comment.id),
+        };
+        if already_seen {
+            continue;
+        }
+        match kind {
+            ActivityKind::Comment => {
+                entry.seen_comments.insert(comment.id.clone());
+            }
+            _ => {
+                entry.seen_review_comments.insert(comment.id.clone());
+            }
+        }
+        if ignored {
+            continue;
+        }
+        if comment.author_is_bot && !context.events.bot_comments {
+            continue;
+        }
+        let author = comment
+            .author
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
+        let own = context.login_set.contains(&author.to_ascii_lowercase());
+        let (summary, display) = match kind {
+            ActivityKind::Comment => (
+                format!("New comment from @{author}"),
+                format!("comment by @{author}"),
+            ),
+            _ => (
+                format!("Review comment from @{author}"),
+                format!("review comment by @{author}"),
+            ),
+        };
+        let family_enabled = context.events.comments;
+        let notify = !own && family_enabled && !catch_up && entry.in_focus(context.focus);
+        record(
+            state,
+            entry,
+            now,
+            EventDraft {
+                kind: match kind {
+                    ActivityKind::Comment => ActivityKind::Comment,
+                    _ => ActivityKind::ReviewComment,
                 },
-                context.focus_allows && !context.catch_up,
-            );
-        }
-        updated.terminal_reported = true;
-        return Classification { events, updated };
-    }
-
-    let previous = previous.expect("a non-first observation has a previous record");
-    let focus = context.focus_allows;
-
-    for comment in &snapshot.comments {
-        if previous.seen_comments.contains(&comment.id) {
-            continue;
-        }
-        if comment.is_bot && !context.events.bot_comments {
-            continue;
-        }
-        if !context.events.comments {
-            continue;
-        }
-        let own = context
-            .logins
-            .iter()
-            .any(|login| login.eq_ignore_ascii_case(&comment.author));
-        let notify = !own && focus && !context.catch_up;
-        let event = ActivityEvent {
-            kind: EventKind::Comment,
-            summary: format!("New comment from @{}", comment.author),
-            occurred_at: comment.created_at,
-            body: Some(comment.body.clone()),
-            author: Some(comment.author.clone()),
-            read: own,
-        };
-        push(&mut events, event, notify);
-    }
-
-    for comment in &snapshot.review_comments {
-        if previous.seen_review_comments.contains(&comment.id) {
-            continue;
-        }
-        if comment.is_bot && !context.events.bot_comments {
-            continue;
-        }
-        if !context.events.comments {
-            continue;
-        }
-        let own = context
-            .logins
-            .iter()
-            .any(|login| login.eq_ignore_ascii_case(&comment.author));
-        let notify = !own && focus && !context.catch_up;
-        let event = ActivityEvent {
-            kind: EventKind::ReviewComment,
-            summary: format!("Review comment from @{}", comment.author),
-            occurred_at: comment.created_at,
-            body: Some(comment.body.clone()),
-            author: Some(comment.author.clone()),
-            read: own,
-        };
-        push(&mut events, event, notify);
-    }
-
-    for review in &snapshot.reviews {
-        if previous.seen_reviews.contains(&review.id) {
-            continue;
-        }
-        if review.is_bot && !context.events.bot_comments {
-            continue;
-        }
-        if !context.events.reviews {
-            continue;
-        }
-        let own = context
-            .logins
-            .iter()
-            .any(|login| login.eq_ignore_ascii_case(&review.author));
-        let notify = !own && focus && !context.catch_up;
-        let event = ActivityEvent {
-            kind: EventKind::Review {
-                state: review.state,
+                summary,
+                display,
+                event_id: comment.id.clone(),
+                occurred_at: comment.created_at,
+                body: comment.body.clone(),
+                author: Some(author),
+                notify,
+                read: own,
             },
-            summary: format!("Review {} by @{}", review.state.label(), review.author),
-            occurred_at: review.submitted_at,
-            body: Some(review.body.clone()),
-            author: Some(review.author.clone()),
-            read: own,
-        };
-        push(&mut events, event, notify);
-    }
-
-    if snapshot.ci == CiResult::Failing && !previous.ci.is_failing() && context.events.ci_failure {
-        push(
-            &mut events,
-            ActivityEvent {
-                kind: EventKind::CiFailure,
-                summary: "CI failing: build".to_string(),
-                occurred_at: None,
-                body: None,
-                author: None,
-                read: false,
-            },
-            focus && !context.catch_up,
+            result,
         );
     }
-    if snapshot.ci == CiResult::Passing && previous.ci_failure_seen {
-        if context.events.ci_recovery {
-            push(
-                &mut events,
-                ActivityEvent {
-                    kind: EventKind::CiRecovered,
-                    summary: "CI recovered".to_string(),
+}
+
+#[allow(clippy::too_many_arguments)]
+fn classify_reviews(
+    state: &mut WatcherState,
+    entry: &mut WatchedPullRequest,
+    reviews: &[ReviewObservation],
+    context: &ClassifyContext<'_>,
+    ignored: bool,
+    catch_up: bool,
+    now: DateTime<Utc>,
+    result: &mut ClassifyResult,
+) {
+    for review in reviews {
+        if entry.seen_reviews.contains(&review.id) {
+            continue;
+        }
+        entry.seen_reviews.insert(review.id.clone());
+        if ignored {
+            continue;
+        }
+        if review.author_is_bot && !context.events.bot_comments {
+            continue;
+        }
+        let author = review
+            .author
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
+        let state_label = review_state(&review.state);
+        let own = context.login_set.contains(&author.to_ascii_lowercase());
+        let notify = !own && context.events.reviews && !catch_up && entry.in_focus(context.focus);
+        record(
+            state,
+            entry,
+            now,
+            EventDraft {
+                kind: ActivityKind::Review,
+                summary: format!("Review {state_label} by @{author}"),
+                display: format!("review {state_label} by @{author}"),
+                event_id: review.id.clone(),
+                occurred_at: review.submitted_at,
+                body: review.body.clone(),
+                author: Some(author),
+                notify,
+                read: own,
+            },
+            result,
+        );
+    }
+}
+
+fn classify_ci(
+    state: &mut WatcherState,
+    entry: &mut WatchedPullRequest,
+    context: &ClassifyContext<'_>,
+    ignored: bool,
+    catch_up: bool,
+    now: DateTime<Utc>,
+    result: &mut ClassifyResult,
+) {
+    if ignored {
+        entry.was_failing = entry.ci.is_failing();
+        return;
+    }
+    match entry.ci {
+        CiResult::Failing if !entry.was_failing => {
+            entry.was_failing = true;
+            let notify = !catch_up && entry.in_focus(context.focus) && context.events.ci_failure;
+            record(
+                state,
+                entry,
+                now,
+                EventDraft {
+                    kind: ActivityKind::CiFailure,
+                    summary: "CI failing: build".to_string(),
+                    display: "CI failing: build".to_string(),
+                    event_id: format!("ci-failure:{}", now.timestamp_millis()),
                     occurred_at: None,
                     body: None,
                     author: None,
+                    notify,
                     read: false,
                 },
-                focus && !context.catch_up,
+                result,
             );
         }
-        updated.ci_failure_seen = false;
-    }
-
-    Classification { events, updated }
-}
-
-fn terminal_event(
-    snapshot: &PullRequestSnapshot,
-) -> (EventKind, &'static str, Option<DateTime<Utc>>) {
-    match snapshot.state {
-        PullRequestState::Merged => (
-            EventKind::Merged,
-            "Merged",
-            snapshot
-                .merged_at
-                .or(snapshot.closed_at)
-                .or(snapshot.created_at),
-        ),
-        PullRequestState::Closed => (
-            EventKind::Closed,
-            "Closed",
-            snapshot
-                .closed_at
-                .or(snapshot.merged_at)
-                .or(snapshot.created_at),
-        ),
-        PullRequestState::Open => (EventKind::Reopened, "", snapshot.created_at),
+        CiResult::Passing if entry.was_failing => {
+            entry.was_failing = false;
+            let notify = !catch_up && entry.in_focus(context.focus) && context.events.ci_recovery;
+            record(
+                state,
+                entry,
+                now,
+                EventDraft {
+                    kind: ActivityKind::CiRecovery,
+                    summary: "CI recovered".to_string(),
+                    display: "CI recovered".to_string(),
+                    event_id: format!("ci-recovery:{}", now.timestamp_millis()),
+                    occurred_at: None,
+                    body: None,
+                    author: None,
+                    notify,
+                    read: false,
+                },
+                result,
+            );
+        }
+        CiResult::Failing => {
+            entry.was_failing = true;
+        }
+        CiResult::Passing | CiResult::Pending | CiResult::NotStarted => {}
     }
 }
 
-pub fn review_state_label(state: ReviewState) -> &'static str {
-    state.label()
+fn record(
+    state: &mut WatcherState,
+    entry: &WatchedPullRequest,
+    observed_at: DateTime<Utc>,
+    draft: EventDraft,
+    result: &mut ClassifyResult,
+) {
+    if state.activity_contains(&entry.key, &draft.event_id) {
+        return;
+    }
+    let id = state.allocate_activity_id();
+    let stack: Option<StackInfo> = entry.stack.clone();
+    state.activity.push(ActivityRecord {
+        id,
+        key: entry.key.clone(),
+        kind: draft.kind,
+        summary: draft.summary.clone(),
+        display: draft.display,
+        event_id: draft.event_id,
+        occurred_at: draft.occurred_at,
+        observed_at,
+        read: draft.read,
+        stack,
+        body: draft.body,
+        author: draft.author,
+    });
+    if draft.notify {
+        result.notified.push(draft.summary);
+    }
 }
 
-#[allow(dead_code)]
-fn _assert_sets_are_used(_: &BTreeSet<String>) {}
+pub fn review_state(value: &str) -> &'static str {
+    match value {
+        "APPROVED" => "approved",
+        "CHANGES_REQUESTED" => "changes requested",
+        "COMMENTED" => "commented",
+        "PENDING" => "pending",
+        "DISMISSED" => "dismissed",
+        _ => "commented",
+    }
+}

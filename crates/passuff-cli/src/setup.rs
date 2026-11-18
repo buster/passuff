@@ -1,318 +1,229 @@
+//! Interactive first-run setup. The flow never reads or writes a token value.
+
 use std::io::{BufRead, Write};
 use std::path::Path;
 
-use passuff_config::{
-    build_setup_config, create_config, validate_repository, AuthMode, ConfigError, SetupAccount,
-    SetupAnswers, WatchConfig, WatchMode,
-};
+use passuff_config::{AccountConfig, AppConfig, AuthMode, WatchConfig, WatchMode};
 
-pub struct SetupResult {
-    pub exit_code: i32,
-    pub stdout: String,
-}
-
-struct TeeWriter<'a> {
-    primary: &'a mut dyn Write,
-    buffer: Vec<u8>,
-}
-
-impl Write for TeeWriter<'_> {
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        let _ = self.primary.write_all(bytes);
-        self.buffer.extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.primary.flush()
-    }
-}
-
-pub fn run_setup(
-    config_path: &Path,
-    input: &mut dyn BufRead,
-    output: &mut dyn Write,
-) -> SetupResult {
-    let mut tee = TeeWriter {
-        primary: output,
-        buffer: Vec::new(),
-    };
-    let result = setup_inner(config_path, input, &mut tee);
-    let exit_code = match result {
-        SetupOutcome::Created | SetupOutcome::Unchanged => 0,
-        SetupOutcome::Failed { message, exit_code } => {
-            let _ = writeln!(tee, "passuff setup: {message}");
-            exit_code
-        }
-    };
-    let _ = tee.flush();
-    SetupResult {
-        exit_code,
-        stdout: String::from_utf8_lossy(&tee.buffer).to_string(),
-    }
-}
-
-enum SetupOutcome {
+pub enum SetupOutcome {
     Created,
     Unchanged,
-    Failed { message: String, exit_code: i32 },
 }
 
-fn setup_inner<W: Write>(
-    config_path: &Path,
-    input: &mut dyn BufRead,
-    output: &mut W,
-) -> SetupOutcome {
-    if config_path.exists() {
-        let answer = match prompt(input, output, "Configuration exists. Replace? [y/N]: ") {
-            Ok(answer) => answer,
-            Err(_) => {
-                return SetupOutcome::Failed {
-                    message: "setup cancelled".to_string(),
-                    exit_code: 2,
-                }
-            }
-        };
+pub enum SetupError {
+    Validation(String),
+    Cancelled,
+    Io(String),
+}
+
+pub fn run(path: &Path) -> Result<SetupOutcome, SetupError> {
+    if path.exists() {
+        print!("Configuration exists. Replace? [y/N] ");
+        let _ = std::io::stdout().flush();
+        let answer = read_line()?.unwrap_or_default();
         if !matches!(answer.to_ascii_lowercase().as_str(), "y" | "yes") {
-            let _ = writeln!(output, "passuff setup: configuration left unchanged");
-            return SetupOutcome::Unchanged;
+            return Ok(SetupOutcome::Unchanged);
         }
     }
 
-    let mut accounts = Vec::new();
+    let mut config = AppConfig::default();
+    let mut account_number = 0usize;
     loop {
-        let label = loop {
-            match prompt(input, output, "Account label: ") {
-                Ok(value) if !value.trim().is_empty() => break value.trim().to_string(),
-                Ok(_) => {
-                    let _ = writeln!(output, "passuff setup: account label must not be empty");
-                }
-                Err(message) => {
-                    return SetupOutcome::Failed {
-                        message,
-                        exit_code: 2,
-                    }
-                }
-            }
-        };
-        let auth = loop {
-            match prompt(
-                input,
-                output,
-                "Auth [gh_oauth/token_env/token_command/token_file] (gh_oauth): ",
-            ) {
-                Ok(value) => {
-                    let value = value.trim().to_ascii_lowercase();
-                    let mode = match value.as_str() {
-                        "" | "gh_oauth" | "gh-oauth" => Some(AuthMode::GhOAuth),
-                        "token_env" | "env" => Some(AuthMode::GithubPat),
-                        "token_command" | "command" => Some(AuthMode::GithubPat),
-                        "token_file" | "file" => Some(AuthMode::GithubPat),
-                        _ => None,
-                    };
-                    if let Some(mode) = mode {
-                        let value = if value.is_empty() {
-                            "gh_oauth".to_string()
-                        } else {
-                            value
-                        };
-                        break (mode, value);
-                    }
-                    let _ = writeln!(output, "passuff setup: unknown auth mode");
-                }
-                Err(message) => {
-                    return SetupOutcome::Failed {
-                        message,
-                        exit_code: 2,
-                    }
-                }
-            }
-        };
-        let login = loop {
-            match prompt(input, output, "Expected GitHub login: ") {
-                Ok(value)
-                    if !value.trim().is_empty() && !value.chars().any(char::is_whitespace) =>
-                {
-                    break value.trim().to_string()
-                }
-                Ok(_) => {
-                    let _ = writeln!(output, "passuff setup: github_user requires a value");
-                }
-                Err(message) => {
-                    return SetupOutcome::Failed {
-                        message,
-                        exit_code: 2,
-                    }
-                }
-            }
-        };
-        let token_source = if auth.0 == AuthMode::GhOAuth {
-            None
+        account_number += 1;
+        let (label, account) = prompt_account(account_number)?;
+        config.accounts.insert(label, account);
+        print!("Add another account? [y/N] ");
+        let _ = std::io::stdout().flush();
+        let answer = read_line()?.unwrap_or_default();
+        if !matches!(answer.to_ascii_lowercase().as_str(), "y" | "yes") {
+            break;
+        }
+    }
+
+    let mode = prompt_mode()?;
+    let repositories = if matches!(mode, WatchMode::Selected) {
+        prompt_repositories()?
+    } else {
+        Vec::new()
+    };
+    config.watch = WatchConfig {
+        mode: Some(mode),
+        repositories,
+        ignored_pull_requests: Vec::new(),
+    };
+
+    passuff_config::validate(&config).map_err(SetupError::Validation)?;
+    passuff_config::save(path, &config).map_err(|error| match error {
+        passuff_config::SaveError::Invalid(message) => SetupError::Validation(message),
+        passuff_config::SaveError::Io { source, .. } => SetupError::Io(source.to_string()),
+    })?;
+    Ok(SetupOutcome::Created)
+}
+
+fn prompt_account(number: usize) -> Result<(String, AccountConfig), SetupError> {
+    let label = loop {
+        let label = prompt(&format!("Account {number} label: "))?;
+        if label.is_empty() {
+            println!("passuff: account label must not be empty");
+            continue;
+        }
+        break label;
+    };
+
+    let auth = loop {
+        let answer = prompt("Auth [gh_oauth/token_env/token_command/token_file] (gh_oauth): ")?;
+        let answer = if answer.is_empty() {
+            "gh_oauth".to_string()
         } else {
-            let prompt_text = match auth.1.as_str() {
-                "token_env" | "env" => "Environment variable: ",
-                "token_command" | "command" => "Command: ",
-                _ => "Token file: ",
-            };
-            loop {
-                match prompt(input, output, prompt_text) {
-                    Ok(value) if !value.trim().is_empty() => {
-                        let prefix = match auth.1.as_str() {
-                            "token_env" | "env" => "env",
-                            "token_command" | "command" => "command",
-                            _ => "file",
-                        };
-                        let candidate = format!("{prefix}:{}", value.trim());
-                        if prefix == "file" {
-                            let provisional = SetupAnswers {
-                                accounts: vec![SetupAccount {
-                                    label: label.clone(),
-                                    auth: AuthMode::GithubPat,
-                                    login: login.clone(),
-                                    token_source: Some(candidate.clone()),
-                                }],
-                                watch: WatchConfig::default(),
-                            };
-                            if let Err(error) = build_setup_config(&provisional) {
-                                let _ = writeln!(output, "passuff setup: {error}");
-                                continue;
-                            }
-                        }
-                        break Some(candidate);
-                    }
-                    Ok(_) => {
-                        let _ =
-                            writeln!(output, "passuff setup: credential source requires a value");
-                    }
-                    Err(message) => {
-                        return SetupOutcome::Failed {
-                            message,
-                            exit_code: 2,
-                        }
-                    }
-                }
-            }
+            answer
         };
-        accounts.push(SetupAccount {
-            label,
-            auth: auth.0,
-            login,
-            token_source,
-        });
-        match prompt(input, output, "Add another account? [y/N]: ") {
-            Ok(answer) if matches!(answer.to_ascii_lowercase().as_str(), "y" | "yes") => {}
-            Ok(_) => break,
-            Err(message) => {
-                return SetupOutcome::Failed {
-                    message,
-                    exit_code: 2,
-                }
-            }
-        }
-    }
-
-    let mode = loop {
-        match prompt(input, output, "Watch mode [all/selected] (all): ") {
-            Ok(value) => match value.trim().to_ascii_lowercase().as_str() {
-                "" | "all" => break WatchMode::All,
-                "selected" => break WatchMode::Selected,
-                _ => {
-                    let _ = writeln!(output, "passuff setup: watch mode must be all or selected");
-                }
-            },
-            Err(message) => {
-                return SetupOutcome::Failed {
-                    message,
-                    exit_code: 2,
-                }
-            }
+        match answer.as_str() {
+            "gh_oauth" | "token_env" | "token_command" | "token_file" => break answer,
+            other => println!("passuff: unknown auth mode: {other}"),
         }
     };
-    let mut repositories = Vec::new();
-    if mode == WatchMode::Selected {
-        loop {
-            let value = match prompt(input, output, "Repositories (comma-separated): ") {
-                Ok(value) => value,
-                Err(message) => {
-                    return SetupOutcome::Failed {
-                        message,
-                        exit_code: 2,
-                    }
-                }
-            };
-            let mut parsed = Vec::new();
-            let mut valid = true;
-            for repository in value
-                .split(',')
-                .map(str::trim)
-                .filter(|part| !part.is_empty())
-            {
-                if let Err(error) = validate_repository(repository) {
-                    let _ = writeln!(output, "passuff setup: {error}");
-                    valid = false;
-                    break;
-                }
-                if parsed
-                    .iter()
-                    .any(|candidate: &String| candidate.eq_ignore_ascii_case(repository))
-                {
-                    let _ = writeln!(
-                        output,
-                        "passuff setup: duplicate watch repository: {repository}"
-                    );
-                    valid = false;
-                    break;
-                }
-                parsed.push(repository.to_string());
-            }
-            if valid {
-                repositories = parsed;
-                break;
-            }
+
+    let login = loop {
+        let login = prompt("Expected GitHub login: ")?;
+        if login.is_empty() {
+            println!("passuff: github_user must not be empty");
+            continue;
         }
+        if login.chars().any(char::is_whitespace) {
+            println!("passuff: github_user must not contain whitespace");
+            continue;
+        }
+        break login;
+    };
+
+    let mut account = AccountConfig {
+        auth: Some(if auth == "gh_oauth" {
+            AuthMode::GhOauth.as_str().to_string()
+        } else {
+            AuthMode::GithubPat.as_str().to_string()
+        }),
+        github_user: Some(login),
+        ..AccountConfig::default()
+    };
+
+    match auth.as_str() {
+        "gh_oauth" => {}
+        "token_env" => loop {
+            let variable = prompt("Token environment variable: ")?;
+            if variable.is_empty() {
+                println!("passuff: token_env must not be empty");
+                continue;
+            }
+            account.token_env = Some(variable);
+            break;
+        },
+        "token_command" => loop {
+            let command = prompt("Token helper command: ")?;
+            if command.is_empty() {
+                println!("passuff: token_command must not be empty");
+                continue;
+            }
+            account.token_command = Some(command);
+            break;
+        },
+        _ => loop {
+            let file = prompt("Token file: ")?;
+            match validate_setup_token_file(&file) {
+                Ok(()) => {
+                    account.token_file = Some(file);
+                    break;
+                }
+                Err(message) => println!("passuff: {message}"),
+            }
+        },
     }
 
-    let answers = SetupAnswers {
-        accounts,
-        watch: WatchConfig {
-            mode: Some(mode),
-            repositories,
-            ignored_pull_requests: Vec::new(),
-        },
-    };
-    if let Err(error) = build_setup_config(&answers) {
-        return SetupOutcome::Failed {
-            message: error.to_string(),
-            exit_code: 2,
-        };
+    Ok((label, account))
+}
+
+fn validate_setup_token_file(value: &str) -> Result<(), String> {
+    if value.is_empty() {
+        return Err("token file must not be empty".to_string());
     }
-    match create_config(config_path, &answers) {
-        Ok(_) => {
-            let _ = writeln!(
-                output,
-                "passuff setup: configuration written to {}",
-                config_path.display()
-            );
-            SetupOutcome::Created
+    if !(Path::new(value).is_absolute() || value.starts_with('~')) {
+        return Err(format!(
+            "token_file must be absolute or start with ~: {value}"
+        ));
+    }
+    let path = passuff_config::expand_home(value);
+    let metadata = std::fs::metadata(&path)
+        .map_err(|_| format!("token file is missing: {}", path.display()))?;
+    if !metadata.is_file() {
+        return Err(format!("token file is not a regular file: {value}"));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = metadata.permissions().mode() & 0o777;
+        if mode != 0o600 && mode != 0o400 {
+            return Err(format!(
+                "token_file is not private (insecure permissions {mode:04o}): {value}"
+            ));
         }
-        Err(ConfigError::Write { .. }) => SetupOutcome::Failed {
-            message: format!("cannot write configuration {}", config_path.display()),
-            exit_code: 3,
-        },
-        Err(error) => SetupOutcome::Failed {
-            message: error.to_string(),
-            exit_code: 2,
-        },
+    }
+    Ok(())
+}
+
+fn prompt_mode() -> Result<WatchMode, SetupError> {
+    loop {
+        let answer = prompt("Watch mode [all/selected] (all): ")?;
+        match answer.to_ascii_lowercase().as_str() {
+            "" | "all" => return Ok(WatchMode::All),
+            "selected" => return Ok(WatchMode::Selected),
+            other => println!("passuff: unknown watch mode: {other}"),
+        }
     }
 }
 
-fn prompt<W: Write>(input: &mut dyn BufRead, output: &mut W, text: &str) -> Result<String, String> {
-    let _ = output.write_all(text.as_bytes());
-    let _ = output.flush();
-    let mut line = String::new();
-    match input.read_line(&mut line) {
-        Ok(0) => Err("setup cancelled".to_string()),
-        Ok(_) => Ok(line.trim_end_matches(['\r', '\n']).to_string()),
-        Err(error) => Err(format!("cannot read setup input: {error}")),
+fn prompt_repositories() -> Result<Vec<String>, SetupError> {
+    loop {
+        let answer = prompt("Repositories (comma-separated): ")?;
+        let mut repositories = Vec::new();
+        let mut seen = std::collections::BTreeSet::new();
+        let mut failed = None;
+        if !answer.trim().is_empty() {
+            for raw in answer.split(',') {
+                let repository = raw.trim();
+                if let Err(message) = passuff_config::validate_repository(repository) {
+                    failed = Some(message);
+                    break;
+                }
+                if !seen.insert(repository.to_ascii_lowercase()) {
+                    failed = Some(format!("duplicate watch repository: {repository}"));
+                    break;
+                }
+                repositories.push(repository.to_string());
+            }
+        }
+        match failed {
+            Some(message) => println!("passuff: {message}"),
+            None => return Ok(repositories),
+        }
     }
+}
+
+fn prompt(label: &str) -> Result<String, SetupError> {
+    print!("{label}");
+    let _ = std::io::stdout().flush();
+    match read_line()? {
+        Some(line) => Ok(line),
+        None => Err(SetupError::Cancelled),
+    }
+}
+
+fn read_line() -> Result<Option<String>, SetupError> {
+    let mut line = String::new();
+    let read = std::io::stdin()
+        .lock()
+        .read_line(&mut line)
+        .map_err(|error| SetupError::Io(error.to_string()))?;
+    if read == 0 {
+        return Ok(None);
+    }
+    Ok(Some(line.trim().to_string()))
 }
