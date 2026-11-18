@@ -13,7 +13,7 @@
 # ============================================================================
 
 # Managed by givn. Do not delete the next line.
-givn_config_version: "0.9.17"
+givn_config_version: "0.9.21"
 
 # --- Test runner -------------------------------------------------------------
 # The command givn invokes to run your test suite. Configured in
@@ -132,11 +132,12 @@ givn_config_version: "0.9.17"
 
 # --- Addons ------------------------------------------------------------------
 # Pre-packaged artifact sets. See arc42 ch.8.11.
-# Every known addon is enabled by default. Opt out of all of them with
-# `givn init --no-addons`, or disable one with `givn addons disable <name>`.
-# A missing key in a partial `addons:` block means enabled; only an explicit
-# `false` disables a flag. This project's actual settings are below, written by
-# `givn init`/`givn addons`:
+# Each addon declares its own default. Every addon except an Opt-in addon is
+# enabled by default; a missing key in a partial `addons:` block resolves that
+# addon's declared default, and only an explicit `false` disables a default-on
+# addon. Opt out of all of them with `givn init --no-addons`, or disable one
+# with `givn addons disable <name>`. This project's actual settings are below,
+# written by `givn init`/`givn addons`:
 #
 # addons:
 #   arc42: true             # set to false to disable the arc42 documentation artifact
@@ -150,6 +151,9 @@ givn_config_version: "0.9.17"
 #   architecture_principles: true # enabled by default; set false to disable; see below
 #   challenge: true         # project-level skill; see below
 #   outline: true           # enabled by default; set false to disable the outline report
+#   ise: false              # Opt-in addon; declared default false and requires
+#                          # architecture_principles. Serves `givn instructions ise`
+#                          # and scaffolds givn/specification.yaml.
 #                          # Toggle with: givn addons enable|disable <name>, or
 #                          # `givn addons list` to see all known addons.
 
